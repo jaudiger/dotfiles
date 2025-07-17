@@ -1,0 +1,53 @@
+#!/usr/bin/env nu
+#
+# Copyright (c) Jérémy Audiger.
+# All rights reserved.
+#
+
+def validate_work_branch []: nothing -> nothing {
+    let branch_name = (^git branch --show-current | str trim)
+    const branch_regex = '^(bugfix|hotfix|imprv|feat|feature)-i[0-9]+-[a-zA-Z0-9_-]+$'
+
+    # Check if branch matches the required pattern
+    if (($branch_name | parse --regex $branch_regex) | is-not-empty) {
+        # Exit earlier since the regex matches with the branch name
+        return
+    }
+
+    # Check if branch exists on remote
+    if (^git ls-remote --heads origin $branch_name | lines | length) != 0 {
+        return
+    }
+
+    # Check if it's a special branch
+    if ($branch_name in ["main", "master", "develop"]) {
+        return
+    }
+
+    # If we get here, the branch name is invalid
+    print -e "Aborting commit push. Branch name format has to be: '<type>(-i<issue>)?-<name>'
+
+'type' must be one of the following:
+- bugfix: Fix a bug
+- hotfix: Fix a critical bug
+- imprv: Overall improvement
+- feat|feature: New feature"
+
+    exit 1
+}
+
+def validate_branch []: nothing -> nothing {
+    let remote = (^git remote get-url origin)
+    const remote_regex = 'gitlab\.com.IoTerop'
+
+    if (($remote | parse --regex $remote_regex) | is-not-empty) {
+        validate_work_branch
+    }
+}
+
+# Validate the branch name
+def main [
+    ...args: any # Additional arguments
+]: nothing -> nothing {
+    validate_branch
+}

@@ -1,0 +1,50 @@
+#!/usr/bin/env nu
+#
+# Copyright (c) Jérémy Audiger.
+# All rights reserved.
+#
+
+# Based on the "Conventional Commits" reference
+def validate_work_message [commit_path: string]: nothing -> nothing {
+    const commit_regex = '^(build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test|release|sec|wip)(\([a-z_-]+\))?!?: .+$'
+    const error_message = "Aborting commit. Commit message format has to be: '<type>(<scope>): <short summary>'
+
+'type' must be one of the following:
+- build: Changes that affect the build system or external dependencies
+- chore: Other changes that don't modify src or test files
+- ci: Changes to CI configuration files and scripts
+- docs: Documentation only changes
+- feat: A new feature
+- fix: A bug fix
+- perf: A code change that improves performance
+- refactor: A code change that neither fixes a bug nor adds a feature
+- revert: Reverts a previous commit
+- style: Changes that do not affect the meaning of the code (white-space, formatting, etc)
+- test: Adding tests or correcting existing tests
+- release: Changes related to the release process
+- sec: Security related changes
+- wip: Work in progress"
+
+    let commit_msg = (open $commit_path | str trim | lines | get 0)
+    if (($commit_msg | parse --regex $commit_regex) | is-empty) {
+        print -e $error_message
+        exit 1
+    }
+}
+
+def validate_message [commit_path: string]: nothing -> nothing {
+    let remote = (^git remote get-url origin)
+    const remote_regex = 'gitlab\.com.IoTerop'
+
+    if (($remote | parse --regex $remote_regex) | is-not-empty) {
+        validate_work_message $commit_path
+    }
+}
+
+# Validate the commit message
+def main [
+    commit_path: string # Path to the commit message file
+    ...args: any # Additional arguments
+]: nothing -> nothing {
+    validate_message $commit_path
+}

@@ -1,0 +1,8 @@
+keys:
+  - &jaudiger FDF86EEB41D522A74291376DE2563E282C8614EF
+
+creation_rules:
+  - path_regex: secrets/(.*/)?.*$
+    key_groups:
+      - pgp:
+          - *jaudiger

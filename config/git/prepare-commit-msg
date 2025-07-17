@@ -1,0 +1,17 @@
+#!/usr/bin/env nu
+#
+# Copyright (c) Jérémy Audiger.
+# All rights reserved.
+#
+
+def signed_off_by [commit_path: string]: nothing -> nothing {
+    ^git interpret-trailers --trailer sign --in-place $commit_path
+}
+
+# Sign the commit message
+def main [
+    commit_path: string # Path to the commit message file
+    ...args: any # Additional arguments
+]: nothing -> nothing {
+    signed_off_by $commit_path
+}
