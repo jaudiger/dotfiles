@@ -7,13 +7,13 @@
 
 stdenv.mkDerivation rec {
   pname = "supermd";
-  version = "48500784d7706eaba2d5e1a35332353aca3fc04e";
+  version = "e153cca96a9defea46872f9a7e980008ef6c8cdb";
 
   src = fetchFromGitHub {
     owner = "kristoff-it";
     repo = "supermd";
     rev = version;
-    hash = "sha256-vz096tMSPwhiPTQdXpfPxvJ8clpYRglHUuiER/SmoW0=";
+    hash = "sha256-N3VUvrEJ0qiTipt8u9Zxfolr9f65HYkz20NEMppx26A=";
   };
 
   nativeBuildInputs = [

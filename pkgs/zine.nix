@@ -6,14 +6,14 @@
 }:
 
 stdenv.mkDerivation rec {
-  pname = "superhtml";
-  version = "daf47cfb1b393955b382ef91460e45837515b88e";
+  pname = "zine";
+  version = "v0.10.3";
 
   src = fetchFromGitHub {
     owner = "kristoff-it";
-    repo = "superhtml";
+    repo = "zine";
     rev = version;
-    hash = "sha256-YKRFV/OhufaDSwvPzlDDLACLLmOizeLb00rznnLLPHo=";
+    hash = "sha256-3d+tCzqwy9HnnFL6NX8bJcU/Emb5tu07CxZLCYWiT5o=";
   };
 
   nativeBuildInputs = [
@@ -21,7 +21,8 @@ stdenv.mkDerivation rec {
   ];
 
   meta = with lib; {
-    description = "HTML Language Server & Templating Language Library";
+    description = "Fast, Scalable, Flexible Static Site Generator (SSG)";
+    homepage = "https://zine-ssg.io";
     license = licenses.mit;
     maintainers = with maintainers; [ jaudiger ];
   };
