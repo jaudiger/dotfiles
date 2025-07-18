@@ -1,12 +1,13 @@
 {
-  description = "Rust devshell";
+  description = "Zig nightly devshell";
 
   inputs = {
     # Use as the main nixpks repository (to get the latest stable packages)
     nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
 
-    rust-overlay = {
-      url = "github:oxalica/rust-overlay";
+    # To get Zig toolchains
+    zig-overlay = {
+      url = "github:mitchellh/zig-overlay";
       inputs.nixpkgs.follows = "nixpkgs";
     };
   };
@@ -14,11 +15,11 @@
   outputs =
     {
       nixpkgs,
-      rust-overlay,
+      zig-overlay,
       ...
     }:
     let
-      overlays = [ (import rust-overlay) ];
+      overlays = [ zig-overlay.overlays.default ];
 
       # Helper to generate supported systems
       supportedSystems = [
@@ -41,20 +42,12 @@
         {
           default = pkgs.mkShell {
             nativeBuildInputs = with pkgs; [
-              (rust-bin.stable."1.88.0".minimal.override {
-                extensions = [
-                  "rust-src"
-                  "clippy"
-                  "llvm-tools-preview"
-                ];
-              })
-
-              pkg-config
+              zigpkgs.master
             ];
 
             buildInputs =
               with pkgs;
-              [ openssl ]
+              [ ]
               ++ lib.optionals pkgs.stdenv.isDarwin [
                 apple-sdk_15
               ];

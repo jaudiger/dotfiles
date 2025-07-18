@@ -2,9 +2,10 @@
   description = "Rust WASM devshell";
 
   inputs = {
-    # Use as the main nixpks repository (to get the latest stable packages)
+    # Use as the main nixpks repository (to get the latest packages)
     nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
 
+    # To get Rust toolchains
     rust-overlay = {
       url = "github:oxalica/rust-overlay";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -18,7 +19,7 @@
       ...
     }:
     let
-      overlays = [ (import rust-overlay) ];
+      overlays = [ rust-overlay.overlays.default ];
 
       # Helper to generate supported systems
       supportedSystems = [

@@ -75,7 +75,7 @@ in
       nix-fmt = "nixfmt";
 
       nix-full-update = "nix-channel --update darwin; nix flake update --flake ${host.homeDirectory}/Development/git-repositories/jaudiger/dotfiles; nix-update";
-      nix-update-dev-shell = "nix flake update --flake ${host.homeDirectory}/Development/git-repositories/jaudiger/dotfiles/dev-shell/c; nix flake update --flake ${host.homeDirectory}/Development/git-repositories/jaudiger/dotfiles/dev-shell/go; nix flake update --flake ${host.homeDirectory}/Development/git-repositories/jaudiger/dotfiles/dev-shell/rust; nix flake update --flake ${host.homeDirectory}/Development/git-repositories/jaudiger/dotfiles/dev-shell/rust-nightly; nix flake update --flake ${host.homeDirectory}/Development/git-repositories/jaudiger/dotfiles/dev-shell/rust-wasm";
+      nix-update-dev-shell = "nix flake update --flake ${host.homeDirectory}/Development/git-repositories/jaudiger/dotfiles/dev-shell/c; nix flake update --flake ${host.homeDirectory}/Development/git-repositories/jaudiger/dotfiles/dev-shell/rust-nightly; nix flake update --flake ${host.homeDirectory}/Development/git-repositories/jaudiger/dotfiles/dev-shell/rust-wasm; nix flake update --flake ${host.homeDirectory}/Development/git-repositories/jaudiger/dotfiles/dev-shell/zig-nightly";
       nix-clean = "nix-collect-garbage -d";
     }
     // (

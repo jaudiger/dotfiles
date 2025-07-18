@@ -20,9 +20,8 @@ in
 
     # Dev-Shell
     dev-shell-c = "nix develop ${host.homeDirectory}/Development/git-repositories/jaudiger/dotfiles/dev-shell/c";
-    dev-shell-go = "nix develop ${host.homeDirectory}/Development/git-repositories/jaudiger/dotfiles/dev-shell/go";
-    dev-shell-rust = "nix develop ${host.homeDirectory}/Development/git-repositories/jaudiger/dotfiles/dev-shell/rust";
     dev-shell-rust-nightly = "nix develop ${host.homeDirectory}/Development/git-repositories/jaudiger/dotfiles/dev-shell/rust-nightly";
     dev-shell-rust-wasm = "nix develop ${host.homeDirectory}/Development/git-repositories/jaudiger/dotfiles/dev-shell/rust-wasm";
+    dev-shell-zig-nightly = "nix develop ${host.homeDirectory}/Development/git-repositories/jaudiger/dotfiles/dev-shell/zig-nightly";
   };
 }
