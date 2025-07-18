@@ -26,6 +26,12 @@
       url = "github:oxalica/rust-overlay";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+
+    # To get Zig toolchains
+    zig-overlay = {
+      url = "github:mitchellh/zig-overlay";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   outputs =

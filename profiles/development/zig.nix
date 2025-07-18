@@ -1,7 +1,9 @@
-{ pkgs, ... }:
+{ inputs, pkgs, ... }:
 
 {
   nixpkgs.overlays = [
+    inputs.zig-overlay.overlays.default
+
     (final: prev: {
       superhtml = prev.callPackage ../../pkgs/superhtml.nix { };
       supermd = prev.callPackage ../../pkgs/supermd.nix { };
@@ -11,7 +13,7 @@
 
   modules.home-manager.home = {
     packages = with pkgs; [
-      zig
+      zig # Or 'zigpkgs.master' to use nightly builds, 'zigpkgs."X.Y.Z"' to use a specific version
       zls
 
       superhtml
