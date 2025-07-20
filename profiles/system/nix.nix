@@ -38,24 +38,23 @@ in
       automatic = true;
     };
 
-    gc =
-      {
-        automatic = true;
-        options = "--delete-older-than 14d";
-      }
-      // (
-        if isDarwin then
-          {
-            # Run on first day of every week
-            interval = {
-              Weekday = 0;
-              Hour = 0;
-              Minute = 0;
-            };
-          }
-        else
-          { dates = "weekly"; }
-      );
+    gc = {
+      automatic = true;
+      options = "--delete-older-than 14d";
+    }
+    // (
+      if isDarwin then
+        {
+          # Run on first day of every week
+          interval = {
+            Weekday = 0;
+            Hour = 0;
+            Minute = 0;
+          };
+        }
+      else
+        { dates = "weekly"; }
+    );
   };
 
   system.activationScripts.postActivation.text = ''
@@ -69,23 +68,22 @@ in
     /System/Library/PrivateFrameworks/SystemAdministration.framework/Resources/activateSettings -u
   '';
 
-  modules.host.shell.nonPortableAliases =
-    {
-      # TODO: to replace once is finished: https://github.com/NixOS/nixfmt/issues/153
-      nix-fmt = "nixfmt";
+  modules.host.shell.nonPortableAliases = {
+    # TODO: to replace once is finished: https://github.com/NixOS/nixfmt/issues/153
+    nix-fmt = "nixfmt";
 
-      nix-full-update = "nix-channel --update darwin; nix flake update --flake ${host.homeDirectory}/Development/git-repositories/jaudiger/dotfiles; nix-update";
-      nix-update-dev-shell = "nix flake update --flake ${host.homeDirectory}/Development/git-repositories/jaudiger/dotfiles/dev-shell/c; nix flake update --flake ${host.homeDirectory}/Development/git-repositories/jaudiger/dotfiles/dev-shell/rust-nightly; nix flake update --flake ${host.homeDirectory}/Development/git-repositories/jaudiger/dotfiles/dev-shell/rust-wasm; nix flake update --flake ${host.homeDirectory}/Development/git-repositories/jaudiger/dotfiles/dev-shell/zig-nightly";
-      nix-clean = "nix-collect-garbage -d";
-    }
-    // (
-      if isDarwin then
-        {
-          nix-update = "sudo darwin-rebuild switch --flake ${host.homeDirectory}/Development/git-repositories/jaudiger/dotfiles#darwin-aarch64";
-        }
-      else
-        {
-          nix-update = "sudo nixos-rebuild switch --flake ${host.homeDirectory}/Development/git-repositories/jaudiger/dotfiles#nixos-aarch64";
-        }
-    );
+    nix-full-update = "nix-channel --update darwin; nix flake update --flake ${host.homeDirectory}/Development/git-repositories/jaudiger/dotfiles; nix-update";
+    nix-update-dev-shell = "nix flake update --flake ${host.homeDirectory}/Development/git-repositories/jaudiger/dotfiles/dev-shell/c; nix flake update --flake ${host.homeDirectory}/Development/git-repositories/jaudiger/dotfiles/dev-shell/rust-nightly; nix flake update --flake ${host.homeDirectory}/Development/git-repositories/jaudiger/dotfiles/dev-shell/rust-wasm; nix flake update --flake ${host.homeDirectory}/Development/git-repositories/jaudiger/dotfiles/dev-shell/zig-nightly";
+    nix-clean = "nix-collect-garbage -d";
+  }
+  // (
+    if isDarwin then
+      {
+        nix-update = "sudo darwin-rebuild switch --flake ${host.homeDirectory}/Development/git-repositories/jaudiger/dotfiles#darwin-aarch64";
+      }
+    else
+      {
+        nix-update = "sudo nixos-rebuild switch --flake ${host.homeDirectory}/Development/git-repositories/jaudiger/dotfiles#nixos-aarch64";
+      }
+  );
 }
