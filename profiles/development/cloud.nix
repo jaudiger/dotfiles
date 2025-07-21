@@ -11,6 +11,9 @@
 
       hadolint
       trivy
+
+      # GitHub Actions workflow linter
+      actionlint
     ];
   };
 }
