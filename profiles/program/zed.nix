@@ -257,6 +257,7 @@
         };
         show_call_status_icon = false;
         show_whitespaces = "boundary";
+        soft_wrap = "editor_width";
         tab_bar = {
           show = false;
           show_nav_history_buttons = false;
