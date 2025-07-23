@@ -3,15 +3,17 @@ name: Continuous Integration ‑ GitHub Actions
 on:
   push:
     paths:
-      - ".github/workflows/**/*.{yml,yaml}"
+      - ".github/workflows/**/*.yml"
+      - ".github/workflows/**/*.yaml"
   pull_request:
     paths:
-      - ".github/workflows/**/*.{yml,yaml}"
+      - ".github/workflows/**/*.yml"
+      - ".github/workflows/**/*.yaml"
   workflow_dispatch:
 
 # Do not include a 'concurrency' block, the one used will come from the callee workflow
 
 jobs:
   static-analysis:
-    uses: jaudiger/reusable-workflows/.github/workflows/github-actions.yml@f359a681f4edf68f20a3e1f2a47d488b5d133b71
+    uses: jaudiger/reusable-workflows/.github/workflows/github-actions.yml@a726b827a64dfa2fcb36519c71ec4c80ae3f1659
     secrets: inherit
