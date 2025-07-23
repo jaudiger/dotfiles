@@ -4,7 +4,7 @@ Did I just say all ? Well, that's all my public dotfiles. Take care if you want 
 
 ## CI / CD
 
-The CI/CD pipeline is configured using GitHub Actions. The workflow is defined in the `.github/workflows` folder:
+The CI/CD pipeline is configured using GitHub Actions. The workflow is defined in the [`.github/workflows`](.github/workflows) folder:
 
 - Static Analysis (GitHub Actions)
 - Check Nix Flake update (run each week through CronJob)
@@ -13,4 +13,4 @@ Additionally, Dependabot is configured to automatically update dependencies (Git
 
 ## Repository configuration
 
-The settings of this repository are managed using Terraform. The configuration is located in the `.github/terraform` folder.
+The settings of this repository are managed from the [gitops-deployments](https://github.com/jaudiger/gitops-deployments) repository using Terraform. The actual configuration applied is located in the Terraform module [`modules/github-repository`](https://github.com/jaudiger/gitops-deployments/tree/main/modules/github-repository).
