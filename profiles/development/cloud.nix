@@ -9,11 +9,15 @@
       # Detect unused resources in Kubernetes clusters
       kor
 
+      # Security scanners
       hadolint
       trivy
 
       # GitHub Actions workflow linter
       actionlint
+
+      # Cloudflare Pages deployment
+      wrangler
     ];
   };
 }
