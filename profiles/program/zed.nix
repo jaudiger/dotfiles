@@ -16,14 +16,14 @@
             provider = "mistral";
           };
           default_model = {
-            model = "devstral-small-latest"; # Should be medium
+            model = "devstral-medium-latest";
             provider = "mistral";
           };
           default_profile = "write";
           expand_edit_card = false;
           expand_terminal_card = false;
           inline_assistant_model = {
-            model = "devstral-small-latest"; # Should be medium
+            model = "devstral-medium-latest";
             provider = "mistral";
           };
           thread_summary_model = {
