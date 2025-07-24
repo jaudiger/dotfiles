@@ -30,6 +30,7 @@
             model = "devstral-small-latest";
             provider = "mistral";
           };
+          use_modifier_to_send = true;
         };
         agent_font_size = 12.5;
         auto_install_extensions = {
