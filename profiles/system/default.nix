@@ -6,6 +6,7 @@ in
 {
   imports = [
     ./bash.nix
+    ./command-not-found.nix
     ./gpg.nix
     ./home-manager.nix
     ./nix.nix
