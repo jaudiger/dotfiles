@@ -12,6 +12,7 @@ in
       serverAliveCountMax = 3;
       controlMaster = "auto";
       controlPersist = "10m";
+      addKeysToAgent = "confirm 2h";
 
       # Use the keychain to store the passphrase on macOS, and make sure this key is ignored on Linux
       extraConfig = ''
@@ -26,7 +27,6 @@ in
           identityFile = "${host.homeDirectory}/.ssh/id_ed25519";
           extraOptions = {
             "UpdateHostKeys" = "yes";
-            "AddKeysToAgent" = "yes";
           };
         };
 
@@ -36,7 +36,6 @@ in
           identityFile = "${host.homeDirectory}/.ssh/id_ed25519";
           extraOptions = {
             "UpdateHostKeys" = "yes";
-            "AddKeysToAgent" = "yes";
           };
         };
 
@@ -47,7 +46,6 @@ in
           identityFile = "${host.homeDirectory}/.ssh/id_ed25519";
           extraOptions = {
             "UpdateHostKeys" = "yes";
-            "AddKeysToAgent" = "yes";
           };
         };
 
