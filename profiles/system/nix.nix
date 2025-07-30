@@ -64,7 +64,7 @@ in
     nix store diff-closures "''${file_args[@]}"
     echo "--- **** ---"
 
-    # Apply MacOS settings without the need to logout/login
+    # Apply macOS settings without the need to logout/login
     /System/Library/PrivateFrameworks/SystemAdministration.framework/Resources/activateSettings -u
   '';
 
