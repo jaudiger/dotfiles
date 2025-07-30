@@ -13,8 +13,11 @@ in
       controlMaster = "auto";
       controlPersist = "10m";
 
-      # Use the keychain to store the passphrase
-      extraConfig = "UseKeychain yes";
+      # Use the keychain to store the passphrase on macOS, and make sure this key is ignored on Linux
+      extraConfig = ''
+        IgnoreUnknown UseKeychain
+        UseKeychain yes
+      '';
 
       matchBlocks = {
         "github.com" = {
