@@ -49,7 +49,7 @@ in
       };
 
       envExtra = ''
-        export PATH=$HOME/Development/scripts:$HOME/Development/scripts/work/alaska:$HOME/Development/vscode:$PATH
+        export PATH=$HOME/Development/git-repositories/jaudiger/personal-scripts:$HOME/Development/work-scripts:$HOME/Development/work-scripts/alaska:$HOME/Development/git-repositories/jaudiger/vscode-dev-containers:$PATH
       '';
     };
   };
