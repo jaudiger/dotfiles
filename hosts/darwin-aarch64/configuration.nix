@@ -76,6 +76,7 @@ in
         "claude"
         "chatgpt"
         "freecad"
+        "sweet-home3d"
       ];
 
       masApps = {
