@@ -259,6 +259,9 @@
         show_call_status_icon = false;
         show_whitespaces = "boundary";
         soft_wrap = "editor_width";
+        status_bar = {
+          show_active_language_button = false;
+        };
         tab_bar = {
           show = false;
           show_nav_history_buttons = false;
