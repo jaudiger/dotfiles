@@ -32,7 +32,6 @@
           };
           use_modifier_to_send = true;
         };
-        agent_font_size = 12.5;
         auto_install_extensions = {
           html = false;
         };
@@ -260,7 +259,7 @@
         show_whitespaces = "boundary";
         soft_wrap = "editor_width";
         status_bar = {
-          show_active_language_button = false;
+          active_language_button = false;
         };
         tab_bar = {
           show = false;
