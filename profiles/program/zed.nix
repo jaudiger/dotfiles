@@ -304,6 +304,7 @@
 
       extensions = [
         "basher"
+        "cspell"
         "dockerfile"
         "git-firefly"
         "golangci-lint"
