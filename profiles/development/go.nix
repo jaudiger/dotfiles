@@ -2,6 +2,15 @@
 
 let
   host = config.modules.host;
+
+  gotoolsOverridden = pkgs.gotools.overrideAttrs (old: {
+    # It prevents the `bundle` binary from colliding with other `bundle` commands such as the one found in the `ruby` package.
+    postInstall = (old.postInstall or "") + ''
+      if [ -e "$out/bin/bundle" ]; then
+        mv "$out/bin/bundle" "$out/bin/go-bundle"
+      fi
+    '';
+  });
 in
 {
   # Per GitLab documentation, this is required in order to clone private repositories using Go tools:
@@ -25,7 +34,7 @@ in
       delve
       gopls
 
-      gotools
+      gotoolsOverridden
       golangci-lint
       gosec
     ];
