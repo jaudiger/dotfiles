@@ -325,6 +325,7 @@
         # MCP servers
         "mcp-server-github"
         "mcp-server-gitlab"
+        "terraform-context-server"
       ];
     };
   };
