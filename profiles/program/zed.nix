@@ -315,6 +315,7 @@
         "neocmake"
         "nix"
         "nu"
+        "ruby"
         "ruff"
         "terraform"
         "toml"

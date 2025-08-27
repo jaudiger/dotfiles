@@ -9,6 +9,7 @@
     ./nix.nix
     ./nodejs.nix
     ./python.nix
+    ./ruby.nix
     ./rust.nix
     ./shell.nix
     ./texlive.nix
