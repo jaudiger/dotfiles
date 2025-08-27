@@ -13,6 +13,7 @@
     ./espanso.nix
     ./eza.nix
     ./fzf.nix
+    ./gemini-cli.nix
     ./ghostty.nix
     ./git.nix
     ./helix.nix
