@@ -32,6 +32,11 @@
           };
           use_modifier_to_send = true;
         };
+        agent_servers = {
+          gemini = {
+            ignore_system_version = false;
+          };
+        };
         auto_install_extensions = {
           html = false;
         };
