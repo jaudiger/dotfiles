@@ -7,24 +7,14 @@ in
   modules.home-manager = {
     programs.ssh = {
       enable = true;
-      compression = true;
-      serverAliveInterval = 20;
-      serverAliveCountMax = 3;
-      controlMaster = "auto";
-      controlPersist = "10m";
-      addKeysToAgent = "confirm 2h";
-
-      # Use the keychain to store the passphrase on macOS, and make sure this key is ignored on Linux
-      extraConfig = ''
-        IgnoreUnknown UseKeychain
-        UseKeychain yes
-      '';
+      enableDefaultConfig = false;
 
       matchBlocks = {
         "github.com" = {
           hostname = "ssh.github.com";
           port = 443;
           identityFile = "${host.homeDirectory}/.ssh/id_ed25519";
+
           extraOptions = {
             "UpdateHostKeys" = "yes";
           };
@@ -34,6 +24,7 @@ in
           hostname = "altssh.gitlab.com";
           port = 443;
           identityFile = "${host.homeDirectory}/.ssh/id_ed25519";
+
           extraOptions = {
             "UpdateHostKeys" = "yes";
           };
@@ -44,8 +35,28 @@ in
           hostname = "gitlab.trasna.services";
           port = 31444;
           identityFile = "${host.homeDirectory}/.ssh/id_ed25519";
+
           extraOptions = {
             "UpdateHostKeys" = "yes";
+          };
+        };
+
+        "*" = {
+          compression = true;
+          serverAliveInterval = 20;
+          serverAliveCountMax = 3;
+          controlMaster = "auto";
+          controlPersist = "10m";
+          addKeysToAgent = "confirm 2h";
+
+          # Use the keychain to store the passphrase on macOS, and make sure this key is ignored on Linux
+          extraOptions = {
+            "ForwardAgent" = "no";
+            "HashKnownHosts" = "no";
+            "UserKnownHostsFile" = "~/.ssh/known_hosts";
+            "ControlPath" = "~/.ssh/master-%r@%n:%p";
+            "IgnoreUnknown" = "UseKeychain";
+            "UseKeychain" = "yes";
           };
         };
       };
