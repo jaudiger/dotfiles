@@ -48,12 +48,6 @@ in
             "UpdateHostKeys" = "yes";
           };
         };
-
-        "nixos" = {
-          hostname = "192.168.64.4";
-          port = 22;
-          user = "jaudiger";
-        };
       };
     };
   };
