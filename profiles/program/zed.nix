@@ -61,6 +61,7 @@
           enabled_in_text_threads = true;
           mode = "subtle";
         };
+        excerpt_context_lines = 4;
         "experimental.theme_overrides" = {
           "background.appearance" = "blurred";
         };
@@ -285,6 +286,7 @@
         ui_font_size = 12.5;
         use_system_path_prompts = false;
         use_system_prompts = false;
+        use_system_window_tabs = true;
         vim = {
           cursor_shape = {
             normal = "block";
