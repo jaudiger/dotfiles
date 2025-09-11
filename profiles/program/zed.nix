@@ -119,7 +119,7 @@
               };
             };
             language_servers = [
-              "pyright"
+              "basedpyright"
               "ruff"
             ];
           };

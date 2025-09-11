@@ -27,7 +27,7 @@
           ruff
 
           # Language server
-          pyright
+          basedpyright
         ];
       };
 
@@ -42,7 +42,7 @@
       # Helix configuration
       programs.helix.languages = {
         language-server = {
-          pyright = {
+          basedpyright = {
             config = {
               python = {
                 analysis = {
@@ -80,7 +80,7 @@
             ];
             comment-token = "#";
             language-servers = [
-              "pyright"
+              "basedpyright"
               "ruff"
             ];
             indent = {
