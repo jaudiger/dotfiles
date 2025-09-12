@@ -17,7 +17,7 @@
         packages = with pkgs; [
           python312
           python312Packages.pip
-          # TODO: to re-enable once the issue is resolved
+          # TODO: to re-enable once the build issue is resolved
           # python312Packages.robotframework-robocop
           robotframework-tidy
 
