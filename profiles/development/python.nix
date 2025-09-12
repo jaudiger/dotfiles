@@ -22,12 +22,14 @@
           robotframework-tidy
 
           virtualenv
+          uv
 
           # Static analyzer
           ruff
 
           # Language server
           basedpyright
+          ty
         ];
       };
 
