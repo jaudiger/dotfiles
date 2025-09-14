@@ -18,6 +18,7 @@
     ./git.nix
     ./helix.nix
     ./helm.nix
+    ./jjui.nix
     ./jujutsu.nix
     ./k9s.nix
     ./kubectl.nix
