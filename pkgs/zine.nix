@@ -7,13 +7,13 @@
 
 stdenv.mkDerivation rec {
   pname = "zine";
-  version = "v0.10.3";
+  version = "b96e930630f8237aa4927fe14b9cb227061155d3";
 
   src = fetchFromGitHub {
     owner = "kristoff-it";
     repo = "zine";
     rev = version;
-    hash = "sha256-3d+tCzqwy9HnnFL6NX8bJcU/Emb5tu07CxZLCYWiT5o=";
+    hash = "sha256-G6gdaVQWyX+0H3wRhCt3vgMA8IXJRjkjbZcPzlou+Ek=";
   };
 
   nativeBuildInputs = [
