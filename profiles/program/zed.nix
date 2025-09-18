@@ -26,6 +26,7 @@
             model = "devstral-medium-latest";
             provider = "mistral";
           };
+          message_editor_min_lines = 8;
           thread_summary_model = {
             model = "devstral-small-latest";
             provider = "mistral";
@@ -119,8 +120,8 @@
               };
             };
             language_servers = [
-              "basedpyright"
               "ruff"
+              "ty"
             ];
           };
         };
@@ -282,6 +283,10 @@
           font_size = 11.5;
           keep_selection_on_copy = true;
         };
+        title_bar = {
+          show_branch_icon = true;
+          show_onboarding_banner = false;
+        };
         ui_font_family = "JetBrainsMono Nerd Font";
         ui_font_size = 12.5;
         use_system_path_prompts = false;
@@ -324,7 +329,6 @@
         "nix"
         "nu"
         "ruby"
-        "ruff"
         "terraform"
         "toml"
         "xml"
