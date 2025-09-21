@@ -110,11 +110,14 @@ in
 
     # Global parameters
     system.defaults.NSGlobalDomain.AppleFontSmoothing = 0;
+    system.defaults.NSGlobalDomain.AppleIconAppearanceTheme = "RegularAutomatic";
     system.defaults.NSGlobalDomain.InitialKeyRepeat = 20;
     system.defaults.NSGlobalDomain.KeyRepeat = 1;
     system.defaults.NSGlobalDomain.AppleInterfaceStyleSwitchesAutomatically = true;
     system.defaults.NSGlobalDomain.AppleShowAllExtensions = true;
     system.defaults.NSGlobalDomain.AppleScrollerPagingBehavior = true;
+    system.defaults.NSGlobalDomain.NSStatusItemSelectionPadding = 8;
+    system.defaults.NSGlobalDomain.NSStatusItemSpacing = 12;
     system.defaults.NSGlobalDomain.NSTableViewDefaultSizeMode = 1; # Size of the finder sidebar icons
     system.defaults.NSGlobalDomain.NSTextShowsControlCharacters = true;
     system.defaults.NSGlobalDomain.NSUseAnimatedFocusRing = false;
