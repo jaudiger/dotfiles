@@ -109,7 +109,7 @@ in
     system.startup.chime = false;
 
     # Global parameters
-    system.defaults.NSGlobalDomain.AppleFontSmoothing = 0;
+    system.defaults.NSGlobalDomain.AppleFontSmoothing = 1;
     system.defaults.NSGlobalDomain.AppleIconAppearanceTheme = "RegularAutomatic";
     system.defaults.NSGlobalDomain.InitialKeyRepeat = 20;
     system.defaults.NSGlobalDomain.KeyRepeat = 1;
