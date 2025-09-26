@@ -101,6 +101,7 @@
         git_panel = {
           dock = "right";
         };
+        helix_mode = true;
         indent_guides = {
           active_line_width = 2;
           coloring = "fixed";
@@ -300,7 +301,6 @@
             visual = "underline";
           };
         };
-        vim_mode = true;
       };
 
       userKeymaps = [
