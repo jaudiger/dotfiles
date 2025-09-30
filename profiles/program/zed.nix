@@ -176,6 +176,113 @@
                 allTargets = true;
                 command = "clippy";
               };
+              completion = {
+                snippets = {
+                  custom = {
+                    "struct impl" = {
+                      prefix = "struct-impl";
+                      body = [
+                        "struct \${1:name} {"
+                        "    $0"
+                        "}"
+                        ""
+                        "impl $1 {"
+                        "}"
+                      ];
+                      description = "Insert a struct with its implementation statement";
+                      scope = "item";
+                    };
+                    "enum impl" = {
+                      prefix = "enum-impl";
+                      body = [
+                        "enum \${1:name} {"
+                        "    $0"
+                        "}"
+                        ""
+                        "impl $1 {"
+                        "}"
+                      ];
+                      description = "Insert a enum with its implementation statement";
+                      scope = "item";
+                    };
+                    "enum error impl" = {
+                      prefix = "enum-error-impl";
+                      body = [
+                        "#[derive(Debug, thiserror::Error)]"
+                        "enum \${1:name} {"
+                        "    #[error(\"\")]"
+                        "    $0"
+                        "}"
+                      ];
+                      description = "Insert a enum error statement";
+                      scope = "item";
+                    };
+                    "derive" = {
+                      prefix = "derive";
+                      body = [
+                        "#[derive($0)]"
+                      ];
+                      description = "Insert a derive statement";
+                      scope = "item";
+                    };
+
+                    "std thread spawn" = {
+                      "prefix" = [ "std-spawn" ];
+                      "body" = [
+                        "thread::spawn(move || {"
+                        "    $0"
+                        "});"
+                      ];
+                      "description" = "Insert a std::thread::spawn statement";
+                      "requires" = [ "std::thread" ];
+                      "scope" = "expr";
+                    };
+                    "Tokio async main" = {
+                      "prefix" = [ "tokio-main" ];
+                      "body" = [
+                        "#[tokio::main]"
+                        "async fn main() -> Result<(), Box<dyn std::error::Error>> {"
+                        "    $0"
+                        "}"
+                      ];
+                      "description" = "Insert a Tokio async main";
+                      "scope" = "item";
+                    };
+
+                    "tests" = {
+                      prefix = "tests";
+                      body = [
+                        "#[cfg(test)]"
+                        "mod tests {"
+                        "    use super::*;"
+                        ""
+                        "    $0"
+                        "}"
+                      ];
+                      description = "Insert a test module";
+                      scope = "item";
+                    };
+                    "unit test" = {
+                      prefix = "test";
+                      body = [
+                        "#[test]"
+                        "fn \${1:name}() {"
+                        "    // Given"
+                        "    $0todo!();"
+                        ""
+                        "    // When"
+                        "    let result = todo!();"
+                        ""
+                        "    // Then"
+                        "    assert!(result);"
+                        "}"
+                      ];
+                      description = "Insert a test statement";
+                      scope = "item";
+                    };
+                  };
+                };
+              };
               imports = {
                 granularity = {
                   group = "item";
