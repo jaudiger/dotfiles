@@ -33,7 +33,11 @@
           };
           use_modifier_to_send = true;
         };
+        agent_buffer_font_size = 11.5;
         agent_servers = {
+          claude = {
+            ignore_system_version = false;
+          };
           gemini = {
             ignore_system_version = false;
           };
