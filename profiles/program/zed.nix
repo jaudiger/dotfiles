@@ -393,7 +393,6 @@
           blinking = "on";
           copy_on_select = true;
           font_size = 11.5;
-          keep_selection_on_copy = true;
         };
         title_bar = {
           show_branch_icon = true;
