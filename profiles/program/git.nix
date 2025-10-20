@@ -5,45 +5,38 @@
     programs.git = {
       enable = true;
 
-      userName = "Jérémy Audiger";
-      userEmail = "jeremy.audiger@icloud.com"; # Default email
-
       signing = {
         format = "openpgp";
         signByDefault = true;
         key = null; # GnuPG will decide what signing key to use depending on the commit’s author
       };
 
-      aliases = {
-        r = "rebase";
-        ri = "rebase --interactive";
-        rc = "rebase --continue";
-        ra = "absorb --and-rebase";
-        su = "submodule update --init";
-        branch-conflict = "!f() { \
-            local_branch=$(git branch --show-current) && \
-            merge_base=$(git merge-base $local_branch $1) && \
-            base_to_local_diff=$(git diff --name-only $merge_base $local_branch) && \
-            base_to_remote_diff=$(git diff --name-only $merge_base $1) && \
-            conflict_files=$(comm -12 <(echo \"$base_to_local_diff\" | sort) <(echo \"$base_to_remote_diff\" | sort)) && \
-            if [ -n \"$conflict_files\" ]; then \
-                echo \"$conflict_files\"; \
-            fi; \
-        }; f";
-        branch-rename = "!git branch -m $(git rev-parse --abbrev-ref HEAD) $2";
-        branch-sync = "!git fetch; git branch -r | awk '{print $1}' | egrep -v -f /dev/fd/0 <(git branch -vv | grep origin) | awk '{print $1}' | xargs git branch -D";
-        graph = "log --decorate --oneline --graph";
-        tag-sync = "!git fetch --tags --prune-tags --force";
-      };
-
-      diff-highlight = {
-        enable = true;
-      };
-
-      extraConfig = {
+      settings = {
         advice = {
           detachedHead = false;
           forceDeleteBranch = false;
+        };
+
+        alias = {
+          r = "rebase";
+          ri = "rebase --interactive";
+          rc = "rebase --continue";
+          ra = "absorb --and-rebase";
+          su = "submodule update --init";
+          branch-conflict = "!f() { \
+              local_branch=$(git branch --show-current) && \
+              merge_base=$(git merge-base $local_branch $1) && \
+              base_to_local_diff=$(git diff --name-only $merge_base $local_branch) && \
+              base_to_remote_diff=$(git diff --name-only $merge_base $1) && \
+              conflict_files=$(comm -12 <(echo \"$base_to_local_diff\" | sort) <(echo \"$base_to_remote_diff\" | sort)) && \
+              if [ -n \"$conflict_files\" ]; then \
+                  echo \"$conflict_files\"; \
+              fi; \
+          }; f";
+          branch-rename = "!git branch -m $(git rev-parse --abbrev-ref HEAD) $2";
+          branch-sync = "!git fetch; git branch -r | awk '{print $1}' | egrep -v -f /dev/fd/0 <(git branch -vv | grep origin) | awk '{print $1}' | xargs git branch -D";
+          graph = "log --decorate --oneline --graph";
+          tag-sync = "!git fetch --tags --prune-tags --force";
         };
 
         color."status" = {
@@ -114,6 +107,12 @@
           };
         };
 
+        # Default user
+        user = {
+          email = "jeremy.audiger@icloud.com";
+          name = "Jérémy Audiger";
+        };
+
         # Redirect HTTPS to SSH
         url = {
           "git@github.com:".insteadOf = [ "https://github.com/" ];
@@ -153,6 +152,12 @@
         pre-push = ../../config/git/pre-push;
         prepare-commit-msg = ../../config/git/prepare-commit-msg;
       };
+    };
+
+    programs.diff-highlight = {
+      enable = true;
+
+      enableGitIntegration = true;
     };
 
     programs.gh = {
