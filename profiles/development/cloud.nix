@@ -14,7 +14,8 @@
       trivy
 
       # GitHub Actions workflow linter
-      actionlint
+      # TODO: to re-enable once the build issue is resolved
+      # actionlint
 
       # Cloudflare Pages deployment
       wrangler
