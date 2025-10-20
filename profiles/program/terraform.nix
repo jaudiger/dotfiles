@@ -8,8 +8,7 @@
           terraform
           terragrunt
 
-          # TODO: to re-enable once the build issue is resolved
-          # terraform-docs
+          terraform-docs
           tflint
 
           # For formatting HCL files
