@@ -23,12 +23,10 @@ in
           algorithm = "fuzzy";
           case_sensitive = true;
           external = {
-            completer = mkNushellInline "{|tokens: list<string>|
-                if (which carapace | is-empty) {
-                    return
-                }
-
-                ^carapace $tokens.0 nushell ...$tokens | from json
+            completer = mkNushellInline "{|spans: list<string>|
+                ^carapace $spans.0 nushell ...$spans
+                  | from json
+                  | if ($in | default [] | where value =~ '^-.*ERR$' | is-empty) { $in } else { null }
             }";
           };
         };
@@ -36,6 +34,10 @@ in
         datetime_format = {
           normal = "%a, %d %b %Y %H:%M:%S %z";
           table = "%F %H:%M:%S";
+        };
+
+        display_errors = {
+          exit_code = true;
         };
 
         edit_mode = "vi";
