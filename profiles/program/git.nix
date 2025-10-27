@@ -168,6 +168,15 @@
       };
     };
 
+    # TODO: to-enable once the module is compatible with darwin
+    # programs.glab = {
+    #   enable = true;
+
+    #   settings = {
+    #     check_update = false;
+    #   };
+    # };
+
     home = {
       file."workGitconfig" = {
         source = ../../config/git/work.config;
