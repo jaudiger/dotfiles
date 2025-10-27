@@ -7,7 +7,8 @@
       pnpm
       bun
 
-      nodePackages.prettier
+      # TODO: to-renable once conflict with wrangler is resolved
+      # nodePackages.prettier
     ];
   };
 }
