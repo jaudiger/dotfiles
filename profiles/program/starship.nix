@@ -15,8 +15,9 @@
           format = "\\[[$symbol($profile)(\\($region\\))(\\[$duration\\])]($style)\\]";
         };
 
-        bun = {
-          format = "\\[[$symbol($version)]($style)\\]";
+        azure = {
+          disabled = true;
+          format = "\\[[$symbol($subscription)]($style)\\]";
         };
 
         battery = {
@@ -32,11 +33,15 @@
           }
         ];
 
-        c = {
-          format = "\\[[$symbol($version(-$name))]($style)\\]";
+        buf = {
+          format = "\\[[$symbol($version)]($style)\\]";
         };
 
-        cpp = {
+        bun = {
+          format = "\\[[$symbol($version)]($style)\\]";
+        };
+
+        c = {
           format = "\\[[$symbol($version(-$name))]($style)\\]";
         };
 
@@ -64,6 +69,11 @@
 
         container = {
           disabled = true;
+          format = "\\[[$symbol \\[$name\\]]($style)\\]";
+        };
+
+        cpp = {
+          format = "\\[[$symbol($version(-$name))]($style)\\]";
         };
 
         crystal = {
@@ -78,6 +88,10 @@
           format = "\\[[$symbol($version)]($style)\\]";
         };
 
+        deno = {
+          format = "\\[[$symbol($version)]($style)\\]";
+        };
+
         directory = {
           truncation_length = 5;
           truncation_symbol = "…/";
@@ -85,8 +99,8 @@
           format = "[$path]($style)[$lock_symbol]($lock_style) ";
         };
 
-        deno = {
-          format = "\\[[$symbol($version)]($style)\\]";
+        direnv = {
+          format = "\\[[$symbol$loaded/$allowed]($style)\\]";
         };
 
         docker_context = {
@@ -114,11 +128,20 @@
           format = "\\[[$symbol($version)]($style)\\]";
         };
 
+        fortran = {
+          format = "\\[[$symbol($version)]($style)\\]";
+        };
+
         fossil_branch = {
           format = "\\[[$symbol$branch]($style)\\]";
         };
 
+        fossil_metrics = {
+          format = "\\[[+$added]($added_style)\\]/\\[[-$deleted]($deleted_style)\\]";
+        };
+
         gcloud = {
+          disabled = true;
           format = "\\[[$symbol$account(@$domain)(\\($region\\))]($style)\\]";
         };
 
@@ -146,7 +169,7 @@
         };
 
         git_state = {
-          format = "[\\($state( $progress_current of $progress_total)\\)]($style) ";
+          format = "[\\($state ($progress_current/$progress_total)\\)]($style) ";
         };
 
         git_status = {
@@ -208,6 +231,10 @@
           format = "\\[[$symbol($version)]($style)\\]";
         };
 
+        jobs = {
+          format = "\\[[$symbol$number]($style)\\]";
+        };
+
         julia = {
           format = "\\[[$symbol($version)]($style)\\]";
         };
@@ -222,6 +249,10 @@
 
         line_break = {
           disabled = false;
+        };
+
+        localip = {
+          format = "\\[[$localipv4]($style)\\]";
         };
 
         lua = {
@@ -249,11 +280,11 @@
         };
 
         nats = {
-          format = "\\[[$symbol($name)]($style)\\]";
+          format = "\\[[$symbol$name]($style)\\]";
         };
 
         netns = {
-          format = "\\[[$symbol($name)]($style)\\]";
+          format = "\\[[$symbol \\[$name\\]]($style)\\]";
         };
 
         nim = {
@@ -262,7 +293,7 @@
 
         nix_shell = {
           disabled = true;
-          format = "\\[[$symbol(\\($name\\))]($style)\\]";
+          format = "\\[[$symbol$state( \\($name\\))]($style)\\]";
         };
 
         nodejs = {
@@ -282,6 +313,7 @@
         };
 
         openstack = {
+          disabled = true;
           format = "\\[[$symbol$cloud(\\($project\\))]($style)\\]";
         };
 
@@ -307,7 +339,7 @@
         };
 
         pixi = {
-          format = "\\[[$symbol$version($environment)]($style)\\]";
+          format = "\\[[$symbol$version( $environment)]($style)\\]";
         };
 
         pulumi = {
@@ -322,11 +354,19 @@
           format = "\\[[$symbol$pyenv_prefix($version)(\\($virtualenv\\))]($style)\\]";
         };
 
+        quarto = {
+          format = "\\[[$symbol($version)]($style)\\]";
+        };
+
         raku = {
           format = "\\[[$symbol($version-$vm_version)]($style)\\]";
         };
 
         red = {
+          format = "\\[[$symbol($version)]($style)\\]";
+        };
+
+        rlang = {
           format = "\\[[$symbol($version)]($style)\\]";
         };
 
@@ -342,8 +382,24 @@
           format = "\\[[$symbol($version)]($style)\\]";
         };
 
+        shell = {
+          format = "\\[[$indicator]($style)\\]";
+        };
+
+        singularity = {
+          format = "\\[[$symbol\\[$env\\]]($style)\\]";
+        };
+
+        solidity = {
+          format = "\\[[$symbol($version)]($style)\\]";
+        };
+
         spack = {
           format = "\\[[$symbol$environment]($style)\\]";
+        };
+
+        status = {
+          format = "\\[[$symbol$status]($style)\\]";
         };
 
         sudo = {
@@ -379,15 +435,19 @@
           format = "\\[[$symbol($version)]($style)\\]";
         };
 
+        vcsh = {
+          format = "\\[vcsh [$symbol$repo]($style)\\]";
+        };
+
         vlang = {
           format = "\\[[$symbol($version)]($style)\\]";
         };
 
-        zig = {
+        xmake = {
           format = "\\[[$symbol($version)]($style)\\]";
         };
 
-        solidity = {
+        zig = {
           format = "\\[[$symbol($version)]($style)\\]";
         };
       };
