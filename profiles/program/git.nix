@@ -15,6 +15,7 @@
         advice = {
           detachedHead = false;
           forceDeleteBranch = false;
+          mergeConflict = false;
         };
 
         alias = {
