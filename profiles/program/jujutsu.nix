@@ -3,8 +3,7 @@
 {
   modules.home-manager = {
     programs.jujutsu = {
-      # TODO: to re-enable once build issue is fixed
-      enable = false;
+      enable = true;
 
       settings = {
         user = {
