@@ -25,14 +25,14 @@
           ra = "absorb --and-rebase";
           su = "submodule update --init";
           branch-conflict = "!f() { \
-              local_branch=$(git branch --show-current) && \
-              merge_base=$(git merge-base $local_branch $1) && \
-              base_to_local_diff=$(git diff --name-only $merge_base $local_branch) && \
-              base_to_remote_diff=$(git diff --name-only $merge_base $1) && \
-              conflict_files=$(comm -12 <(echo \"$base_to_local_diff\" | sort) <(echo \"$base_to_remote_diff\" | sort)) && \
-              if [ -n \"$conflict_files\" ]; then \
-                  echo \"$conflict_files\"; \
-              fi; \
+            local_branch=$(git branch --show-current) && \
+            merge_base=$(git merge-base $local_branch $1) && \
+            base_to_local_diff=$(git diff --name-only $merge_base $local_branch) && \
+            base_to_remote_diff=$(git diff --name-only $merge_base $1) && \
+            conflict_files=$(comm -12 <(echo \"$base_to_local_diff\" | sort) <(echo \"$base_to_remote_diff\" | sort)) && \
+            if [ -n \"$conflict_files\" ]; then \
+              echo \"$conflict_files\"; \
+            fi; \
           }; f";
           branch-rename = "!git branch -m $(git rev-parse --abbrev-ref HEAD) $2";
           branch-sync = "!git fetch; git branch -r | awk '{print $1}' | egrep -v -f /dev/fd/0 <(git branch -vv | grep origin) | awk '{print $1}' | xargs git branch -D";
