@@ -35,7 +35,17 @@
             fi; \
           }; f";
           branch-rename = "!git branch -m $(git rev-parse --abbrev-ref HEAD) $2";
-          branch-sync = "!git fetch; git branch -r | awk '{print $1}' | egrep -v -f /dev/fd/0 <(git branch -vv | grep origin) | awk '{print $1}' | xargs git branch -D";
+          branch-sync = "!f() { \
+            git fetch \
+            git for-each-ref --format \"%(refname:short) %(upstream:short)\" refs/heads | \
+              while read -r local upstream; do \
+                if [ -n \"$upstream\" ]; then \
+                  if ! git show-ref --quiet \"refs/remotes/$upstream\"; then \
+                    git branch -D \"$local\" \
+                  fi \
+                fi \
+              done \
+          }; f";
           graph = "log --decorate --oneline --graph";
           tag-sync = "!git fetch --tags --prune-tags --force";
         };
