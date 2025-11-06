@@ -109,6 +109,10 @@
           autoupdate = true;
         };
 
+        submodule = {
+          recurse = true;
+        };
+
         trailer = {
           sign = {
             key = "Signed-off-by: ";
