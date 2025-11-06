@@ -55,6 +55,7 @@
         collaboration_panel = {
           dock = "right";
         };
+        completion_menu_scrollbar = "auto";
         confirm_quit = true;
         current_line_highlight = "line";
         diagnostics = {
@@ -368,11 +369,16 @@
         project_panel = {
           dock = "right";
         };
-        relative_line_numbers = true;
+        relative_line_numbers = "enabled";
         scroll_beyond_last_line = "off";
         scrollbar = {
           cursors = false;
           diagnostics = "warning";
+        };
+        search = {
+          button = false;
+          case_sensitive = true;
+          center_on_match = true;
         };
         show_call_status_icon = false;
         show_whitespaces = "boundary";
