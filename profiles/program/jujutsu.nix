@@ -6,27 +6,6 @@
       enable = true;
 
       settings = {
-        user = {
-          name = "Jérémy Audiger";
-          email = "jeremy.audiger@icloud.com"; # Default email
-        };
-
-        signing = {
-          "sign-on-push" = true;
-          backend = "gpg";
-          # Don't set the key, GnuPG will decide what signing key to use depending on the commit’s author
-        };
-
-        git = {
-          push-new-bookmarks = true;
-          subprocess = true;
-        };
-
-        ui = {
-          default-command = "log-recent";
-          editor = "hx";
-        };
-
         aliases = {
           c = [ "commit" ];
           ci = [
@@ -66,16 +45,38 @@
           ];
         };
 
+        core = {
+          fsmonitor = "watchman";
+        };
+
+        git = {
+          push-new-bookmarks = true;
+          subprocess = true;
+        };
+
         revset-aliases = {
           "recent()" = "committer_date(after:\"3 months ago\")";
+        };
+
+        signing = {
+          backend = "gpg";
+          "sign-on-push" = true;
+          # Don't set the key, GnuPG will decide what signing key to use depending on the commit’s author
         };
 
         template-aliases = {
           "format_short_change_id(id)" = "id.shortest()";
         };
 
-        core = {
-          fsmonitor = "watchman";
+        ui = {
+          default-command = "log-recent";
+          editor = "hx";
+        };
+
+        # Default user
+        user = {
+          email = "jeremy.audiger@icloud.com";
+          name = "Jérémy Audiger";
         };
       };
     };
