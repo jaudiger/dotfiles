@@ -13,11 +13,6 @@
             "--interactive"
           ];
           e = [ "edit" ];
-          i = [
-            "git"
-            "init"
-            "--colocate"
-          ];
           log-recent = [
             "log"
             "-r"
@@ -32,11 +27,6 @@
             "git"
             "fetch"
           ];
-          push = [
-            "git"
-            "push"
-            "--allow-new"
-          ];
           r = [ "rebase" ];
           s = [ "squash" ];
           si = [
@@ -45,13 +35,13 @@
           ];
         };
 
-        core = {
-          fsmonitor = "watchman";
+        fsmonitor = {
+          backend = "watchman";
         };
 
         git = {
           push-new-bookmarks = true;
-          subprocess = true;
+          sign-on-push = true;
         };
 
         revset-aliases = {
@@ -60,7 +50,6 @@
 
         signing = {
           backend = "gpg";
-          "sign-on-push" = true;
           # Don't set the key, GnuPG will decide what signing key to use depending on the commit’s author
         };
 
