@@ -1,4 +1,4 @@
-{ ... }:
+{ pkgs, ... }:
 
 {
   modules.home-manager = {
@@ -78,6 +78,13 @@
           fsmonitor = "watchman";
         };
       };
+    };
+
+    home = {
+      packages = with pkgs; [
+        # To monitor file changes
+        watchman
+      ];
     };
   };
 }
