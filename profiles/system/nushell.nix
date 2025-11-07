@@ -17,7 +17,7 @@ in
       # Only overriden values should be set, to find them:
       # let defaults = nu -n -c "$env.config = {}; $env.config | reject color_config keybindings menus | to nuon" | from nuon | transpose key default
       # let current = $env.config | reject color_config keybindings menus | transpose key current
-      # $current | merge $defaults | where $it.current != $it.default
+      # $current | merge $defaults | where ($it.current != $it.default)
       settings = {
         completions = {
           algorithm = "fuzzy";
@@ -26,7 +26,7 @@ in
             completer = mkNushellInline "{|spans: list<string>|
                 ^carapace $spans.0 nushell ...$spans
                   | from json
-                  | if ($in | default [] | where value =~ '^-.*ERR$' | is-empty) { $in } else { null }
+                  | if ($in | default [] | where (value =~ '^-.*ERR$') | is-empty) { $in } else { null }
             }";
           };
         };
