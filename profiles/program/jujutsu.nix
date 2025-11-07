@@ -7,32 +7,29 @@
 
       settings = {
         aliases = {
-          c = [ "commit" ];
-          ci = [
-            "commit"
-            "--interactive"
-          ];
-          e = [ "edit" ];
-          log-recent = [
-            "log"
-            "-r"
-            "default() & recent()"
-          ];
-          nb = [
+          new-bookmark = [
             "bookmark"
             "create"
             "-r @-"
+          ];
+          move-bookmark = [
+            "bookmark"
+            "move"
+            "--from"
+            "\"heads(::@ & bookmarks())\""
+            "--to"
+            "\"closest_pushable(@)\""
           ];
           pull = [
             "git"
             "fetch"
           ];
-          r = [ "rebase" ];
-          s = [ "squash" ];
-          si = [
-            "squash"
-            "--interactive"
-          ];
+        };
+
+        diff = {
+          git = {
+            context = 4;
+          };
         };
 
         fsmonitor = {
@@ -40,12 +37,33 @@
         };
 
         git = {
+          auto-local-bookmark = true;
           push-new-bookmarks = true;
           sign-on-push = true;
         };
 
+        merge = {
+          hunk-level = "line";
+        };
+
+        merge-tools = {
+          mergiraf = {
+            program = "mergiraf";
+            merge-conflict-exit-codes = [ 1 ];
+            merge-args = [
+              "merge"
+              "$base"
+              "$left"
+              "$right"
+              "-o"
+              "$output"
+            ];
+          };
+        };
+
         revset-aliases = {
-          "recent()" = "committer_date(after:\"3 months ago\")";
+          "closest_pushable(to)" =
+            "heads(::to & mutable() & ~description(exact:\"\") & (~empty() | merges()))";
         };
 
         signing = {
@@ -55,11 +73,14 @@
 
         template-aliases = {
           "format_short_change_id(id)" = "id.shortest()";
+          "format_timestamp(timestamp)" = "timestamp.ago()";
         };
 
         ui = {
-          default-command = "log-recent";
+          conflict-marker-style = "git";
+          default-command = "status";
           editor = "hx";
+          merge-editor = "mergiraf";
         };
 
         # Default user
@@ -67,6 +88,17 @@
           email = "jeremy.audiger@icloud.com";
           name = "Jérémy Audiger";
         };
+
+        "--scope" = [
+          {
+            "--when" = {
+              repositories = [ "~/Development/git-repositories/IoTerop" ];
+            };
+            user = {
+              email = "jeremy.audiger@trasna.io";
+            };
+          }
+        ];
       };
     };
 
