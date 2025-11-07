@@ -19,11 +19,6 @@
         };
 
         alias = {
-          r = "rebase";
-          ri = "rebase --interactive";
-          rc = "rebase --continue";
-          ra = "absorb --and-rebase";
-          su = "submodule update --init";
           branch-conflict = "!f() { \
             local_branch=$(git branch --show-current) && \
             merge_base=$(git merge-base $local_branch $1) && \
@@ -47,6 +42,7 @@
               done \
           }; f";
           graph = "log --decorate --oneline --graph";
+          rebase-absorb = "absorb --and-rebase";
           tag-sync = "!git fetch --tags --prune-tags --force";
         };
 
