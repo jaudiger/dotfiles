@@ -23,6 +23,7 @@
     ./k9s.nix
     ./kubectl.nix
     ./lazygit.nix
+    ./mergiraf.nix
     ./ollama.nix
     ./pueue.nix
     ./starship.nix
