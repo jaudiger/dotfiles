@@ -9,6 +9,7 @@
     ./codex.nix
     ./copilot.nix
     ./devspace.nix
+    ./difftastic.nix
     ./docker.nix
     ./espanso.nix
     ./eza.nix

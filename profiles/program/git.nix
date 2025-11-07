@@ -169,12 +169,6 @@
       };
     };
 
-    programs.diff-highlight = {
-      enable = true;
-
-      enableGitIntegration = true;
-    };
-
     programs.gh = {
       enable = true;
 
