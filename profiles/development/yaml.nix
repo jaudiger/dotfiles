@@ -24,7 +24,7 @@
                   enable = true;
                 };
                 schemas = {
-                  kubernetes = "**.yaml";
+                  kubernetes = "**/*.yaml";
                 };
                 validate = true;
               };
