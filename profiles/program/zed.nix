@@ -50,6 +50,7 @@
             milliseconds = 1000;
           };
         };
+        auto_update = false;
         buffer_font_family = "JetBrainsMono Nerd Font";
         buffer_font_size = 12.5;
         collaboration_panel = {
@@ -121,19 +122,54 @@
         };
         languages = {
           Python = {
-            formatter = {
-              language_server = {
-                name = "ruff";
-              };
-            };
+            formatter = [
+              { code_action = "source.organizeImports.ruff"; }
+              {
+                language_server = {
+                  name = "ruff";
+                };
+              }
+            ];
             language_servers = [
+              "!basedpyright"
               "ruff"
               "ty"
+              "..."
+            ];
+          };
+          Nix = {
+            language_servers = [
+              "nixd"
+              "!nil"
+              "..."
             ];
           };
         };
         line_indicator_format = "short";
         lsp = {
+          gopls = {
+            initialization_options = {
+              codelenses = {
+                generate = true;
+                regenerate_cgo = true;
+                tidy = true;
+                upgrade_dependency = true;
+                vendor = true;
+              };
+              hints = {
+                assignVariableTypes = true;
+                compositeLiteralFields = true;
+                compositeLiteralTypes = true;
+                constantValues = true;
+                functionTypeParameters = true;
+                parameterNames = true;
+                rangeVariableTypes = true;
+              };
+              analyses = {
+                shadow = true;
+              };
+            };
+          };
           jdtls = {
             initialization_options = {
               settings = {
@@ -172,6 +208,13 @@
               };
             };
           };
+          ruff = {
+            initialization_options = {
+              settings = {
+                lineLength = 120;
+              };
+            };
+          };
           "rust-analyzer" = {
             initialization_options = {
               cargo = {
@@ -185,6 +228,7 @@
               completion = {
                 snippets = {
                   custom = {
+                    # Miscellaneous snippets
                     "struct impl" = {
                       prefix = "struct-impl";
                       body = [
@@ -231,7 +275,7 @@
                       description = "Insert a derive statement";
                       scope = "item";
                     };
-
+                    # Async snippets
                     "std thread spawn" = {
                       "prefix" = [ "std-spawn" ];
                       "body" = [
@@ -254,7 +298,7 @@
                       "description" = "Insert a Tokio async main";
                       "scope" = "item";
                     };
-
+                    # Test snippets
                     "tests" = {
                       prefix = "tests";
                       body = [
@@ -404,6 +448,11 @@
           copy_on_select = true;
           font_size = 11.5;
         };
+        theme = {
+          mode = "system";
+          light = "One Light";
+          dark = "One Dark";
+        };
         title_bar = {
           show_branch_icon = true;
           show_onboarding_banner = false;
@@ -420,6 +469,8 @@
             replace = "hollow";
             visual = "underline";
           };
+          use_smartcase_find = true;
+          toggle_relative_line_numbers = true;
         };
       };
 
