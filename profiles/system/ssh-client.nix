@@ -47,7 +47,7 @@ in
           serverAliveCountMax = 3;
           controlMaster = "auto";
           controlPersist = "10m";
-          addKeysToAgent = "confirm 2h";
+          addKeysToAgent = "yes";
 
           # Use the keychain to store the passphrase on macOS, and make sure this key is ignored on Linux
           extraOptions = {
@@ -59,6 +59,14 @@ in
             "UseKeychain" = "yes";
           };
         };
+      };
+    };
+
+    services = {
+      ssh-agent = {
+        enable = true;
+
+        defaultMaximumIdentityLifetime = 7200; # 2 hours
       };
     };
   };
