@@ -17,8 +17,7 @@
         packages = with pkgs; [
           python313
           python313Packages.pip
-          # TODO: to re-enable once the build issue is resolved
-          # python313Packages.robotframework-robocop
+          python313Packages.robotframework-robocop
           robotframework-tidy
 
           virtualenv

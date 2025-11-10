@@ -3,13 +3,13 @@
   buildPythonPackage,
   pythonOlder,
   fetchFromGitHub,
-  setuptools,
-  wheel,
+  hatchling,
   jinja2,
   robotframework,
-  typer,
+  typer-slim,
   rich,
   tomli,
+  tomli-w,
   pathspec,
   platformdirs,
   pytz,
@@ -17,7 +17,7 @@
 
 buildPythonPackage rec {
   pname = "robotframework-robocop";
-  version = "6.5.0";
+  version = "6.9.2";
   pyproject = true;
 
   disabled = pythonOlder "3.9";
@@ -26,21 +26,21 @@ buildPythonPackage rec {
     owner = "MarketSquare";
     repo = "robotframework-robocop";
     rev = "v${version}";
-    hash = "sha256-7ikGFNiYlcKXkfiM07zwMSGT6NRuPo/iueQXxNTzvqI=";
+    hash = "sha256-6+Jo97G1zgg3q5tD1nbKa2ddH4F4HbQYVQgE1I4Oj+c=";
   };
 
   nativeBuildInputs = [
-    setuptools
-    wheel
+    hatchling
   ];
 
   # Dependencies for the build
   propagatedBuildInputs = [
     jinja2
     robotframework
-    typer
+    typer-slim
     rich
     tomli
+    tomli-w
     pathspec
     platformdirs
     pytz
