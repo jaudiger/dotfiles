@@ -28,15 +28,20 @@ in
     };
   };
 
-  modules.home-manager.home = {
-    packages = with pkgs; [
-      go
-      delve
-      gopls
+  modules.home-manager = {
+    programs.go = {
+      enable = true;
+    };
 
-      gotoolsOverridden
-      golangci-lint
-      gosec
-    ];
+    home = {
+      packages = with pkgs; [
+        delve
+        gopls
+
+        gotoolsOverridden
+        golangci-lint
+        gosec
+      ];
+    };
   };
 }
