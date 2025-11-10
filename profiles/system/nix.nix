@@ -69,8 +69,7 @@ in
   '';
 
   modules.host.shell.nonPortableAliases = {
-    # TODO: to replace once is finished: https://github.com/NixOS/nixfmt/issues/153
-    nix-fmt = "nixfmt";
+    nix-fmt = "treefmt";
 
     nix-full-update = "nix-channel --update darwin; nix flake update --flake ${host.homeDirectory}/Development/git-repositories/jaudiger/dotfiles; nix-update";
     nix-update-dev-shell = "nix flake update --flake ${host.homeDirectory}/Development/git-repositories/jaudiger/dotfiles/dev-shell/c; nix flake update --flake ${host.homeDirectory}/Development/git-repositories/jaudiger/dotfiles/dev-shell/rust-nightly; nix flake update --flake ${host.homeDirectory}/Development/git-repositories/jaudiger/dotfiles/dev-shell/rust-wasm; nix flake update --flake ${host.homeDirectory}/Development/git-repositories/jaudiger/dotfiles/dev-shell/zig-nightly";

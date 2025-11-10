@@ -7,8 +7,8 @@
       nix-init
 
       # Formatter
-      # TODO: to replace with 'nixpkgs-fmt' once is finished: https://github.com/NixOS/nixfmt/issues/153
-      nixfmt-rfc-style
+      nixfmt
+      nixfmt-tree
 
       # Language server
       nixd
