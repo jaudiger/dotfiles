@@ -15,10 +15,10 @@
     home-manager = {
       home = {
         packages = with pkgs; [
-          python312
-          python312Packages.pip
+          python313
+          python313Packages.pip
           # TODO: to re-enable once the build issue is resolved
-          # python312Packages.robotframework-robocop
+          # python313Packages.robotframework-robocop
           robotframework-tidy
 
           virtualenv
