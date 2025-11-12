@@ -9,6 +9,8 @@ in
 
   nix = {
     settings = {
+      download-buffer-size = 134217728; # 128MB
+
       substituters = [
         "https://cache.nixos.org"
         "https://nix-community.cachix.org"
