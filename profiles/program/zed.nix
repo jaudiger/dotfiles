@@ -434,6 +434,9 @@
         status_bar = {
           active_language_button = false;
         };
+        sticky_scroll = {
+          enabled = true;
+        };
         tab_bar = {
           show = false;
           show_nav_history_buttons = false;
