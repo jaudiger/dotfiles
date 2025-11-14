@@ -4,7 +4,10 @@
 # All rights reserved.
 #
 
-def validate_work_branch []: nothing -> nothing {
+def validate_branch_name [
+    remote_exists: bool
+    fail_on_error: bool
+]: nothing -> nothing {
     let branch_name = (^git branch --show-current | str trim)
     const branch_regex = '^(bugfix|hotfix|imprv|feat|feature)-i[0-9]+-[a-zA-Z0-9_-]+$'
 
@@ -15,7 +18,7 @@ def validate_work_branch []: nothing -> nothing {
     }
 
     # Check if branch exists on remote
-    if (^git ls-remote --heads origin $branch_name | lines | length) != 0 {
+    if $remote_exists and ((^git ls-remote --heads origin $branch_name | lines | length) != 0) {
         return
     }
 
@@ -25,7 +28,7 @@ def validate_work_branch []: nothing -> nothing {
     }
 
     # If we get here, the branch name is invalid
-    print -e "Aborting commit push. Branch name format has to be: '<type>(-i<issue>)?-<name>'
+    const error_message = "Aborting commit push. Branch name format has to be: '<type>(-i<issue>)?-<name>'
 
 'type' must be one of the following:
 - bugfix: Fix a bug
@@ -33,15 +36,29 @@ def validate_work_branch []: nothing -> nothing {
 - imprv: Overall improvement
 - feat|feature: New feature"
 
-    exit 1
+    if ($fail_on_error) {
+        print -e $error_message
+        exit 1
+    }
+
+    print $error_message
 }
 
 def validate_branch []: nothing -> nothing {
+    # Check if the remote origin exists
+    if (^git remote | lines | where $it == "origin" | is-empty) {
+        validate_branch_name false false
+        return
+    }
+
     let remote = (^git remote get-url origin)
     const remote_regex = 'gitlab\.com.IoTerop'
 
     if (($remote | parse --regex $remote_regex) | is-not-empty) {
-        validate_work_branch
+        # If the remote is affiliated with work, exit on error if the validation failed
+        validate_branch_name true true
+    } else {
+        validate_branch_name true false
     }
 }
 
