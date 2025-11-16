@@ -178,15 +178,6 @@
       };
     };
 
-    # TODO: to-enable once the module is compatible with darwin
-    # programs.glab = {
-    #   enable = true;
-
-    #   settings = {
-    #     check_update = false;
-    #   };
-    # };
-
     home = {
       file."gitAttributes" = {
         # This file is generated almost manually with 'mergiraf languages --gitattributes'
