@@ -38,6 +38,9 @@
           claude = {
             ignore_system_version = false;
           };
+          codex = {
+            ignore_system_version = false;
+          };
           gemini = {
             ignore_system_version = false;
           };
