@@ -512,6 +512,7 @@
         "zig"
 
         # MCP servers
+        "mcp-server-context7"
         "mcp-server-github"
         "mcp-server-gitlab"
         "terraform-context-server"
