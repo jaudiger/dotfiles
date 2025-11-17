@@ -7,7 +7,7 @@
         enable = true;
 
         config = {
-          pager = "less -RF";
+          pager = "less -RFX";
           style = "numbers,changes,header";
         };
       };

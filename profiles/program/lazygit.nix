@@ -17,7 +17,7 @@
 
           git = {
             paging = {
-              pager = "delta -s --paging=never";
+              pager = "less -RFX";
             };
           };
         };
