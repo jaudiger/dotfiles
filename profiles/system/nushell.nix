@@ -14,7 +14,7 @@ in
     programs.nushell = {
       enable = true;
 
-      # Only overriden values should be set, to find them:
+      # Only overridden values should be set, to find them:
       # let defaults = nu -n -c "$env.config = {}; $env.config | reject color_config keybindings menus | to nuon" | from nuon | transpose key default
       # let current = $env.config | reject color_config keybindings menus | transpose key current
       # $current | merge $defaults | where ($it.current != $it.default)
