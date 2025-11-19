@@ -7,7 +7,7 @@
 
       settings = {
         add_newline = false;
-        command_timeout = 1000;
+        command_timeout = 2000;
         continuation_prompt = "[.](bold yellow) ";
 
         aws = {
