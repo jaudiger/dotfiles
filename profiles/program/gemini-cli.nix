@@ -45,19 +45,11 @@
               trust = true;
             };
             github = {
-              command = "docker";
-              args = [
-                "run"
-                "-i"
-                "--rm"
-                "-e"
-                "GITHUB_PERSONAL_ACCESS_TOKEN"
-                "ghcr.io/github/github-mcp-server"
-              ];
-              env = {
-                GITHUB_PERSONAL_ACCESS_TOKEN = "$GITHUB_MCP_PAT";
+              httpUrl = "https://api.githubcopilot.com/mcp/";
+              headers = {
+                Authorization = "Bearer $GITHUB_MCP_PAT";
               };
-              trust = false;
+              trust = true;
             };
           };
 
