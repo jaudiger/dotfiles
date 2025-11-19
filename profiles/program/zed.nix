@@ -515,6 +515,7 @@
         "mcp-server-context7"
         "mcp-server-github"
         "mcp-server-gitlab"
+        "mcp-server-sonarqube"
         "terraform-context-server"
       ];
     };
