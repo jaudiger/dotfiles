@@ -6,10 +6,10 @@ in
 {
   imports = [
     ./bash.nix
-    ./command-not-found.nix
     ./gpg.nix
     ./home-manager.nix
     ./nix.nix
+    ./nix-index.nix
     ./nushell.nix
     ./sops.nix
     ./ssh-client.nix

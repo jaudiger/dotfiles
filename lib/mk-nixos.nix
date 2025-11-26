@@ -9,6 +9,9 @@ inputs.nixpkgs.lib.nixosSystem {
   };
 
   modules = [
+    # Nix index database module
+    inputs.nix-index-database.nixosModules.nix-index
+
     # Home Manager module
     inputs.home-manager.nixosModules.home-manager
 

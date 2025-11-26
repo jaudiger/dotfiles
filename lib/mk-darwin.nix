@@ -9,6 +9,9 @@ inputs.darwin.lib.darwinSystem {
   };
 
   modules = [
+    # Nix index database module
+    inputs.nix-index-database.darwinModules.nix-index
+
     # Home Manager module
     inputs.home-manager.darwinModules.home-manager
 

@@ -2,7 +2,7 @@
 
 {
   modules.home-manager = {
-    programs.command-not-found = {
+    programs.nix-index = {
       enable = true;
     };
   };

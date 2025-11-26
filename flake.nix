@@ -5,6 +5,11 @@
     # Use as the main nixpks repository (to get the latest packages)
     nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
 
+    nix-index-database = {
+      url = "github:nix-community/nix-index-database";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
     home-manager = {
       url = "github:nix-community/home-manager/master";
       inputs.nixpkgs.follows = "nixpkgs";
