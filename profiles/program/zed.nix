@@ -57,7 +57,6 @@
         buffer_font_family = "JetBrainsMono Nerd Font";
         buffer_font_size = 12.5;
         collaboration_panel = {
-          button = false;
           dock = "right";
         };
         completion_menu_scrollbar = "auto";
