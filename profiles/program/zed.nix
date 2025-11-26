@@ -59,6 +59,7 @@
         collaboration_panel = {
           dock = "right";
         };
+        colorize_brackets = true;
         completion_menu_scrollbar = "auto";
         confirm_quit = true;
         current_line_highlight = "line";
