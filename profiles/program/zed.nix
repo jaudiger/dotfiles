@@ -77,7 +77,7 @@
           "background.appearance" = "blurred";
         };
         features = {
-          edit_prediction_provider = "codestral";
+          edit_prediction_provider = "zed";
         };
         file_scan_exclusions = [
           "**/.angular"
