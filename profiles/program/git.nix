@@ -141,16 +141,19 @@
       };
 
       ignores = [
-        ".DS_Store"
         ".cache"
+        ".claude"
         ".devcontainer"
         ".devenv"
+        ".DS_Store"
+        ".gemini"
         ".gradle"
         ".idea"
         ".venv"
         ".vscode"
         ".zed"
         "build"
+        "CLAUDE.md"
         "node_modules"
         "target"
         "__pycache__"
