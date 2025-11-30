@@ -8,7 +8,7 @@
 
         config = {
           pager = "less -RFX";
-          style = "numbers,changes,header";
+          style = "plain";
         };
       };
     };
