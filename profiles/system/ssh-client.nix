@@ -53,8 +53,8 @@ in
           extraOptions = {
             "ForwardAgent" = "no";
             "HashKnownHosts" = "no";
-            "UserKnownHostsFile" = "~/.ssh/known_hosts";
-            "ControlPath" = "~/.ssh/master-%r@%n:%p";
+            "UserKnownHostsFile" = "${host.homeDirectory}/.ssh/known_hosts";
+            "ControlPath" = "${host.homeDirectory}/.ssh/master-%r@%n:%p";
             "IgnoreUnknown" = "UseKeychain";
             "UseKeychain" = "yes";
           };

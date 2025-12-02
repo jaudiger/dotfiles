@@ -1,5 +1,8 @@
-{ pkgs, ... }:
+{ config, pkgs, ... }:
 
+let
+  host = config.modules.host;
+in
 {
   modules.home-manager = {
     programs.jujutsu = {
@@ -92,7 +95,7 @@
         "--scope" = [
           {
             "--when" = {
-              repositories = [ "~/Development/git-repositories/IoTerop" ];
+              repositories = [ "${host.homeDirectory}/Development/git-repositories/IoTerop" ];
             };
             user = {
               email = "jeremy.audiger@trasna.io";

@@ -1,5 +1,8 @@
-{ pkgs, ... }:
+{ config, pkgs, ... }:
 
+let
+  host = config.modules.host;
+in
 {
   modules.home-manager = {
     programs.git = {
@@ -161,8 +164,8 @@
 
       includes = [
         {
-          condition = "gitdir:~/Development/git-repositories/IoTerop/";
-          path = "~/.config/git/work.config";
+          condition = "gitdir:${host.homeDirectory}/Development/git-repositories/IoTerop/";
+          path = "${host.homeDirectory}/.config/git/work.config";
         }
       ];
 

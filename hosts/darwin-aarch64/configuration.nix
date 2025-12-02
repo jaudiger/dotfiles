@@ -167,7 +167,7 @@ in
     system.defaults.dock.mouse-over-hilite-stack = true;
     system.defaults.dock.mru-spaces = false;
     system.defaults.dock.orientation = "left";
-    system.defaults.dock.persistent-others = [ "~/Development/git-repositories" ];
+    system.defaults.dock.persistent-others = [ "${host.homeDirectory}/Development/git-repositories" ];
     system.defaults.dock.show-recents = false;
     system.defaults.dock.showhidden = true;
     system.defaults.dock.tilesize = 42;
