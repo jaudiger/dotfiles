@@ -34,7 +34,7 @@ in
           }; f";
           branch-rename = "!git branch -m $(git rev-parse --abbrev-ref HEAD) $2";
           branch-sync = "!f() { \
-            git fetch \
+            git fetch && \
             git for-each-ref --format \"%(refname:short) %(upstream:short)\" refs/heads | \
               while read -r local upstream; do \
                 if [ -n \"$upstream\" ]; then \
