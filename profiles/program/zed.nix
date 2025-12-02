@@ -5,7 +5,7 @@
     programs.zed-editor = {
       enable = true;
 
-      # Only manage the user settings, keymaps, and extensions
+      # Only manage the settings, tasks, keymaps and extensions
       package = null;
 
       userSettings = {
@@ -480,14 +480,29 @@
         };
       };
 
-      userKeymaps = [
+      userTasks = [
         {
-          context = "Workspace";
-          bindings = { };
+          label = "Launch Claude Code";
+          command = "claude";
         }
+      ];
+
+      userKeymaps = [
         {
           context = "Editor";
           bindings = { };
+        }
+        {
+          context = "Workspace";
+          bindings = {
+            "g c c" = [
+              "task::Spawn"
+              {
+                "task_name" = "Launch Claude Code";
+                "reveal_target" = "center";
+              }
+            ];
+          };
         }
       ];
 
