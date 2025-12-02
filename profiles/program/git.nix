@@ -191,7 +191,7 @@ in
         target = ".config/git/attributes";
       };
 
-      file."workGitConfig" = {
+      file."gitWorkConfig" = {
         source = ../../config/git/work.config;
         target = ".config/git/work.config";
       };
