@@ -5,7 +5,7 @@
     programs.ghostty = {
       enable = true;
 
-      # TODO: to remove once the package is consider as not broken on macOS
+      # TODO: to remove once the package is considered as not broken on macOS
       package = null;
 
       settings = {

@@ -2,7 +2,7 @@
   description = "C devshell";
 
   inputs = {
-    # Use as the main nixpks repository (to get the latest packages)
+    # Use as the main nixpkgs repository (to get the latest packages)
     nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
   };
 

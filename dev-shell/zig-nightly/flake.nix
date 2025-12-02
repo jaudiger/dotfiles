@@ -2,7 +2,7 @@
   description = "Zig nightly devshell";
 
   inputs = {
-    # Use as the main nixpks repository (to get the latest stable packages)
+    # Use as the main nixpkgs repository (to get the latest stable packages)
     nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
 
     # To get Zig toolchains
