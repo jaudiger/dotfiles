@@ -33,6 +33,7 @@
               "Bash(pwd:*)"
               "Bash(sort:*)"
               "Bash(tail:*)"
+              "Bash(tree:*)"
               "Bash(uniq:*)"
               "Glob"
               "Grep"
