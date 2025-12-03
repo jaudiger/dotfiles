@@ -8,6 +8,7 @@
       bun
 
       nodePackages.prettier
+      nodePackages.eslint
     ];
   };
 }
