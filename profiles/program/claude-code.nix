@@ -17,6 +17,9 @@ in
           includeCoAuthoredBy = false;
           permissions = {
             allow = [
+              "Bash(cargo check:*)"
+              "Bash(cargo clippy:*)"
+              "Bash(cargo fmt:*)"
               "Bash(cat:*)"
               "Bash(cd:*)"
               "Bash(find:*)"
@@ -36,6 +39,10 @@ in
               "Bash(head:*)"
               "Bash(ls:*)"
               "Bash(pwd:*)"
+              "Bash(ruff check:*)"
+              "Bash(ruff format:*)"
+              "Bash(shellcheck:*)"
+              "Bash(shfmt:*)"
               "Bash(sort:*)"
               "Bash(tail:*)"
               "Bash(tree:*)"
