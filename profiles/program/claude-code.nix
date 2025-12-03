@@ -71,6 +71,33 @@ in
             padding = 0;
           };
         };
+
+        mcpServers = {
+          context7 = {
+            type = "stdio";
+            command = "npx";
+            args = [
+              "-y"
+              "@upstash/context7-mcp"
+            ];
+          };
+          github = {
+            type = "stdio";
+            command = "docker";
+            args = [
+              "run"
+              "-i"
+              "--rm"
+              "-e"
+              "GITHUB_PERSONAL_ACCESS_TOKEN"
+              "ghcr.io/github/github-mcp-server"
+            ];
+          };
+          gitlab = {
+            type = "http";
+            url = "https://gitlab.com/api/v4/mcp";
+          };
+        };
       };
 
       home = {

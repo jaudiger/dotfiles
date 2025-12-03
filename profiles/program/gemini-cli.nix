@@ -45,52 +45,20 @@
               trust = true;
             };
             github = {
-              httpUrl = "https://api.githubcopilot.com/mcp";
-              headers = {
-                Authorization = "Bearer $GITHUB_MCP_PAT";
-              };
+              command = "docker";
+              args = [
+                "run"
+                "-i"
+                "--rm"
+                "-e"
+                "GITHUB_PERSONAL_ACCESS_TOKEN"
+                "ghcr.io/github/github-mcp-server"
+              ];
               trust = true;
             };
             gitlab = {
-              url = "https://gitlab.com/api/v4/mcp";
-            };
-            sonarqube = {
-              command = "docker";
-              args = [
-                "run"
-                "-i"
-                "--name"
-                "sonarqube-mcp-server"
-                "--rm"
-                "-e"
-                "SONARQUBE_TOKEN"
-                "-e"
-                "SONARQUBE_URL"
-                "mcp/sonarqube"
-              ];
-              env = {
-                SONARQUBE_TOKEN = "$SONARQUBE_TOKEN";
-                SONARQUBE_URL = "$SONARQUBE_URL";
-              };
-            };
-            terraform = {
-              command = "docker";
-              args = [
-                "run"
-                "-i"
-                "--name"
-                "terraform-mcp-server"
-                "--rm"
-                "-e"
-                "TERRAFORM_TOKEN"
-                "-e"
-                "TERRAFORM_URL"
-                "hashicorp/terraform-mcp-server"
-              ];
-              env = {
-                TERRAFORM_TOKEN = "$TERRAFORM_TOKEN";
-                TERRAFORM_URL = "$TERRAFORM_URL";
-              };
+              httpUrl = "https://gitlab.com/api/v4/mcp";
+              trust = true;
             };
           };
 
