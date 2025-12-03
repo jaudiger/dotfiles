@@ -6,6 +6,8 @@
       pandoc
       nodePackages.mermaid-cli
       texliveSmall
+
+      markdownlint-cli2
     ];
   };
 }
