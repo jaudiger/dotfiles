@@ -39,6 +39,8 @@ in
               "Bash(head:*)"
               "Bash(ls:*)"
               "Bash(pwd:*)"
+              "Bash(robocop:*)"
+              "Bash(robotidy:*)"
               "Bash(ruff check:*)"
               "Bash(ruff format:*)"
               "Bash(shellcheck:*)"
