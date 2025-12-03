@@ -1,0 +1,44 @@
+#!/usr/bin/env nu
+#
+# Copyright (c) Jérémy Audiger.
+# All rights reserved.
+#
+
+def status_line [input: record]: nothing -> nothing {
+    # Extract values
+    let model = $input.model.display_name
+    let cost = $input.cost.total_cost_usd | math round --precision 4 | into string
+    let current_dir = $input.workspace.current_dir
+    let project_dir = $input.workspace.project_dir
+
+    # Build left side: project/current (or just current if same)
+    let left = if $project_dir == $current_dir {
+        $current_dir | path basename
+    } else {
+        let project_name = $project_dir | path basename
+        let rel_path = $current_dir | str replace $"($project_dir)/" ""
+        $"($project_name)/($rel_path)"
+    }
+
+    # Build right side
+    let right = $"($model) · $($cost)"
+
+    # Calculate padding
+    let term_width = (term size).columns? | default 120
+    let padding = $term_width - ($left | str length) - ($right | str length) - 2
+    let padding = if $padding < 3 { 3 } else { $padding }
+
+    # Output: cyan left, green right
+    let spaces = "" | fill --character " " --width $padding
+    print -n $"(ansi cyan)($left)(ansi reset)($spaces)(ansi green)($right)(ansi reset)"
+}
+
+# Status line function for Claude Code UI
+def main [
+    ...args: any # Additional arguments
+]: nothing -> nothing {
+    # Read and parse JSON from stdin
+    let input = $in | from json
+
+    status_line $input
+}
