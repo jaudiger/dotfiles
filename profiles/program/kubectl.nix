@@ -13,7 +13,7 @@ in
 
       path = "${host.homeDirectory}/.kube/config";
       owner = host.username;
-      mode = "0600";
+      mode = "0400";
     };
   };
 

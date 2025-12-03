@@ -15,7 +15,7 @@ in
 
       path = "${host.homeDirectory}/.netrc";
       owner = host.username;
-      mode = "0600";
+      mode = "0400";
     };
   };
 
