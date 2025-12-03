@@ -11,8 +11,10 @@ in
 
         settings = {
           defaultMode = "acceptEdits";
+          env = {
+            DISABLE_AUTOUPDATER = 1;
+          };
           includeCoAuthoredBy = false;
-
           permissions = {
             allow = [
               "Bash(cat:*)"
