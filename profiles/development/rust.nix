@@ -33,6 +33,8 @@ in
           ];
         })
 
+        (pkgs.lib.setPrio 10 rustup) # Lower priority to prevent collision with the rust-based packages.
+
         libllvm
         rust-analyzer
         pkg-config
