@@ -24,7 +24,6 @@
     ./k9s.nix
     ./kubectl.nix
     ./lazygit.nix
-    ./mcp.nix
     ./mergiraf.nix
     ./ollama.nix
     ./pueue.nix
