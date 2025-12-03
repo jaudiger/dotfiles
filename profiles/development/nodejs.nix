@@ -7,8 +7,7 @@
       pnpm
       bun
 
-      # TODO: to re-enable once conflict with wrangler is resolved
-      # nodePackages.prettier
+      nodePackages.prettier
     ];
   };
 }

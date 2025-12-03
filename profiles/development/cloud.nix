@@ -17,7 +17,7 @@
       actionlint
 
       # Cloudflare Pages deployment
-      wrangler
+      (pkgs.lib.setPrio 10 wrangler) # Lower priority to prevent collision with the `prettier` package.
     ];
   };
 }
