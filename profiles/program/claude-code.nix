@@ -1,5 +1,8 @@
-{ ... }:
+{ config, ... }:
 
+let
+  host = config.modules.host;
+in
 {
   modules = {
     home-manager = {
@@ -48,6 +51,18 @@
               "Read(secrets/**)"
             ];
           };
+          statusLine = {
+            type = "command";
+            command = "${host.homeDirectory}/.claude/scripts/status-line";
+            padding = 0;
+          };
+        };
+      };
+
+      home = {
+        file."claudeCodeStatusLine" = {
+          source = ../../config/claude-code/status-line;
+          target = ".claude/scripts/status-line";
         };
       };
     };

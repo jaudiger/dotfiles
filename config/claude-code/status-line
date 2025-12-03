@@ -1,4 +1,4 @@
-#!/usr/bin/env nu
+#!/usr/bin/env nu --stdin
 #
 # Copyright (c) Jérémy Audiger.
 # All rights reserved.
@@ -6,12 +6,11 @@
 
 def status_line [input: record]: nothing -> nothing {
     # Extract values
-    let model = $input.model.display_name
-    let cost = $input.cost.total_cost_usd | math round --precision 4 | into string
+    let cost = $input.cost.total_cost_usd | into string --decimals 4
     let current_dir = $input.workspace.current_dir
     let project_dir = $input.workspace.project_dir
 
-    # Build left side: project/current (or just current if same)
+    # Build left side: project/current
     let left = if $project_dir == $current_dir {
         $current_dir | path basename
     } else {
@@ -19,14 +18,20 @@ def status_line [input: record]: nothing -> nothing {
         let rel_path = $current_dir | str replace $"($project_dir)/" ""
         $"($project_name)/($rel_path)"
     }
+    let left = $"($left)"
 
     # Build right side
-    let right = $"($model) · $($cost)"
+    let right = $"$($cost)"
 
     # Calculate padding
-    let term_width = (term size).columns? | default 120
-    let padding = $term_width - ($left | str length) - ($right | str length) - 2
-    let padding = if $padding < 3 { 3 } else { $padding }
+    let padding = (term size).columns - ($left | str length) - ($right | str length) - 2
+    let padding = if $padding < 3 {
+        3
+    } else if $padding > 80 {
+        80
+    } else {
+        $padding
+    }
 
     # Output: cyan left, green right
     let spaces = "" | fill --character " " --width $padding
