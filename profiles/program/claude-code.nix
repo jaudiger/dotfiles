@@ -30,6 +30,7 @@ in
               "Bash(gh run view:*)"
               "Bash(git diff:*)"
               "Bash(git log:*)"
+              "Bash(git ls-remote:*)"
               "Bash(git show:*)"
               "Bash(git status:*)"
               "Bash(glab mr view:*)"
