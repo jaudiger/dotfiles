@@ -36,14 +36,6 @@
           };
 
           mcpServers = {
-            context7 = {
-              command = "npx";
-              args = [
-                "-y"
-                "@upstash/context7-mcp"
-              ];
-              trust = true;
-            };
             github = {
               command = "docker";
               args = [
@@ -54,10 +46,6 @@
                 "GITHUB_PERSONAL_ACCESS_TOKEN"
                 "ghcr.io/github/github-mcp-server"
               ];
-              trust = true;
-            };
-            gitlab = {
-              httpUrl = "https://gitlab.com/api/v4/mcp";
               trust = true;
             };
           };
