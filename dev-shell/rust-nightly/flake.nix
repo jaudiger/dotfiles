@@ -42,7 +42,7 @@
         {
           default = pkgs.mkShell {
             nativeBuildInputs = with pkgs; [
-              (rust-bin.nightly."2025-11-15".minimal.override {
+              (rust-bin.nightly."2025-12-01".minimal.override {
                 extensions = [
                   "rust-src"
                   "clippy"
