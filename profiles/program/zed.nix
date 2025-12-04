@@ -430,6 +430,7 @@
           button = false;
           case_sensitive = true;
           center_on_match = true;
+          include_ignored = true;
         };
         show_call_status_icon = false;
         show_whitespaces = "boundary";
