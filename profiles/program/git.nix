@@ -176,14 +176,6 @@ in
       };
     };
 
-    programs.gh = {
-      enable = true;
-
-      gitCredentialHelper = {
-        enable = false;
-      };
-    };
-
     home = {
       file."gitAttributes" = {
         # This file is generated almost manually with 'mergiraf languages --gitattributes'
@@ -197,9 +189,6 @@ in
       };
 
       packages = with pkgs; [
-        # 'glab config -g set check_update false' needs to be run after installation
-        glab
-
         # Git plugins
         git-absorb
       ];

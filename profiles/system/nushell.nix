@@ -1,8 +1,6 @@
 { config, lib, ... }:
 
 let
-  host = config.modules.host;
-
   mkNushellInline = expr: lib.setType "nushell-inline" { inherit expr; };
 in
 {
@@ -84,21 +82,9 @@ in
             ($nu.home-path | path join "Development")
         ]
 
-        # Required for MCP servers setup
+        # Required for GitHub MCP server
         $env.GITHUB_PERSONAL_ACCESS_TOKEN = "${config.sops.secrets.github_personal_access_token.path}" | open
       '';
-    };
-  };
-
-  sops = {
-    # To edit the secret: "nix-shell -p sops --run 'sops secrets/github/credentials.yaml'"
-    secrets = {
-      github_personal_access_token = {
-        sopsFile = ../../secrets/github/credentials.yaml;
-
-        owner = host.username;
-        mode = "0400";
-      };
     };
   };
 }

@@ -17,6 +17,8 @@
     ./gemini-cli.nix
     ./ghostty.nix
     ./git.nix
+    ./github.nix
+    ./gitlab.nix
     ./helix.nix
     ./helm.nix
     ./jjui.nix
