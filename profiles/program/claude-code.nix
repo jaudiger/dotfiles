@@ -60,10 +60,12 @@ in
               "WebSearch"
             ];
             deny = [
-              "Read(.env)"
-              "Read(.env.*)"
-              "Read(.envrc)"
-              "Read(secrets/**)"
+              "Bash(git push --force:*)"
+              "Bash(git reset --hard:*)"
+              "Bash(rm -rf /*:*)"
+              "Edit(.env*)"
+              "Read(.env*)"
+              "Write(.env*)"
             ];
           };
           statusLine = {
