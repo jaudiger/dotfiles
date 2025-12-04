@@ -84,6 +84,8 @@ in
 
         # Required for GitHub MCP server
         $env.GITHUB_PERSONAL_ACCESS_TOKEN = "${config.sops.secrets.github_personal_access_token.path}" | open
+        # Required for Jira CLI
+        $env.JIRA_API_TOKEN = "${config.sops.secrets.jira_api_token.path}" | open
       '';
     };
   };

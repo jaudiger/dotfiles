@@ -21,6 +21,7 @@
     ./gitlab.nix
     ./helix.nix
     ./helm.nix
+    ./jira-cli.nix
     ./jjui.nix
     ./jujutsu.nix
     ./k9s.nix
