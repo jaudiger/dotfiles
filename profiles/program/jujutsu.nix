@@ -40,8 +40,6 @@ in
         };
 
         git = {
-          auto-local-bookmark = true;
-          push-new-bookmarks = true;
           sign-on-push = true;
         };
 
@@ -62,6 +60,13 @@ in
               "$output"
             ];
           };
+        };
+
+        remotes.origin = {
+          auto-track-bookmarks = "glob:*";
+        };
+        remotes.upstream = {
+          auto-track-bookmarks = "main";
         };
 
         revset-aliases = {
