@@ -62,7 +62,7 @@ in
   system.activationScripts.postActivation.text = ''
     # diff-viewer to see the updated packages
     echo "--- Output diff packages for system ---"
-    readarray -t file_args < <(find /nix/var/nix/profiles -maxdepth 1 -name "system-*-link" -type l | sort -n | tail -2)
+    readarray -t file_args < <(find /nix/var/nix/profiles -maxdepth 1 -name "system-*-link" -type l | sort -t'-' -k2 -n | tail -2)
     nix store diff-closures "''${file_args[@]}"
     echo "--- **** ---"
 
