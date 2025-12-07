@@ -12,7 +12,7 @@ let
 in
 {
   options.modules.home-manager = mkOption {
-    type = types.attrs;
+    type = types.deferredModule;
     default = { };
     description = ''
       Home-manager configuration module that gets merged into the user's
