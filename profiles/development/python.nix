@@ -28,7 +28,6 @@
 
           # Language server
           basedpyright
-          ty
         ];
       };
 
@@ -38,6 +37,10 @@
           virtualenvs.create = true;
           virtualenvs.in-project = true;
         };
+      };
+
+      programs.ty = {
+        enable = true;
       };
 
       # Helix configuration
