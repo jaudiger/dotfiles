@@ -1,0 +1,33 @@
+name: Continuous Integration - Static Analysis
+
+on:
+  push:
+    paths:
+      - ".github/workflows/static-analysis.yml"
+      - "flake.lock"
+      - "**/*.nix"
+  pull_request:
+    paths:
+      - ".github/workflows/static-analysis.yml"
+      - "flake.lock"
+      - "**/*.nix"
+  workflow_dispatch:
+
+concurrency:
+  group: static-analysis-${{ github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  static-analysis:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6.0.1
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v31.8.4
+        with:
+          github_access_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Check linting
+        run: nix flake check --all-systems

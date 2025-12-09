@@ -40,12 +40,36 @@
   };
 
   outputs =
-    { ... }@inputs:
+    { nixpkgs, ... }@inputs:
     let
       mkDarwin = import ./lib/mk-darwin.nix;
       mkNixos = import ./lib/mk-nixos.nix;
+
+      supportedSystems = [
+        "aarch64-darwin"
+        "aarch64-linux"
+      ];
+      forAllSystems = nixpkgs.lib.genAttrs supportedSystems;
     in
     {
+      checks = forAllSystems (
+        system:
+        let
+          pkgs = import nixpkgs { inherit system; };
+        in
+        {
+          statix = pkgs.runCommand "statix-check" { nativeBuildInputs = [ pkgs.statix ]; } ''
+            statix check ${./.} --config ${./statix.toml}
+            touch $out
+          '';
+
+          deadnix = pkgs.runCommand "deadnix-check" { nativeBuildInputs = [ pkgs.deadnix ]; } ''
+            deadnix --fail ${./.}
+            touch $out
+          '';
+        }
+      );
+
       # NixOS configuration entrypoint
       # CLI: "nixos-rebuild --flake .#HOST"
       nixosConfigurations = {
