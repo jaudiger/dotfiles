@@ -49,7 +49,7 @@ in
       };
 
       envExtra = ''
-        export PATH=$HOME/Development/git-repositories/jaudiger/personal-scripts:$HOME/Development/work-scripts:$HOME/Development/work-scripts/alaska:$HOME/Development/git-repositories/jaudiger/vscode-dev-containers:$PATH
+        export PATH=${host.homeDirectory}/Development/git-repositories/jaudiger/personal-scripts:${host.homeDirectory}/Development/work-scripts:${host.homeDirectory}/Development/work-scripts/alaska:${host.homeDirectory}/Development/git-repositories/jaudiger/vscode-dev-containers:$PATH
 
         # Required for GitHub MCP server
         export GITHUB_PERSONAL_ACCESS_TOKEN="$(cat ${config.sops.secrets.github_personal_access_token.path})"
