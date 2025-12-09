@@ -13,8 +13,6 @@ in
       historyFileSize = 8192;
 
       bashrcExtra = ''
-        export PATH=${host.homeDirectory}/Development/git-repositories/jaudiger/personal-scripts:${host.homeDirectory}/Development/work-scripts:${host.homeDirectory}/Development/work-scripts/alaska:${host.homeDirectory}/Development/git-repositories/jaudiger/vscode-dev-containers:$PATH
-
         # Required for GitHub MCP server
         export GITHUB_PERSONAL_ACCESS_TOKEN="$(cat ${config.sops.secrets.github_personal_access_token.path})"
         # Required for Jira CLI

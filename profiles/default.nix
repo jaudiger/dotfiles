@@ -24,4 +24,12 @@ in
     dev-shell-rust-wasm = "nix develop ${host.dotfilesDirectory}/dev-shell/rust-wasm";
     dev-shell-zig-nightly = "nix develop ${host.dotfilesDirectory}/dev-shell/zig-nightly";
   };
+
+  # Additional paths for shell sessions
+  modules.home-manager.home.sessionPath = [
+    "${host.homeDirectory}/Development/git-repositories/jaudiger/personal-scripts"
+    "${host.homeDirectory}/Development/git-repositories/jaudiger/vscode-dev-containers"
+    "${host.homeDirectory}/Development/work-scripts"
+    "${host.homeDirectory}/Development/work-scripts/alaska"
+  ];
 }
