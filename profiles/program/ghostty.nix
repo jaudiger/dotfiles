@@ -4,6 +4,7 @@
   modules.home-manager = {
     programs.ghostty = {
       enable = true;
+      systemd.enable = false;
 
       # TODO: to remove once the package is considered as not broken on macOS
       package = null;
