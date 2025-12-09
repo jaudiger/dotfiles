@@ -14,8 +14,8 @@ in
   services = {
     openssh = {
       enable = true;
-
-      settings = lib.mkIf isLinux {
+    } // lib.optionalAttrs isLinux {
+      settings = {
         PermitRootLogin = "no";
         PasswordAuthentication = false;
       };
