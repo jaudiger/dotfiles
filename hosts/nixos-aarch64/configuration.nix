@@ -44,10 +44,10 @@ in
     i18n.defaultLocale = "en_US.UTF-8";
 
     # Select keyboard
-    services.xserver = {
-      xkbModel = "pc105";
+    services.xserver.xkb = {
+      model = "pc105";
       layout = "fr";
-      xkbVariant = "mac";
+      variant = "mac";
     };
 
     console.keyMap = "fr";

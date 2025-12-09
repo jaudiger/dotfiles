@@ -4,7 +4,7 @@
   nixpkgs.overlays = [
     inputs.zig-overlay.overlays.default
 
-    (final: prev: {
+    (_final: prev: {
       superhtml = prev.callPackage ../../pkgs/superhtml.nix { };
       supermd = prev.callPackage ../../pkgs/supermd.nix { };
       ziggy = prev.callPackage ../../pkgs/ziggy.nix { };

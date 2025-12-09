@@ -2,9 +2,9 @@
 
 {
   nixpkgs.overlays = [
-    (final: prev: {
+    (_final: prev: {
       pythonPackagesExtensions = prev.pythonPackagesExtensions ++ [
-        (python-final: python-prev: {
+        (python-final: _python-prev: {
           robotframework-robocop = python-final.callPackage ../../pkgs/robotframework-robocop.nix { };
         })
       ];
