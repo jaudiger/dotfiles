@@ -3,12 +3,14 @@ name:
 { inputs, system }:
 
 inputs.nixpkgs.lib.nixosSystem {
-  inherit system;
   specialArgs = {
     inherit inputs;
   };
 
   modules = [
+    # Set the host platform for platform-specific configuration
+    { nixpkgs.hostPlatform = system; }
+
     # Nix index database module
     inputs.nix-index-database.nixosModules.nix-index
 

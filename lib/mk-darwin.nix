@@ -3,12 +3,14 @@ name:
 { inputs, system }:
 
 inputs.darwin.lib.darwinSystem {
-  inherit system;
   specialArgs = {
     inherit inputs;
   };
 
   modules = [
+    # Set the host platform for platform-specific configuration
+    { nixpkgs.hostPlatform = system; }
+
     # Nix index database module
     inputs.nix-index-database.darwinModules.nix-index
 
