@@ -73,18 +73,18 @@ in
   modules.host.shell.nonPortableAliases = {
     nix-fmt = "treefmt";
 
-    nix-full-update = "nix-channel --update darwin; nix flake update --flake ${host.homeDirectory}/Development/git-repositories/jaudiger/dotfiles; nix-update";
-    nix-update-dev-shell = "nix flake update --flake ${host.homeDirectory}/Development/git-repositories/jaudiger/dotfiles/dev-shell/c; nix flake update --flake ${host.homeDirectory}/Development/git-repositories/jaudiger/dotfiles/dev-shell/rust-nightly; nix flake update --flake ${host.homeDirectory}/Development/git-repositories/jaudiger/dotfiles/dev-shell/rust-wasm; nix flake update --flake ${host.homeDirectory}/Development/git-repositories/jaudiger/dotfiles/dev-shell/zig-nightly";
+    nix-full-update = "nix-channel --update darwin; nix flake update --flake ${host.dotfilesDirectory}; nix-update";
+    nix-update-dev-shell = "nix flake update --flake ${host.dotfilesDirectory}/dev-shell/c; nix flake update --flake ${host.dotfilesDirectory}/dev-shell/rust-nightly; nix flake update --flake ${host.dotfilesDirectory}/dev-shell/rust-wasm; nix flake update --flake ${host.dotfilesDirectory}/dev-shell/zig-nightly";
     nix-clean = "nix-collect-garbage -d";
   }
   // (
     if isDarwin then
       {
-        nix-update = "sudo darwin-rebuild switch --flake ${host.homeDirectory}/Development/git-repositories/jaudiger/dotfiles#darwin-aarch64";
+        nix-update = "sudo darwin-rebuild switch --flake ${host.dotfilesDirectory}#darwin-aarch64";
       }
     else
       {
-        nix-update = "sudo nixos-rebuild switch --flake ${host.homeDirectory}/Development/git-repositories/jaudiger/dotfiles#nixos-aarch64";
+        nix-update = "sudo nixos-rebuild switch --flake ${host.dotfilesDirectory}#nixos-aarch64";
       }
   );
 }

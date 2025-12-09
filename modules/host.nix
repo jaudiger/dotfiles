@@ -26,6 +26,13 @@ in
         The absolute path to the user's home directory.
       '';
     };
+    dotfilesDirectory = mkOption {
+      type = types.str;
+      default = "${host.homeDirectory}/Development/git-repositories/jaudiger/dotfiles";
+      description = ''
+        The absolute path to the dotfiles repository.
+      '';
+    };
 
     shell = {
       aliases = mkOption {
