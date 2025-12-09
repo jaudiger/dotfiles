@@ -1,21 +1,23 @@
 {
-  config,
+  options,
   pkgs,
   lib,
   ...
 }:
 
 let
-  isLinux = config.nixpkgs.hostPlatform.isLinux;
+  hasNixLd = options ? programs.nix-ld;
 in
 {
-  programs.nix-ld = lib.mkIf isLinux {
-    enable = true;
+  programs = lib.optionalAttrs hasNixLd {
+    nix-ld = {
+      enable = true;
 
-    libraries = with pkgs; [
-      stdenv.cc.cc
-      openssl
-      zlib
-    ];
+      libraries = with pkgs; [
+        stdenv.cc.cc
+        openssl
+        zlib
+      ];
+    };
   };
 }
