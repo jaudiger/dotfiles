@@ -6,31 +6,23 @@
 }:
 
 let
-  isDarwin = pkgs.stdenv.isDarwin;
   isLinux = pkgs.stdenv.isLinux;
   host = config.modules.host;
 in
 {
-  # This service comes from nix-darwin
-  services = lib.mkIf isDarwin {
+  # This service comes from nix-darwin or nixos
+  services = {
     openssh = {
       enable = true;
+
+      settings = lib.mkIf isLinux {
+        PermitRootLogin = "no";
+        PasswordAuthentication = false;
+      };
     };
   };
 
-  modules.home-manager = lib.mkIf isLinux {
-    services = {
-      openssh = {
-        enable = true;
-        settings = {
-          PermitRootLogin = "no";
-          PasswordAuthentication = false;
-        };
-      };
-    };
-
-    users.users.${host.username}.openssh = {
-      authorizedKeys.keys = host.security.authorizedKeys;
-    };
+  users.users.${host.username}.openssh = lib.mkIf isLinux {
+    authorizedKeys.keys = host.security.authorizedKeys;
   };
 }
