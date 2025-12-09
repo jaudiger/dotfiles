@@ -1,11 +1,12 @@
 {
+  config,
   pkgs,
   lib,
   ...
 }:
 
 let
-  isLinux = pkgs.stdenv.isLinux;
+  isLinux = config.nixpkgs.hostPlatform.isLinux;
 in
 {
   modules.home-manager = lib.mkIf isLinux {

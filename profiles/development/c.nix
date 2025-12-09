@@ -1,8 +1,13 @@
-{ pkgs, lib, ... }:
+{
+  config,
+  pkgs,
+  lib,
+  ...
+}:
 
 let
-  isDarwin = pkgs.stdenv.isDarwin;
-  isLinux = pkgs.stdenv.isLinux;
+  isDarwin = config.nixpkgs.hostPlatform.isDarwin;
+  isLinux = config.nixpkgs.hostPlatform.isLinux;
 in
 {
   modules = {

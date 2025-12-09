@@ -1,12 +1,11 @@
 {
-  pkgs,
   config,
   lib,
   ...
 }:
 
 let
-  isLinux = pkgs.stdenv.isLinux;
+  isLinux = config.nixpkgs.hostPlatform.isLinux;
   host = config.modules.host;
 in
 {
@@ -14,7 +13,8 @@ in
   services = {
     openssh = {
       enable = true;
-    } // lib.optionalAttrs isLinux {
+    }
+    // lib.optionalAttrs isLinux {
       settings = {
         PermitRootLogin = "no";
         PasswordAuthentication = false;

@@ -1,12 +1,13 @@
 {
   inputs,
+  config,
   pkgs,
   lib,
   ...
 }:
 
 let
-  isDarwin = pkgs.stdenv.isDarwin;
+  isDarwin = config.nixpkgs.hostPlatform.isDarwin;
 in
 {
   nixpkgs.overlays = [ inputs.rust-overlay.overlays.default ];

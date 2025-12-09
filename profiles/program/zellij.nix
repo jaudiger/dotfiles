@@ -1,7 +1,12 @@
-{ pkgs, lib, ... }:
+{
+  config,
+  pkgs,
+  lib,
+  ...
+}:
 
 let
-  isDarwin = pkgs.stdenv.isDarwin;
+  isDarwin = config.nixpkgs.hostPlatform.isDarwin;
 in
 {
   modules.home-manager = {

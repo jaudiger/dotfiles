@@ -1,18 +1,21 @@
-{ pkgs, lib, ... }:
+{
+  config,
+  pkgs,
+  lib,
+  ...
+}:
 
 let
-  isLinux = pkgs.stdenv.isLinux;
+  isLinux = config.nixpkgs.hostPlatform.isLinux;
 in
 {
-  programs = lib.optionalAttrs isLinux {
-    nix-ld = {
-      enable = true;
+  programs.nix-ld = lib.mkIf isLinux {
+    enable = true;
 
-      libraries = with pkgs; [
-        stdenv.cc.cc
-        openssl
-        zlib
-      ];
-    };
+    libraries = with pkgs; [
+      stdenv.cc.cc
+      openssl
+      zlib
+    ];
   };
 }

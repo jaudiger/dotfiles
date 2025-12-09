@@ -1,7 +1,7 @@
-{ config, pkgs, ... }:
+{ config, ... }:
 
 let
-  isDarwin = pkgs.stdenv.isDarwin;
+  isDarwin = config.nixpkgs.hostPlatform.isDarwin;
   host = config.modules.host;
 in
 {
