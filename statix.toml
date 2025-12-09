@@ -1,0 +1,9 @@
+# Statix configuration
+# See: https://github.com/nerdypepper/statix
+
+[disabled]
+# Add lints to disable here, e.g.:
+# "empty_pattern" = true
+
+[nix_version]
+version = "2.4"

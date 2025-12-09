@@ -85,7 +85,7 @@ in
     };
 
     home = {
-      packages = with pkgs; lib.optionals (!isDarwin) [ wl-copy ];
+      packages = with pkgs; lib.optionals (!isDarwin) [ wl-clipboard ];
     };
   };
 }
