@@ -1,8 +1,3 @@
-{ pkgs, lib, ... }:
-
-let
-  isLinux = pkgs.stdenv.isLinux;
-in
 {
   imports = [
     ./bash.nix
@@ -10,6 +5,7 @@ in
     ./home-manager.nix
     ./nix.nix
     ./nix-index.nix
+    ./nix-ld.nix
     ./nushell.nix
     ./sops.nix
     ./ssh-client.nix
@@ -17,8 +13,4 @@ in
     ./xdg.nix
     ./zsh.nix
   ];
-  # TODO: fix nix-ld
-  # ] ++ lib.optionals isLinux [
-  #   ./nix-ld.nix
-  # ];
 }

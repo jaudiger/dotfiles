@@ -1,7 +1,10 @@
-{ pkgs, ... }:
+{ pkgs, lib, ... }:
 
+let
+  isLinux = pkgs.stdenv.isLinux;
+in
 {
-  programs = {
+  programs = lib.optionalAttrs isLinux {
     nix-ld = {
       enable = true;
 
