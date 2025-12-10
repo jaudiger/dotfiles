@@ -44,6 +44,7 @@ in
         cargo-audit
         cargo-binutils
         cargo-bloat
+        cargo-edit
         cargo-mutants
         cargo-msrv
         cargo-udeps
