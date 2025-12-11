@@ -105,7 +105,7 @@ in
               "--rm"
               "-e"
               "GITHUB_PERSONAL_ACCESS_TOKEN"
-              "ghcr.io/github/github-mcp-server"
+              "ghcr.io/github/github-mcp-server:v0.24.1"
             ];
           };
         };
