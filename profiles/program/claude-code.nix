@@ -110,6 +110,22 @@ in
               "GITHUB_PERSONAL_ACCESS_TOKEN"
               "ghcr.io/github/github-mcp-server:v0.24.1"
             ];
+            toolFilter = {
+              allow = [
+                "get_commit"
+                "get_file_contents"
+                "get_latest_release"
+                "get_tag"
+                "issue_read"
+                "list_commits"
+                "list_issues"
+                "list_releases"
+                "list_tags"
+                "search_code"
+                "search_issues"
+                "search_repositories"
+              ];
+            };
           };
         };
       };
