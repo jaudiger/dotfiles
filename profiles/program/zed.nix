@@ -86,6 +86,7 @@
           "**/.gradle"
           "**/.idea"
           "**/.jj"
+          "**/.next"
           "**/.venv"
           "**/build"
           "**/coverage"

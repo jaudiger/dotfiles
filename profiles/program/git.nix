@@ -152,6 +152,7 @@ in
         ".gemini"
         ".gradle"
         ".idea"
+        ".next"
         ".venv"
         ".vscode"
         ".zed"
