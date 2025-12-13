@@ -1,14 +1,25 @@
 { pkgs, ... }:
 
 {
-  modules.home-manager.home = {
-    packages = with pkgs; [
-      nodePackages.nodejs
-      pnpm
-      bun
+  modules.home-manager = {
+    programs.npm = {
+      enable = true;
 
-      nodePackages.prettier
-      nodePackages.eslint
-    ];
+      # List of default settings: 'npm config ls -l'
+      settings = {
+        fund = false;
+        update-notifier = false;
+      };
+    };
+
+    home = {
+      packages = with pkgs; [
+        pnpm
+        bun
+
+        nodePackages.prettier
+        nodePackages.eslint
+      ];
+    };
   };
 }
