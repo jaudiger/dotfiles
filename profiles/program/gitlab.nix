@@ -1,5 +1,8 @@
-{ pkgs, ... }:
+{ config, pkgs, ... }:
 
+let
+  host = config.modules.host;
+in
 {
   modules = {
     home-manager = {
@@ -9,6 +12,18 @@
 
         gitlab-ci-linter
       ];
+    };
+  };
+
+  sops = {
+    secrets = {
+      # To edit the secret: "nix-shell -p sops --run 'sops secrets/gitlab/credentials.yaml'"
+      gitlab_personal_access_token = {
+        sopsFile = ../../secrets/gitlab/credentials.yaml;
+
+        owner = host.username;
+        mode = "0400";
+      };
     };
   };
 }
