@@ -10,11 +10,15 @@ in
         enable = true;
 
         settings = {
+          alwaysThinkingEnabled = true;
+          attribution = {
+            commit = "";
+            pr = "";
+          };
           defaultMode = "acceptEdits";
           env = {
             DISABLE_AUTOUPDATER = 1;
           };
-          includeCoAuthoredBy = false;
           permissions = {
             allow = [
               "Bash(cargo build:*)"
