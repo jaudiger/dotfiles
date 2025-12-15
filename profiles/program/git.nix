@@ -144,6 +144,7 @@ in
       };
 
       ignores = [
+        ".angular"
         ".cache"
         ".claude"
         ".devcontainer"
@@ -152,12 +153,18 @@ in
         ".gemini"
         ".gradle"
         ".idea"
+        ".jj"
         ".next"
+        ".pnpm-store"
+        ".swc"
         ".venv"
         ".vscode"
         ".zed"
         "build"
         "CLAUDE.md"
+        "coverage"
+        "dist"
+        "output"
         "node_modules"
         "target"
         "__pycache__"

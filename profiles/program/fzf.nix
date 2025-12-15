@@ -10,7 +10,7 @@
           defaultOptions = [
             "--walker=file,follow,hidden"
             "--walker-root=."
-            "--walker-skip=.devenv,.git,.gradle,.venv,.idea,build,output,node_modules,target,__pycache__"
+            "--walker-skip=.angular,.cache,.devenv,.git,.gradle,.idea,.jj,.next,.pnpm-store,.swc,.venv,build,coverage,dist,node_modules,output,target,__pycache__"
             "--height=40%"
             "--layout=reverse"
             "--info=inline"

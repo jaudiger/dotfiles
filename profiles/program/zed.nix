@@ -81,12 +81,15 @@
         };
         file_scan_exclusions = [
           "**/.angular"
+          "**/.cache"
           "**/.devenv"
           "**/.git"
           "**/.gradle"
           "**/.idea"
           "**/.jj"
           "**/.next"
+          "**/.pnpm-store"
+          "**/.swc"
           "**/.venv"
           "**/build"
           "**/coverage"
