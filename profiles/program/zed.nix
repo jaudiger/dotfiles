@@ -114,6 +114,7 @@
         };
         git_panel = {
           dock = "right";
+          tree_view = true;
         };
         helix_mode = true;
         indent_guides = {
