@@ -8,6 +8,7 @@
     ./claude-code.nix
     ./codex.nix
     ./copilot.nix
+    ./devcontainer.nix
     ./devspace.nix
     ./difftastic.nix
     ./docker.nix
