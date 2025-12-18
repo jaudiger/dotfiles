@@ -139,9 +139,8 @@
               }
             ];
             language_servers = [
-              "!basedpyright"
-              "ruff"
               "ty"
+              "!basedpyright"
               "..."
             ];
           };

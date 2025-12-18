@@ -25,9 +25,6 @@
 
           # Static analyzer
           ruff
-
-          # Language server
-          basedpyright
         ];
       };
 
@@ -46,14 +43,9 @@
       # Helix configuration
       programs.helix.languages = {
         language-server = {
-          basedpyright = {
-            config = {
-              python = {
-                analysis = {
-                  typeCheckingMode = "basic";
-                };
-              };
-            };
+          ty = {
+            command = "ty";
+            args = [ "server" ];
           };
           ruff = {
             command = "ruff";
@@ -84,8 +76,8 @@
             ];
             comment-token = "#";
             language-servers = [
-              "basedpyright"
               "ruff"
+              "ty"
             ];
             indent = {
               tab-width = 4;
