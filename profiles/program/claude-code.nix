@@ -90,6 +90,7 @@ in
               "Bash(shfmt:*)"
               "Bash(sort:*)"
               "Bash(tail:*)"
+              "Bash(tee:*)"
               "Bash(terraform init:*)"
               "Bash(terraform fmt:*)"
               "Bash(terraform plan:*)"
