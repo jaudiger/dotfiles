@@ -33,20 +33,8 @@ in
             fi; \
           }; f";
           branch-rename = "!git branch -m $(git rev-parse --abbrev-ref HEAD) $2";
-          branch-sync = "!f() { \
-            git fetch && \
-            git for-each-ref --format \"%(refname:short) %(upstream:short)\" refs/heads | \
-              while read -r local upstream; do \
-                if [ -n \"$upstream\" ]; then \
-                  if ! git show-ref --quiet \"refs/remotes/$upstream\"; then \
-                    git branch -D \"$local\" \
-                  fi \
-                fi \
-              done \
-          }; f";
           graph = "log --decorate --oneline --graph";
           rebase-absorb = "absorb --and-rebase";
-          tag-sync = "!git fetch --tags --prune-tags --force";
         };
 
         color."status" = {
