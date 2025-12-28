@@ -17,7 +17,7 @@ in
         jq
       ];
 
-      stateVersion = "25.05";
+      stateVersion = "26.05";
     };
 
     programs = {
