@@ -48,6 +48,11 @@ in
         package = pkgs.zsh-syntax-highlighting;
       };
 
+      profileExtra = ''
+        # TODO: Source Homebrew shell environment variables
+        eval "$(/opt/homebrew/bin/brew shellenv)"
+      '';
+
       envExtra = ''
         # Required for GitHub API integration with third parties
         export GITHUB_TOKEN="$(cat ${config.sops.secrets.github_personal_access_token.path})"
