@@ -92,7 +92,7 @@ in
     security.pam.services.sudo_local.touchIdAuth = true;
     security.pam.services.sudo_local.watchIdAuth = true;
 
-    # FIXME: See:
+    # TODO: See:
     # - https://github.com/nix-community/home-manager/issues/4026#issuecomment-1565974702
     # - https://github.com/nix-darwin/nix-darwin/issues/682
     users.users.${host.username} = {
