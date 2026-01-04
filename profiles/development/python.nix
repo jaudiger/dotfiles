@@ -18,7 +18,6 @@
           python313
           python313Packages.pip
           python313Packages.robotframework-robocop
-          robotframework-tidy
 
           virtualenv
           uv
