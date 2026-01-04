@@ -23,6 +23,7 @@ in
             allow = [
               "Bash(cargo build:*)"
               "Bash(cargo check:*)"
+              "Bash(cargo clean:*)"
               "Bash(cargo clippy:*)"
               "Bash(cargo doc:*)"
               "Bash(cargo fmt:*)"
