@@ -38,6 +38,7 @@ in
               "Bash(diff:*)"
               "Bash(echo:*)"
               "Bash(eslint:*)"
+              "Bash(file:*)"
               "Bash(find:*)"
               "Bash(gh pr list:*)"
               "Bash(gh pr view:*)"
