@@ -6,8 +6,7 @@
       home = {
         packages = with pkgs; [
           terraform
-          # TODO: re-enable once the upstream issue is resolved
-          # terragrunt
+          terragrunt
 
           terraform-docs
           tflint
