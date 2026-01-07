@@ -21,7 +21,7 @@ stdenv.mkDerivation rec {
   ];
 
   meta = with lib; {
-    description = "A data serialization language for expressing clear API messages, config files, etc.";
+    description = "A data serialization language for expressing clear API messages, config files, etc";
     homepage = "https://ziggy-lang.io";
     license = licenses.mit;
     maintainers = with maintainers; [ jaudiger ];

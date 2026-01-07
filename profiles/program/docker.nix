@@ -8,7 +8,9 @@ let
   isDarwin = config.nixpkgs.hostPlatform.isDarwin;
 in
 {
-  homebrew.casks = lib.mkIf isDarwin [ "docker-desktop" ];
+  homebrew = lib.mkIf isDarwin {
+    casks = [ "docker-desktop" ];
+  };
 
   modules.host.shell.aliases = {
     d = "docker";

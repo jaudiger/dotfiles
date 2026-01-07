@@ -1,3 +1,4 @@
+# NOTE: Logi Options+ is macOS-only software
 {
   config,
   lib,
@@ -8,5 +9,7 @@ let
   isDarwin = config.nixpkgs.hostPlatform.isDarwin;
 in
 {
-  homebrew.casks = lib.mkIf isDarwin [ "logi-options+" ];
+  homebrew = lib.mkIf isDarwin {
+    casks = [ "logi-options+" ];
+  };
 }

@@ -10,10 +10,12 @@ let
   isLinux = config.nixpkgs.hostPlatform.isLinux;
 in
 {
-  homebrew.casks = lib.mkIf isDarwin [ "intellij-idea-ce" ];
+  homebrew = lib.mkIf isDarwin {
+    casks = [ "intellij-idea-ce" ];
+  };
 
   modules.home-manager.home.packages = lib.optionals isLinux [
-    pkgs.jetbrains.idea-community
+    pkgs.jetbrains.idea
   ];
 
   modules.host.shell.nonPortableAliases = lib.mkIf isDarwin {

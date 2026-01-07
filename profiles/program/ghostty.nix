@@ -1,16 +1,16 @@
 {
   config,
-  pkgs,
   lib,
   ...
 }:
 
 let
   isDarwin = config.nixpkgs.hostPlatform.isDarwin;
-  isLinux = config.nixpkgs.hostPlatform.isLinux;
 in
 {
-  homebrew.casks = lib.mkIf isDarwin [ "ghostty" ];
+  homebrew = lib.mkIf isDarwin {
+    casks = [ "ghostty" ];
+  };
 
   modules.home-manager = {
     programs.ghostty = {

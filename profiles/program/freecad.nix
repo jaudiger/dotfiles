@@ -10,7 +10,9 @@ let
   isLinux = config.nixpkgs.hostPlatform.isLinux;
 in
 {
-  homebrew.casks = lib.mkIf isDarwin [ "freecad" ];
+  homebrew = lib.mkIf isDarwin {
+    casks = [ "freecad" ];
+  };
 
   modules.home-manager.home.packages = lib.optionals isLinux [
     pkgs.freecad

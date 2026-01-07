@@ -1,18 +1,15 @@
+# NOTE: Steam is not available on aarch64-linux (only x86_64-linux)
 {
   config,
-  pkgs,
   lib,
   ...
 }:
 
 let
   isDarwin = config.nixpkgs.hostPlatform.isDarwin;
-  isLinux = config.nixpkgs.hostPlatform.isLinux;
 in
 {
-  homebrew.casks = lib.mkIf isDarwin [ "steam" ];
-
-  modules.home-manager.home.packages = lib.optionals isLinux [
-    pkgs.steam
-  ];
+  homebrew = lib.mkIf isDarwin {
+    casks = [ "steam" ];
+  };
 }

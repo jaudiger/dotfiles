@@ -10,7 +10,9 @@ let
   isLinux = config.nixpkgs.hostPlatform.isLinux;
 in
 {
-  homebrew.casks = lib.mkIf isDarwin [ "microsoft-teams" ];
+  homebrew = lib.mkIf isDarwin {
+    casks = [ "microsoft-teams" ];
+  };
 
   modules.home-manager.home.packages = lib.optionals isLinux [
     pkgs.teams-for-linux

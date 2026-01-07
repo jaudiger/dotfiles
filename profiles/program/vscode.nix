@@ -10,7 +10,9 @@ let
   isLinux = config.nixpkgs.hostPlatform.isLinux;
 in
 {
-  homebrew.casks = lib.mkIf isDarwin [ "visual-studio-code" ];
+  homebrew = lib.mkIf isDarwin {
+    casks = [ "visual-studio-code" ];
+  };
 
   modules.home-manager.home.packages = lib.optionals isLinux [
     pkgs.vscode

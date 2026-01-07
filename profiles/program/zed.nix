@@ -8,7 +8,9 @@ let
   isDarwin = config.nixpkgs.hostPlatform.isDarwin;
 in
 {
-  homebrew.casks = lib.mkIf isDarwin [ "zed@preview" ];
+  homebrew = lib.mkIf isDarwin {
+    casks = [ "zed@preview" ];
+  };
 
   modules.home-manager = {
     programs.zed-editor = {

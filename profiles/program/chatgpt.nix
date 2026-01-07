@@ -1,3 +1,4 @@
+# NOTE: ChatGPT desktop app is not available on Linux
 {
   config,
   lib,
@@ -8,5 +9,7 @@ let
   isDarwin = config.nixpkgs.hostPlatform.isDarwin;
 in
 {
-  homebrew.casks = lib.mkIf isDarwin [ "chatgpt" ];
+  homebrew = lib.mkIf isDarwin {
+    casks = [ "chatgpt" ];
+  };
 }
