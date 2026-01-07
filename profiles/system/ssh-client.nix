@@ -52,7 +52,7 @@ in
           # Use the keychain to store the passphrase on macOS, and make sure this key is ignored on Linux
           extraOptions = {
             "ForwardAgent" = "no";
-            "HashKnownHosts" = "no";
+            "HashKnownHosts" = "yes";
             "UserKnownHostsFile" = "${host.homeDirectory}/.ssh/known_hosts";
             "ControlPath" = "${host.homeDirectory}/.ssh/master-%r@%n:%p";
             "IgnoreUnknown" = "UseKeychain";
