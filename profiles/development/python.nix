@@ -90,7 +90,7 @@
     host.shell.aliases = {
       python-debug = "python -m ptvsd --host localhost --wait";
       python-fmt = "ruff format";
-      ruff-analyzer = "ruff --line-length 120 --select E,F,W,C90,N,UP,YTT,ANN,S,BLE,FBT,B,A,COM,C4,DTZ,T10,EM,EXE,ISC,ICN,PIE,T20,PT,Q,RET,SIM,TID,ARG,PTH,ERA,PD,PGH,PL,TRY,RUF --ignore A003,ANN101,N818,S104,PIE804,B008";
+      ruff-analyzer = "ruff --line-length 120 --select E,F,W,C90,I,N,UP,YTT,ANN,S,BLE,FBT,B,A,COM,C4,DTZ,T10,EM,EXE,ISC,ICN,G,LOG,PIE,T20,PT,Q,RET,SIM,TID,ARG,PTH,ERA,PD,PGH,PL,TRY,PERF,FURB,RUF --ignore A003,N818,S104,PIE804,B008";
     };
   };
 }
