@@ -62,15 +62,18 @@
         system:
         let
           pkgs = import nixpkgs { inherit system; };
+          treefmtEval = inputs.treefmt-nix.lib.evalModule pkgs ./treefmt.nix;
         in
         {
-          statix = pkgs.runCommand "statix-check" { nativeBuildInputs = [ pkgs.statix ]; } ''
-            statix check ${./.} --config ${./statix.toml}
-            touch $out
-          '';
+          formatting = treefmtEval.config.build.check ./.;
 
           deadnix = pkgs.runCommand "deadnix-check" { nativeBuildInputs = [ pkgs.deadnix ]; } ''
             deadnix --fail ${./.}
+            touch $out
+          '';
+          
+          statix = pkgs.runCommand "statix-check" { nativeBuildInputs = [ pkgs.statix ]; } ''
+            statix check ${./.} --config ${./statix.toml}
             touch $out
           '';
         }
