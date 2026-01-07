@@ -7,6 +7,7 @@
     ./nix-index.nix
     ./nix-ld.nix
     ./nushell.nix
+    ./shell-env.nix
     ./sops.nix
     ./ssh-client.nix
     ./ssh-server.nix

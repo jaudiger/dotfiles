@@ -1,4 +1,4 @@
-{ config, lib, ... }:
+{ lib, ... }:
 
 let
   mkNushellInline = expr: lib.setType "nushell-inline" { inherit expr; };
@@ -81,13 +81,6 @@ in
             ($nu.home-path | path join "Development" "git-repositories" "jaudiger" "personal-scripts")
             ($nu.home-path | path join "Development")
         ]
-
-        # Required for GitHub API integration with third parties
-        $env.GITHUB_TOKEN = "${config.sops.secrets.github_personal_access_token.path}" | open
-        # Required for GitLab API integration with third parties
-        $env.GITLAB_TOKEN = "${config.sops.secrets.gitlab_personal_access_token.path}" | open
-        # Required for Jira CLI
-        $env.JIRA_API_TOKEN = "${config.sops.secrets.jira_api_token.path}" | open
       '';
     };
   };
