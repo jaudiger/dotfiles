@@ -1,12 +1,20 @@
-{ ... }:
-
 {
+  config,
+  lib,
+  ...
+}:
+
+let
+  isDarwin = config.nixpkgs.hostPlatform.isDarwin;
+in
+{
+  homebrew.casks = lib.mkIf isDarwin [ "zed@preview" ];
+
   modules.home-manager = {
     programs.zed-editor = {
       enable = true;
 
-      # Only manage the settings, tasks, keymaps and extensions
-      package = null;
+      package = lib.mkIf isDarwin null;
 
       userSettings = {
         agent = {

@@ -49,7 +49,7 @@ in
       };
 
       profileExtra = ''
-        # TODO: Source Homebrew shell environment variables
+        # Source Homebrew shell environment variables
         eval "$(/opt/homebrew/bin/brew shellenv)"
       '';
     };

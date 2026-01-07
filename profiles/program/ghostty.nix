@@ -1,13 +1,24 @@
-{ ... }:
-
 {
+  config,
+  pkgs,
+  lib,
+  ...
+}:
+
+let
+  isDarwin = config.nixpkgs.hostPlatform.isDarwin;
+  isLinux = config.nixpkgs.hostPlatform.isLinux;
+in
+{
+  homebrew.casks = lib.mkIf isDarwin [ "ghostty" ];
+
   modules.home-manager = {
     programs.ghostty = {
       enable = true;
       systemd.enable = false;
 
-      # TODO: to remove once the package is considered as not broken on macOS
-      package = null;
+      # NOTE: nixpkgs marks ghostty as broken on Darwin, using Homebrew instead
+      package = lib.mkIf isDarwin null;
 
       settings = {
         font-family = "JetBrainsMono Nerd Font";

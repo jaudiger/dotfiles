@@ -10,10 +10,6 @@ in
       host = {
         username = "jaudiger";
 
-        # TODO: To be moved inside configuration files
-        shell.nonPortableAliases = {
-          intellij = "open -na 'IntelliJ IDEA CE'";
-        };
       };
 
       # Default packages
@@ -59,26 +55,6 @@ in
 
       greedyCasks = true;
 
-      casks = [
-        "logi-options+"
-        "wireshark-app"
-        "docker-desktop"
-        "ghostty"
-        "visual-studio-code"
-        "zed@preview"
-        "intellij-idea-ce"
-        "insomnia"
-        "discord"
-        "microsoft-teams"
-        "zoom"
-        "steam"
-        "retroarch"
-        "claude"
-        "chatgpt"
-        "freecad"
-        "sweet-home3d"
-      ];
-
       masApps = {
         # To look for new apps: 'mas search MY_APP'
         "myCANAL" = 694580816;
@@ -92,7 +68,7 @@ in
     security.pam.services.sudo_local.touchIdAuth = true;
     security.pam.services.sudo_local.watchIdAuth = true;
 
-    # TODO: See:
+    # NOTE: See:
     # - https://github.com/nix-community/home-manager/issues/4026#issuecomment-1565974702
     # - https://github.com/nix-darwin/nix-darwin/issues/682
     users.users.${host.username} = {

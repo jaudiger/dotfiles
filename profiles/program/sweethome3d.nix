@@ -10,9 +10,9 @@ let
   isLinux = config.nixpkgs.hostPlatform.isLinux;
 in
 {
-  homebrew.casks = lib.mkIf isDarwin [ "wireshark-app" ];
+  homebrew.casks = lib.mkIf isDarwin [ "sweet-home3d" ];
 
   modules.home-manager.home.packages = lib.optionals isLinux [
-    pkgs.wireshark
+    pkgs.sweethome3d.application
   ];
 }

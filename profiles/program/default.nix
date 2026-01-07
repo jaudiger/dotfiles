@@ -5,15 +5,19 @@
     ./awscli.nix
     ./bat.nix
     ./carapace.nix
+    ./chatgpt.nix
+    ./claude-app.nix
     ./claude-code.nix
     ./codex.nix
     ./copilot.nix
     ./devcontainer.nix
     ./devspace.nix
     ./difftastic.nix
+    ./discord.nix
     ./docker.nix
     ./espanso.nix
     ./eza.nix
+    ./freecad.nix
     ./fzf.nix
     ./gemini-cli.nix
     ./ghostty.nix
@@ -22,21 +26,30 @@
     ./gitlab.nix
     ./helix.nix
     ./helm.nix
+    ./insomnia.nix
+    ./intellij.nix
     ./jira-cli.nix
     ./jjui.nix
     ./jujutsu.nix
     ./k9s.nix
     ./kubectl.nix
     ./lazygit.nix
+    ./logitech.nix
     ./mergiraf.nix
     ./ollama.nix
     ./pueue.nix
+    ./retroarch.nix
     ./starship.nix
+    ./steam.nix
+    ./sweethome3d.nix
+    ./teams.nix
     ./telepresence.nix
     ./terraform.nix
+    ./vscode.nix
     ./wireshark.nix
     ./zed.nix
     ./zellij.nix
+    ./zoom.nix
     ./zoxide.nix
   ];
 }

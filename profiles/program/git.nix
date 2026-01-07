@@ -49,7 +49,7 @@ in
           editor = "hx";
 
           # Enable file system monitor to improve performance of git commands
-          # TODO: Check integration with Helm, see https://github.com/helm/helm/issues/12125
+          # NOTE: fsmonitor may cause issues with Helm plugin installation, see https://github.com/helm/helm/issues/12125
           fsmonitor = true;
           untrackedcache = true;
         };
