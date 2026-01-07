@@ -26,6 +26,7 @@
     ./gitlab.nix
     ./helix.nix
     ./helm.nix
+    ./iamlive.nix
     ./insomnia.nix
     ./intellij.nix
     ./jira-cli.nix
@@ -34,10 +35,12 @@
     ./k9s.nix
     ./kubectl.nix
     ./lazygit.nix
+    ./lima.nix
     ./logitech.nix
     ./mergiraf.nix
     ./ollama.nix
     ./pueue.nix
+    ./qemu.nix
     ./retroarch.nix
     ./starship.nix
     ./steam.nix
@@ -45,6 +48,7 @@
     ./teams.nix
     ./telepresence.nix
     ./terraform.nix
+    ./vacuum.nix
     ./vscode.nix
     ./wireshark.nix
     ./zed.nix

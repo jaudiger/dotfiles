@@ -2,6 +2,7 @@
 
 {
   imports = [
+    ./avr.nix
     ./c.nix
     ./cloud.nix
     ./go.nix

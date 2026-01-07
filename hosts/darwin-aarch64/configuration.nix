@@ -40,17 +40,7 @@ in
       taps = [
         "daveshanley/vacuum"
         "iann0036/iamlive"
-        "lihaoyun6/tap"
         "osx-cross/avr"
-      ];
-
-      brews = [
-        "avr-gcc"
-        "iamlive"
-        "qemu"
-        "vacuum"
-        "lima"
-        "lima-additional-guestagents"
       ];
 
       greedyCasks = true;

@@ -23,6 +23,9 @@ inputs.nixpkgs.lib.nixosSystem {
     # Load the modules
     ../modules
 
+    # Homebrew stub
+    ../modules/homebrew-stub.nix
+
     # Default host setup
     ../profiles/default.nix
 
