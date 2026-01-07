@@ -71,7 +71,7 @@
             deadnix --fail ${./.}
             touch $out
           '';
-          
+
           statix = pkgs.runCommand "statix-check" { nativeBuildInputs = [ pkgs.statix ]; } ''
             statix check ${./.} --config ${./statix.toml}
             touch $out
