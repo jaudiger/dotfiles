@@ -18,10 +18,8 @@ in
       defaultCacheTtl = 3600;
       sshKeys = host.security.gpgSshKeys;
 
-      enableSshSupport = true;
       enableExtraSocket = true;
       enableScDaemon = false;
-      grabKeyboardAndMouse = false;
     };
   };
 }
