@@ -108,25 +108,40 @@ in
     # Startup parameters
     system.startup.chime = false;
 
+    # Trackpad parameters
+    system.defaults.trackpad.Clicking = true;
+    system.defaults.trackpad.TrackpadRightClick = true;
+
     # Global parameters
     system.defaults.NSGlobalDomain.AppleFontSmoothing = 1;
     system.defaults.NSGlobalDomain.AppleIconAppearanceTheme = "RegularAutomatic";
+    system.defaults.NSGlobalDomain.AppleInterfaceStyleSwitchesAutomatically = true;
+    system.defaults.NSGlobalDomain.AppleScrollerPagingBehavior = true;
+    system.defaults.NSGlobalDomain.AppleShowAllExtensions = true;
+    system.defaults.NSGlobalDomain."com.apple.springing.delay" = 0.1;
+    # Keyboard
+    system.defaults.NSGlobalDomain.ApplePressAndHoldEnabled = false;
     system.defaults.NSGlobalDomain.InitialKeyRepeat = 20;
     system.defaults.NSGlobalDomain.KeyRepeat = 1;
-    system.defaults.NSGlobalDomain.AppleInterfaceStyleSwitchesAutomatically = true;
-    system.defaults.NSGlobalDomain.AppleShowAllExtensions = true;
-    system.defaults.NSGlobalDomain.AppleScrollerPagingBehavior = true;
+    # Text correction (disabled for coding)
+    system.defaults.NSGlobalDomain.NSAutomaticCapitalizationEnabled = false;
+    system.defaults.NSGlobalDomain.NSAutomaticDashSubstitutionEnabled = false;
+    system.defaults.NSGlobalDomain.NSAutomaticPeriodSubstitutionEnabled = false;
+    system.defaults.NSGlobalDomain.NSAutomaticQuoteSubstitutionEnabled = false;
+    system.defaults.NSGlobalDomain.NSAutomaticSpellingCorrectionEnabled = false;
+    # Save/Print dialogs
+    system.defaults.NSGlobalDomain.NSNavPanelExpandedStateForSaveMode = true;
+    system.defaults.NSGlobalDomain.NSNavPanelExpandedStateForSaveMode2 = true;
+    system.defaults.NSGlobalDomain.PMPrintingExpandedStateForPrint = true;
+    system.defaults.NSGlobalDomain.PMPrintingExpandedStateForPrint2 = true;
+    # Status bar
     system.defaults.NSGlobalDomain.NSStatusItemSelectionPadding = 8;
     system.defaults.NSGlobalDomain.NSStatusItemSpacing = 12;
+    # Misc
     system.defaults.NSGlobalDomain.NSTableViewDefaultSizeMode = 1; # Size of the finder sidebar icons
     system.defaults.NSGlobalDomain.NSTextShowsControlCharacters = true;
     system.defaults.NSGlobalDomain.NSUseAnimatedFocusRing = false;
-    system.defaults.NSGlobalDomain.NSNavPanelExpandedStateForSaveMode = true;
-    system.defaults.NSGlobalDomain.NSNavPanelExpandedStateForSaveMode2 = true;
     system.defaults.NSGlobalDomain.NSWindowShouldDragOnGesture = true;
-    system.defaults.NSGlobalDomain.PMPrintingExpandedStateForPrint = true;
-    system.defaults.NSGlobalDomain.PMPrintingExpandedStateForPrint2 = true;
-    system.defaults.NSGlobalDomain."com.apple.springing.delay" = 0.1;
 
     # Stage manager parameters
     system.defaults.WindowManager.GloballyEnabled = false;
@@ -143,7 +158,6 @@ in
     system.defaults.loginwindow.SleepDisabled = true;
 
     # Finder parameters
-    system.defaults.finder.AppleShowAllExtensions = true;
     system.defaults.finder.AppleShowAllFiles = true;
     system.defaults.finder.CreateDesktop = false;
     system.defaults.finder.FXDefaultSearchScope = "SCcf"; # Current folder
