@@ -33,11 +33,11 @@ def status_line [input: record]: nothing -> nothing {
         0
     }
 
-    # Context % color: blue < 50%, yellow 50-80%, red > 80%
+    # Context % color: blue < 50%, orange 50-80%, red > 80%
     let context_color = if $context_pct >= 80 {
         (ansi red)
     } else if $context_pct >= 50 {
-        (ansi yellow)
+        (ansi xterm_orange1)
     } else {
         (ansi blue)
     }
