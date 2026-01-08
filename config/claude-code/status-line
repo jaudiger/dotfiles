@@ -28,22 +28,13 @@ def status_line [input: record]: nothing -> nothing {
         0
     }
 
-    # Context % color: green < 50%, yellow 50-80%, red > 80%
+    # Context % color: blue < 50%, yellow 50-80%, red > 80%
     let context_color = if $context_pct >= 80 {
         (ansi red)
     } else if $context_pct >= 50 {
         (ansi yellow)
     } else {
-        (ansi green)
-    }
-
-    # Extract cache stats and calculate efficiency (cache_read / total input)
-    let cache_read = $input | get -i context_window.current_usage.cache_read_input_tokens | default 0
-    let total_input = $input_tokens + $cache_read
-    let cache_pct = if $total_input > 0 {
-        ($cache_read * 100 / $total_input) | math round
-    } else {
-        0
+        (ansi blue)
     }
 
     # Extract lines changed (default to 0 if missing)
@@ -53,18 +44,13 @@ def status_line [input: record]: nothing -> nothing {
     # Extract cost (2 decimals)
     let cost = $input | get -i cost.total_cost_usd | default 0 | into string --decimals 2
 
-    # Build output: ↑0/↓0 [0%] (0% cached) | +0/-0 | $0.00
-    let tokens = $"(ansi cyan)↑(format_number $input_tokens)(ansi reset)/(ansi yellow)↓(format_number $output_tokens)(ansi reset)"
+    # Build output: ↑0/↓0 [0%] | +0/-0 | $0.00
+    let tokens = $"(ansi green)↑(format_number $input_tokens)(ansi reset)/(ansi yellow)↓(format_number $output_tokens)(ansi reset)"
     let context = $"($context_color)[($context_pct)%](ansi reset)"
-    let cache = if $cache_pct > 0 {
-        $" (ansi magenta)\(($cache_pct)% cached\)(ansi reset)"
-    } else {
-        ""
-    }
     let lines = $"(ansi green)+($lines_added)(ansi reset)/(ansi red)-($lines_removed)(ansi reset)"
     let cost_str = $"$($cost)"
 
-    print -n $"($tokens) ($context)($cache) | ($lines) | ($cost_str)"
+    print -n $"($tokens) ($context) | ($lines) | ($cost_str)"
 }
 
 # Status line function for Claude Code UI
