@@ -1,9 +1,19 @@
-{ config, ... }:
+# NOTE: Claude desktop app is only available on macOS
+{
+  config,
+  lib,
+  ...
+}:
 
 let
   host = config.modules.host;
+  isDarwin = config.nixpkgs.hostPlatform.isDarwin;
 in
 {
+  homebrew = lib.mkIf isDarwin {
+    casks = [ "claude" ];
+  };
+
   modules = {
     home-manager = {
       programs.claude-code = {

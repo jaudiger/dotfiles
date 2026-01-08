@@ -6,7 +6,6 @@
     ./bat.nix
     ./carapace.nix
     ./chatgpt.nix
-    ./claude-app.nix
     ./claude-code.nix
     ./codex.nix
     ./copilot.nix
