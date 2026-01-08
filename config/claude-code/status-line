@@ -4,38 +4,67 @@
 # All rights reserved.
 #
 
+# Format a number with K/M suffix for readability
+def format_number [n: int]: nothing -> string {
+    if $n >= 1_000_000 {
+        $"($n / 1_000_000 | math round --precision 1)M"
+    } else if $n >= 1_000 {
+        $"($n / 1_000 | math round --precision 1)k"
+    } else {
+        $n | into string
+    }
+}
+
 def status_line [input: record]: nothing -> nothing {
-    # Extract values
-    let cost = $input.cost.total_cost_usd | into string --decimals 4
-    let current_dir = $input.workspace.current_dir
-    let project_dir = $input.workspace.project_dir
+    # Extract token usage (default to 0 if missing)
+    let input_tokens = $input | get -i context_window.current_usage.input_tokens | default 0
+    let output_tokens = $input | get -i context_window.current_usage.output_tokens | default 0
 
-    # Build left side: project/current
-    let left = if $project_dir == $current_dir {
-        $current_dir | path basename
+    # Extract context window size and calculate percentage
+    let context_size = $input | get -i context_window.context_window_size | default 0
+    let context_pct = if $context_size > 0 {
+        (($input_tokens + $output_tokens) * 100 / $context_size) | math round
     } else {
-        let project_name = $project_dir | path basename
-        let rel_path = $current_dir | str replace $"($project_dir)/" ""
-        $"($project_name)/($rel_path)"
-    }
-    let left = $"($left)"
-
-    # Build right side
-    let right = $"$($cost)"
-
-    # Calculate padding
-    let padding = (term size).columns - ($left | str length) - ($right | str length) - 2
-    let padding = if $padding < 3 {
-        3
-    } else if $padding > 80 {
-        80
-    } else {
-        $padding
+        0
     }
 
-    # Output: cyan left, green right
-    let spaces = "" | fill --character " " --width $padding
-    print -n $"(ansi cyan)($left)(ansi reset)($spaces)(ansi green)($right)(ansi reset)"
+    # Context % color: green < 50%, yellow 50-80%, red > 80%
+    let context_color = if $context_pct >= 80 {
+        (ansi red)
+    } else if $context_pct >= 50 {
+        (ansi yellow)
+    } else {
+        (ansi green)
+    }
+
+    # Extract cache stats and calculate efficiency (cache_read / total input)
+    let cache_read = $input | get -i context_window.current_usage.cache_read_input_tokens | default 0
+    let total_input = $input_tokens + $cache_read
+    let cache_pct = if $total_input > 0 {
+        ($cache_read * 100 / $total_input) | math round
+    } else {
+        0
+    }
+
+    # Extract lines changed (default to 0 if missing)
+    let lines_added = $input | get -i cost.total_lines_added | default 0
+    let lines_removed = $input | get -i cost.total_lines_removed | default 0
+
+    # Extract cost (2 decimals)
+    let cost = $input | get -i cost.total_cost_usd | default 0 | into string --decimals 2
+
+    # Build output: ↑0/↓0 [0%] (0% cached) | +0/-0 | $0.00
+    let tokens = $"(ansi cyan)↑(format_number $input_tokens)(ansi reset)/(ansi yellow)↓(format_number $output_tokens)(ansi reset)"
+    let context = $"($context_color)[($context_pct)%](ansi reset)"
+    let cache = if $cache_pct > 0 {
+        $" (ansi magenta)\(($cache_pct)% cached\)(ansi reset)"
+    } else {
+        ""
+    }
+    let lines = $"(ansi green)+($lines_added)(ansi reset)/(ansi red)-($lines_removed)(ansi reset)"
+    let cost_str = $"$($cost)"
+
+    print -n $"($tokens) ($context)($cache) | ($lines) | ($cost_str)"
 }
 
 # Status line function for Claude Code UI
