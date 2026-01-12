@@ -104,8 +104,8 @@ in
           "**/build"
           "**/coverage"
           "**/dist"
-          "**/output"
           "**/node_modules"
+          "**/output"
           "**/target"
           "**/__pycache__"
         ];
@@ -139,6 +139,13 @@ in
           };
         };
         languages = {
+          Nix = {
+            language_servers = [
+              "nixd"
+              "!nil"
+              "..."
+            ];
+          };
           Python = {
             formatter = [
               { code_action = "source.organizeImports.ruff"; }
@@ -154,18 +161,14 @@ in
               "..."
             ];
           };
-          Nix = {
-            language_servers = [
-              "nixd"
-              "!nil"
-              "..."
-            ];
-          };
         };
         line_indicator_format = "short";
         lsp = {
           gopls = {
             initialization_options = {
+              analyses = {
+                shadow = true;
+              };
               codelenses = {
                 generate = true;
                 regenerate_cgo = true;
@@ -182,17 +185,20 @@ in
                 parameterNames = true;
                 rangeVariableTypes = true;
               };
-              analyses = {
-                shadow = true;
-              };
             };
           };
           jdtls = {
             initialization_options = {
               settings = {
                 java = {
+                  autobuild = {
+                    enabled = true;
+                  };
                   configuration = {
                     updateBuildConfiguration = "interactive";
+                  };
+                  implementationsCodeLens = {
+                    enabled = true;
                   };
                   import = {
                     gradle = {
@@ -208,12 +214,6 @@ in
                         enabled = true;
                       };
                     };
-                  };
-                  autobuild = {
-                    enabled = true;
-                  };
-                  implementationsCodeLens = {
-                    enabled = true;
                   };
                   referencesCodeLens = {
                     enabled = true;
@@ -482,9 +482,9 @@ in
           font_size = 11.5;
         };
         theme = {
-          mode = "system";
-          light = "One Light";
           dark = "One Dark";
+          light = "One Light";
+          mode = "system";
         };
         title_bar = {
           show_branch_icon = true;
