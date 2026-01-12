@@ -28,6 +28,8 @@ in
           defaultMode = "acceptEdits";
           env = {
             DISABLE_AUTOUPDATER = 1;
+            FORCE_AUTOUPDATE_PLUGINS = 1;
+            IS_DEMO = 1;
           };
           permissions = {
             allow = [
