@@ -434,6 +434,18 @@ in
         project_panel = {
           dock = "right";
         };
+        read_only_files = [
+          "**/Cargo.lock"
+          "**/composer.lock"
+          "**/flake.lock"
+          "**/Gemfile.lock"
+          "**/go.sum"
+          "**/gradle.lockfile"
+          "**/package-lock.json"
+          "**/pnpm-lock.yaml"
+          "**/poetry.lock"
+          "**/yarn.lock"
+        ];
         relative_line_numbers = "enabled";
         scroll_beyond_last_line = "off";
         scrollbar = {
