@@ -1,6 +1,7 @@
 {
   imports = [
     ./bash.nix
+    ./direnv.nix
     ./gpg.nix
     ./home-manager.nix
     ./nix.nix

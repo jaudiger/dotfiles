@@ -134,6 +134,7 @@ in
         ".devcontainer"
         ".devenv"
         ".DS_Store"
+        ".envrc"
         ".gemini"
         ".gradle"
         ".idea"
