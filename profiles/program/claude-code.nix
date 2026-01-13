@@ -62,7 +62,10 @@ in
               "Bash(git ls-files:*)"
               "Bash(git ls-remote:*)"
               "Bash(git ls-tree:*)"
+              "Bash(git rev-parse:*)"
               "Bash(git show:*)"
+              "Bash(git stash list:*)"
+              "Bash(git stash show:*)"
               "Bash(git status:*)"
               "Bash(glab * list:*)"
               "Bash(glab * view:*)"
@@ -118,9 +121,9 @@ in
               "WebSearch"
             ];
             deny = [
-              "Bash(git push:*)"
+              "Bash(git push --force:*)"
               "Bash(git reset:*)"
-              "Bash(rm -rf:*)"
+              "Bash(rm -rf /:*)"
               "Edit(.env*)"
               "Read(.env*)"
               "Write(.env*)"
