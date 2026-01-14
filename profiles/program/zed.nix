@@ -37,6 +37,7 @@ in
             provider = "mistral";
           };
           message_editor_min_lines = 8;
+          show_turn_stats = true;
           thread_summary_model = {
             model = "devstral-small-latest";
             provider = "mistral";
@@ -516,20 +517,34 @@ in
 
       userKeymaps = [
         {
-          context = "Editor";
           bindings = { };
+          context = "Editor";
         }
         {
-          context = "Workspace";
+          bindings = {
+            "cmd-N" = [
+              "workspace::NewTerminal"
+              { "local" = true; }
+            ];
+            # Claude Code integration
+            "shift-enter" = [
+              "terminal::SendText"
+              "\u001b\r"
+            ];
+          };
+          context = "Terminal";
+        }
+        {
           bindings = {
             "g c c" = [
               "task::Spawn"
               {
                 "task_name" = "Launch Claude Code";
-                "reveal_target" = "center";
+                "reveal_target" = "dock";
               }
             ];
           };
+          context = "Workspace";
         }
       ];
 
