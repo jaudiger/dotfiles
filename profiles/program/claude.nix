@@ -129,6 +129,7 @@ in
               "Write(.env*)"
             ];
           };
+          showTurnDuration = false;
           statusLine = {
             type = "command";
             command = "${host.homeDirectory}/.claude/scripts/status-line";

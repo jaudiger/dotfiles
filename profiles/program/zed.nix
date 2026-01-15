@@ -526,11 +526,6 @@ in
               "workspace::NewTerminal"
               { "local" = true; }
             ];
-            # Claude Code integration
-            "shift-enter" = [
-              "terminal::SendText"
-              "\u001b\r"
-            ];
           };
           context = "Terminal";
         }

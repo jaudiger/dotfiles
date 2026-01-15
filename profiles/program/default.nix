@@ -6,7 +6,7 @@
     ./bat.nix
     ./carapace.nix
     ./chatgpt.nix
-    ./claude-code.nix
+    ./claude.nix
     ./codex.nix
     ./copilot.nix
     ./devcontainer.nix
