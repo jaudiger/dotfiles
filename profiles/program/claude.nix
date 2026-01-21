@@ -33,6 +33,7 @@ in
           };
           permissions = {
             allow = [
+              "Bash(cargo bench:*)"
               "Bash(cargo build:*)"
               "Bash(cargo check:*)"
               "Bash(cargo clean:*)"
@@ -64,8 +65,7 @@ in
               "Bash(git ls-tree:*)"
               "Bash(git rev-parse:*)"
               "Bash(git show:*)"
-              "Bash(git stash list:*)"
-              "Bash(git stash show:*)"
+              "Bash(git stash:*)"
               "Bash(git status:*)"
               "Bash(glab * list:*)"
               "Bash(glab * view:*)"
@@ -123,6 +123,8 @@ in
             deny = [
               "Bash(git push --force:*)"
               "Bash(git reset:*)"
+              "Bash(git stash clear:*)"
+              "Bash(git stash drop:*)"
               "Bash(rm -rf /:*)"
               "Edit(.env*)"
               "Read(.env*)"
