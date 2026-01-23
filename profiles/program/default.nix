@@ -47,6 +47,7 @@
     ./teams.nix
     ./telepresence.nix
     ./terraform.nix
+    ./utm.nix
     ./vacuum.nix
     ./vscode.nix
     ./wireshark.nix
