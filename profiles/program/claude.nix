@@ -103,6 +103,7 @@ in
               "Bash(shfmt:*)"
               "Bash(sort:*)"
               "Bash(tail:*)"
+              "Bash(tar:*)"
               "Bash(tee:*)"
               "Bash(terraform init:*)"
               "Bash(terraform fmt:*)"
