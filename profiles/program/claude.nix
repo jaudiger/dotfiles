@@ -135,6 +135,7 @@ in
             ];
           };
           showTurnDuration = false;
+          spinnerTipsEnabled = false;
           statusLine = {
             type = "command";
             command = "${host.homeDirectory}/.claude/scripts/status-line";
