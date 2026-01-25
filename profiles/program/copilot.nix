@@ -3,11 +3,11 @@
 {
   modules = {
     home-manager = {
-      home.packages = with pkgs; [ gh-copilot ];
+      home.packages = with pkgs; [ github-copilot-cli ];
     };
 
     host.shell.aliases = {
-      copilot = "gh-copilot";
+      copilot = "github-copilot-cli";
     };
   };
 }
