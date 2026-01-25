@@ -56,7 +56,9 @@ in
 
     # Add ability to used TouchID or Apple Watch for sudo authentication
     security.pam.services.sudo_local.touchIdAuth = true;
-    security.pam.services.sudo_local.watchIdAuth = true;
+    # TODO: Re-enable once Swift builds on darwin again
+    # See: https://github.com/NixOS/nixpkgs/issues/483584
+    # security.pam.services.sudo_local.watchIdAuth = true;
 
     # NOTE: See:
     # - https://github.com/nix-community/home-manager/issues/4026#issuecomment-1565974702
