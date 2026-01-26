@@ -1,5 +1,13 @@
 { pkgs, ... }:
 
+let
+  # Shared LSP configuration for ruff
+  ruffConfig = {
+    settings = {
+      lineLength = 120;
+    };
+  };
+in
 {
   nixpkgs.overlays = [
     (_final: prev: {
@@ -44,6 +52,7 @@
         plugins.lsp.servers = {
           ruff = {
             enable = true;
+            settings = ruffConfig;
           };
         };
 
@@ -55,6 +64,32 @@
           })
           vim.lsp.enable('ty')
         '';
+      };
+
+      # Zed configuration
+      programs.zed-editor.userSettings = {
+        languages = {
+          Python = {
+            formatter = [
+              { code_action = "source.organizeImports.ruff"; }
+              {
+                language_server = {
+                  name = "ruff";
+                };
+              }
+            ];
+            language_servers = [
+              "ty"
+              "!basedpyright"
+              "..."
+            ];
+          };
+        };
+        lsp = {
+          ruff = {
+            initialization_options = ruffConfig;
+          };
+        };
       };
     };
 

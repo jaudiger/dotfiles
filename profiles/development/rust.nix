@@ -8,6 +8,182 @@
 
 let
   isDarwin = config.nixpkgs.hostPlatform.isDarwin;
+
+  # Shared LSP configuration for rust-analyzer
+  rustAnalyzerConfig = {
+    cargo = {
+      allTargets = true;
+      features = "all";
+    };
+    check = {
+      allTargets = true;
+      command = "clippy";
+    };
+    completion = {
+      snippets = {
+        custom = {
+          # Miscellaneous snippets
+          "struct impl" = {
+            prefix = "struct-impl";
+            body = [
+              "struct \${1:name} {"
+              "    $0"
+              "}"
+              ""
+              "impl $1 {"
+              "}"
+            ];
+            description = "Insert a struct with its implementation statement";
+            scope = "item";
+          };
+          "enum impl" = {
+            prefix = "enum-impl";
+            body = [
+              "enum \${1:name} {"
+              "    $0"
+              "}"
+              ""
+              "impl $1 {"
+              "}"
+            ];
+            description = "Insert a enum with its implementation statement";
+            scope = "item";
+          };
+          "enum error impl" = {
+            prefix = "enum-error-impl";
+            body = [
+              "#[derive(Debug, thiserror::Error)]"
+              "enum \${1:name} {"
+              "    #[error(\"\")]"
+              "    $0"
+              "}"
+            ];
+            description = "Insert a enum error statement";
+            scope = "item";
+          };
+          "derive" = {
+            prefix = "derive";
+            body = [
+              "#[derive($0)]"
+            ];
+            description = "Insert a derive statement";
+            scope = "item";
+          };
+          # Async snippets
+          "std thread spawn" = {
+            prefix = [ "std-spawn" ];
+            body = [
+              "thread::spawn(move || {"
+              "    $0"
+              "});"
+            ];
+            description = "Insert a std::thread::spawn statement";
+            requires = [ "std::thread" ];
+            scope = "expr";
+          };
+          "Tokio async main" = {
+            prefix = [ "tokio-main" ];
+            body = [
+              "#[tokio::main]"
+              "async fn main() -> Result<(), Box<dyn std::error::Error>> {"
+              "    $0"
+              "}"
+            ];
+            description = "Insert a Tokio async main";
+            scope = "item";
+          };
+          # Test snippets
+          "tests" = {
+            prefix = "tests";
+            body = [
+              "#[cfg(test)]"
+              "mod tests {"
+              "    use super::*;"
+              ""
+              "    $0"
+              "}"
+            ];
+            description = "Insert a test module";
+            scope = "item";
+          };
+          "unit test" = {
+            prefix = "test";
+            body = [
+              "#[test]"
+              "fn \${1:name}() {"
+              "    // Given"
+              "    $0todo!();"
+              ""
+              "    // When"
+              "    let result = todo!();"
+              ""
+              "    // Then"
+              "    assert!(result);"
+              "}"
+            ];
+            description = "Insert a test statement";
+            scope = "item";
+          };
+        };
+      };
+    };
+    imports = {
+      granularity = {
+        group = "item";
+      };
+    };
+    inlayHints = {
+      closingBraceHints = {
+        enable = false;
+      };
+      closureReturnTypeHints = {
+        enable = "always";
+      };
+      closureStyle = "rust_analyzer";
+      discriminantHints = {
+        enable = "fieldless";
+      };
+      expressionAdjustmentHints = {
+        enable = "never";
+      };
+      implicitDrops = {
+        enable = true;
+      };
+      lifetimeElisionHints = {
+        enable = "skip_trivial";
+      };
+      parameterHints = {
+        enable = true;
+      };
+      typeHints = {
+        enable = true;
+      };
+    };
+    lens = {
+      references = {
+        adt = {
+          enable = true;
+        };
+        enumVariant = {
+          enable = true;
+        };
+        method = {
+          enable = true;
+        };
+        trait = {
+          enable = true;
+        };
+      };
+    };
+    references = {
+      excludeImports = true;
+      excludeTests = true;
+    };
+    rust = {
+      analyzerTargetDir = true;
+    };
+    testExplorer = true;
+  };
 in
 {
   nixpkgs.overlays = [ inputs.rust-overlay.overlays.default ];
@@ -68,6 +244,16 @@ in
           enable = true;
           installCargo = false;
           installRustc = false;
+          settings = rustAnalyzerConfig;
+        };
+      };
+    };
+
+    # Zed configuration
+    programs.zed-editor.userSettings = {
+      lsp = {
+        "rust-analyzer" = {
+          initialization_options = rustAnalyzerConfig;
         };
       };
     };

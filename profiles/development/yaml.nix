@@ -1,5 +1,24 @@
 { pkgs, ... }:
 
+let
+  # Shared LSP configuration for yaml-language-server
+  yamlConfig = {
+    yaml = {
+      completion = true;
+      format = {
+        enable = true;
+      };
+      hover = true;
+      schemaStore = {
+        enable = true;
+      };
+      schemas = {
+        kubernetes = "**/*.yaml";
+      };
+      validate = true;
+    };
+  };
+in
 {
   modules = {
     home-manager = {
@@ -14,22 +33,16 @@
         plugins.lsp.servers = {
           yamlls = {
             enable = true;
-            settings = {
-              yaml = {
-                completion = true;
-                format = {
-                  enable = true;
-                };
-                hover = true;
-                schemaStore = {
-                  enable = true;
-                };
-                schemas = {
-                  kubernetes = "**/*.yaml";
-                };
-                validate = true;
-              };
-            };
+            settings = yamlConfig;
+          };
+        };
+      };
+
+      # Zed configuration
+      programs.zed-editor.userSettings = {
+        lsp = {
+          "yaml-language-server" = {
+            settings = yamlConfig;
           };
         };
       };
