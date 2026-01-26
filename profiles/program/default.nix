@@ -45,6 +45,7 @@
     ./steam.nix
     ./sweethome3d.nix
     ./teams.nix
+    ./telegram.nix
     ./telepresence.nix
     ./terraform.nix
     ./utm.nix
