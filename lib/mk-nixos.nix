@@ -17,6 +17,13 @@ inputs.nixpkgs.lib.nixosSystem {
     # Home Manager module
     inputs.home-manager.nixosModules.home-manager
 
+    # nixvim home-manager module
+    {
+      home-manager.sharedModules = [
+        inputs.nixvim.homeModules.nixvim
+      ];
+    }
+
     # sops-nix module
     inputs.sops-nix.nixosModules.sops
 

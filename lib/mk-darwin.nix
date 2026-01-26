@@ -17,6 +17,13 @@ inputs.darwin.lib.darwinSystem {
     # Home Manager module
     inputs.home-manager.darwinModules.home-manager
 
+    # nixvim home-manager module
+    {
+      home-manager.sharedModules = [
+        inputs.nixvim.homeModules.nixvim
+      ];
+    }
+
     # sops-nix module
     inputs.sops-nix.darwinModules.sops
 

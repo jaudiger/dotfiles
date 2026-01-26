@@ -37,6 +37,7 @@
     ./lima.nix
     ./logitech.nix
     ./mergiraf.nix
+    ./neovim.nix
     ./ollama.nix
     ./pueue.nix
     ./qemu.nix

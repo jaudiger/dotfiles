@@ -1,17 +1,28 @@
 { pkgs, ... }:
 
 {
-  modules.home-manager.home = {
-    packages = with pkgs; [
-      # Tools
-      nix-init
+  modules.home-manager = {
+    home = {
+      packages = with pkgs; [
+        # Tools
+        nix-init
 
-      # Formatter
-      nixfmt
-      nixfmt-tree
+        # Formatter
+        nixfmt
+        nixfmt-tree
 
-      # Language server
-      nixd
-    ];
+        # Language server
+        nixd
+      ];
+    };
+
+    # Neovim configuration
+    programs.nixvim = {
+      plugins.lsp.servers = {
+        nixd = {
+          enable = true;
+        };
+      };
+    };
   };
 }

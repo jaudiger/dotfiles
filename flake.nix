@@ -20,6 +20,12 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
+    # Neovim configuration framework
+    nixvim = {
+      url = "github:nix-community/nixvim";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
     # To encrypt/decrypt secrets
     sops-nix = {
       url = "github:Mic92/sops-nix";

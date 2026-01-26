@@ -85,6 +85,24 @@
           }
         ];
       };
+
+      # Neovim configuration
+      programs.nixvim = {
+        plugins.lsp.servers = {
+          ruff = {
+            enable = true;
+          };
+        };
+
+        extraConfigLua = ''
+          vim.lsp.config('ty', {
+            cmd = { 'ty', 'server' },
+            filetypes = { 'python' },
+            root_markers = { 'pyproject.toml', 'setup.py', 'setup.cfg', '.git' },
+          })
+          vim.lsp.enable('ty')
+        '';
+      };
     };
 
     host.shell.aliases = {
