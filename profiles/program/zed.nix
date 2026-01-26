@@ -111,6 +111,10 @@ in
           "**/__pycache__"
         ];
         file_types = {
+          Dockerfile = [
+            "Dockerfile"
+            "Dockerfile.*"
+          ];
           JSON = [
             "brioche.lock"
           ];
@@ -455,7 +459,6 @@ in
         };
         search = {
           button = false;
-          case_sensitive = true;
           center_on_match = true;
           include_ignored = true;
         };
@@ -493,9 +496,11 @@ in
         };
         ui_font_family = "JetBrainsMono Nerd Font";
         ui_font_size = 12.5;
+        use_smartcase_search = true;
         use_system_path_prompts = false;
         use_system_prompts = false;
         use_system_window_tabs = true;
+        vertical_scroll_margin = 4;
         vim = {
           cursor_shape = {
             normal = "block";
