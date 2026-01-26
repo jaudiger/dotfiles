@@ -38,8 +38,10 @@ in
       programs.poetry = {
         enable = true;
         settings = {
-          virtualenvs.create = true;
-          virtualenvs.in-project = true;
+          virtualenvs = {
+            create = true;
+            in-project = true;
+          };
         };
       };
 
