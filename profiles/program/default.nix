@@ -23,7 +23,6 @@
     ./git.nix
     ./github.nix
     ./gitlab.nix
-    ./helix.nix
     ./helm.nix
     ./iamlive.nix
     ./insomnia.nix

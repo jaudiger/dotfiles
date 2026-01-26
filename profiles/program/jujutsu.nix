@@ -87,7 +87,7 @@ in
         ui = {
           conflict-marker-style = "git";
           default-command = "status";
-          editor = "hx";
+          editor = "nvim";
           merge-editor = "mergiraf";
         };
 

@@ -39,53 +39,6 @@
         enable = true;
       };
 
-      # Helix configuration
-      programs.helix.languages = {
-        language-server = {
-          ty = {
-            command = "ty";
-            args = [ "server" ];
-          };
-          ruff = {
-            command = "ruff";
-            args = [ "server" ];
-          };
-        };
-
-        language = [
-          {
-            name = "python";
-            scope = "source.python";
-            injection-regex = "python";
-            file-types = [
-              "py"
-              "pyi"
-              "py3"
-              "pyw"
-              "ptl"
-              ".pythonstartup"
-              ".pythonrc"
-              "SConstruct"
-            ];
-            shebangs = [ "python" ];
-            roots = [
-              "setup.py"
-              "setup.cfg"
-              "pyproject.toml"
-            ];
-            comment-token = "#";
-            language-servers = [
-              "ruff"
-              "ty"
-            ];
-            indent = {
-              tab-width = 4;
-              unit = "    ";
-            };
-          }
-        ];
-      };
-
       # Neovim configuration
       programs.nixvim = {
         plugins.lsp.servers = {

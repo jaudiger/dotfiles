@@ -131,7 +131,6 @@ in
           dock = "right";
           tree_view = true;
         };
-        helix_mode = true;
         indent_guides = {
           active_line_width = 2;
           coloring = "fixed";

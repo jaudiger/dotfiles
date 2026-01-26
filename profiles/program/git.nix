@@ -46,7 +46,7 @@ in
         };
 
         core = {
-          editor = "hx";
+          editor = "nvim";
 
           # Enable file system monitor to improve performance of git commands
           # NOTE: fsmonitor may cause issues with Helm plugin installation, see https://github.com/helm/helm/issues/12125

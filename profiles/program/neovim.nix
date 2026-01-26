@@ -4,6 +4,7 @@
   modules.home-manager = {
     programs.nixvim = {
       enable = true;
+      defaultEditor = true;
 
       colorschemes = {
         one = {
