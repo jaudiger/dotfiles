@@ -100,6 +100,18 @@
           };
         };
 
+        treesitter-context = {
+          enable = true;
+          settings = {
+            max_lines = 3;
+            min_window_height = 15;
+          };
+        };
+
+        rainbow-delimiters = {
+          enable = true;
+        };
+
         lsp = {
           enable = true;
           inlayHints = true;
