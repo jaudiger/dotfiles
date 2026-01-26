@@ -566,12 +566,6 @@ in
         "toml"
         "xml"
         "zig"
-
-        # MCP servers
-        "mcp-server-context7"
-        "mcp-server-github"
-        "mcp-server-gitlab"
-        "mcp-server-sonarqube"
       ];
     };
   };
