@@ -138,8 +138,21 @@
         snacks = {
           enable = true;
           settings = {
-            picker.enabled = true;
-            explorer.enabled = true;
+            explorer = {
+              enabled = true;
+            };
+            picker = {
+              enabled = true;
+              sources = {
+                explorer = {
+                  layout = {
+                    layout = {
+                      position = "right";
+                    };
+                  };
+                };
+              };
+            };
           };
         };
 
