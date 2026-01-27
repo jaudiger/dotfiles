@@ -337,6 +337,12 @@
             action = "<cmd>bprevious<CR>";
             options.desc = "Previous buffer";
           }
+          {
+            mode = "n";
+            key = "<leader>bd";
+            action = "<cmd>bdelete<CR>";
+            options.desc = "Close buffer";
+          }
 
           # Windows
           {
