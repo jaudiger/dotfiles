@@ -15,7 +15,8 @@ in
   };
 
   modules.home-manager.home.packages = lib.optionals isLinux (
-    with pkgs.pkgsCross.avr.buildPackages; [
+    with pkgs.pkgsCross.avr.buildPackages;
+    [
       gcc
       binutils
     ]
