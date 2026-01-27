@@ -220,36 +220,59 @@
         };
 
         keymaps = [
+          # Explorer
           {
             mode = "n";
             key = "<leader>e";
             action = "<cmd>lua Snacks.explorer()<CR>";
-            options.desc = "Toggle file explorer";
+            options.desc = "File explorer";
           }
+
+          # Find
           {
             mode = "n";
             key = "<leader>ff";
             action = "<cmd>lua Snacks.picker.files()<CR>";
-            options.desc = "Find files";
+            options.desc = "Files";
           }
           {
             mode = "n";
             key = "<leader>fg";
             action = "<cmd>lua Snacks.picker.grep()<CR>";
-            options.desc = "Live grep";
+            options.desc = "Grep";
           }
           {
             mode = "n";
             key = "<leader>fb";
             action = "<cmd>lua Snacks.picker.buffers()<CR>";
-            options.desc = "Find buffers";
+            options.desc = "Buffers";
           }
           {
             mode = "n";
             key = "<leader>fh";
             action = "<cmd>lua Snacks.picker.help()<CR>";
-            options.desc = "Help tags";
+            options.desc = "Help";
           }
+          {
+            mode = "n";
+            key = "<leader>fr";
+            action = "<cmd>lua Snacks.picker.recent()<CR>";
+            options.desc = "Recent";
+          }
+          {
+            mode = "n";
+            key = "<leader>fs";
+            action = "<cmd>lua Snacks.picker.lsp_symbols()<CR>";
+            options.desc = "Symbols";
+          }
+          {
+            mode = "n";
+            key = "<leader>ft";
+            action = "<cmd>TodoTrouble<CR>";
+            options.desc = "TODOs";
+          }
+
+          # Buffers
           {
             mode = "n";
             key = "<S-l>";
@@ -262,35 +285,39 @@
             action = "<cmd>bprevious<CR>";
             options.desc = "Previous buffer";
           }
+
+          # Windows
           {
             mode = "n";
             key = "<C-h>";
             action = "<C-w>h";
-            options.desc = "Move to left window";
+            options.desc = "Left window";
           }
           {
             mode = "n";
             key = "<C-j>";
             action = "<C-w>j";
-            options.desc = "Move to lower window";
+            options.desc = "Lower window";
           }
           {
             mode = "n";
             key = "<C-k>";
             action = "<C-w>k";
-            options.desc = "Move to upper window";
+            options.desc = "Upper window";
           }
           {
             mode = "n";
             key = "<C-l>";
             action = "<C-w>l";
-            options.desc = "Move to right window";
+            options.desc = "Right window";
           }
+
+          # Misc
           {
             mode = "n";
             key = "<Esc>";
             action = "<cmd>nohlsearch<CR>";
-            options.desc = "Clear search highlight";
+            options.desc = "Clear highlight";
           }
           {
             mode = "n";
