@@ -109,6 +109,14 @@
             };
           };
 
+          harpoon = {
+            enable = true;
+            settings.settings = {
+              save_on_toggle = true;
+              sync_on_ui_close = true;
+            };
+          };
+
           indent-blankline = {
             enable = true;
             settings = {
@@ -333,6 +341,56 @@
             key = "<leader>u";
             action = "<cmd>UndotreeToggle<CR>";
             options.desc = "Undo tree";
+          }
+
+          # Harpoon
+          {
+            mode = "n";
+            key = "<leader>ha";
+            action.__raw = "function() require('harpoon'):list():add() end";
+            options.desc = "Add file";
+          }
+          {
+            mode = "n";
+            key = "<leader>hh";
+            action.__raw = "function() require('harpoon').ui:toggle_quick_menu(require('harpoon'):list()) end";
+            options.desc = "Menu";
+          }
+          {
+            mode = "n";
+            key = "<leader>1";
+            action.__raw = "function() require('harpoon'):list():select(1) end";
+            options.desc = "Harpoon 1";
+          }
+          {
+            mode = "n";
+            key = "<leader>2";
+            action.__raw = "function() require('harpoon'):list():select(2) end";
+            options.desc = "Harpoon 2";
+          }
+          {
+            mode = "n";
+            key = "<leader>3";
+            action.__raw = "function() require('harpoon'):list():select(3) end";
+            options.desc = "Harpoon 3";
+          }
+          {
+            mode = "n";
+            key = "<leader>4";
+            action.__raw = "function() require('harpoon'):list():select(4) end";
+            options.desc = "Harpoon 4";
+          }
+          {
+            mode = "n";
+            key = "<leader>hn";
+            action.__raw = "function() require('harpoon'):list():next() end";
+            options.desc = "Next";
+          }
+          {
+            mode = "n";
+            key = "<leader>hp";
+            action.__raw = "function() require('harpoon'):list():prev() end";
+            options.desc = "Prev";
           }
 
           # Trouble
