@@ -271,6 +271,35 @@
           undotree = {
             enable = true;
           };
+
+          which-key = {
+            enable = true;
+            settings = {
+              delay = 300;
+              spec = [
+                {
+                  __unkeyed-1 = "<leader>f";
+                  group = "Find";
+                }
+                {
+                  __unkeyed-1 = "<leader>g";
+                  group = "Git";
+                }
+                {
+                  __unkeyed-1 = "<leader>h";
+                  group = "Harpoon";
+                }
+                {
+                  __unkeyed-1 = "<leader>c";
+                  group = "Code";
+                }
+                {
+                  __unkeyed-1 = "<leader>x";
+                  group = "Trouble";
+                }
+              ];
+            };
+          };
         };
 
         keymaps = [
