@@ -125,11 +125,11 @@
                   end
                   map('n', ']g', function() gs.nav_hunk('next') end, { desc = 'Next git hunk' })
                   map('n', '[g', function() gs.nav_hunk('prev') end, { desc = 'Previous git hunk' })
-                  map('n', '<leader>gB', function() gs.blame_line({ full = true }) end, { desc = 'Git blame line (full)' })
-                  map('n', '<leader>gp', gs.preview_hunk, { desc = 'Preview git hunk' })
-                  map('n', '<leader>gR', gs.reset_hunk, { desc = 'Reset git hunk' })
-                  map('n', '<leader>gS', gs.stage_hunk, { desc = 'Stage git hunk' })
-                  map('n', '<leader>gU', gs.undo_stage_hunk, { desc = 'Undo stage git hunk' })
+                  map('n', '<leader>gB', function() gs.blame_line({ full = true }) end, { desc = 'Blame line (full)' })
+                  map('n', '<leader>gp', gs.preview_hunk, { desc = 'Preview hunk' })
+                  map('n', '<leader>gR', gs.reset_hunk, { desc = 'Reset hunk' })
+                  map('n', '<leader>gS', gs.stage_hunk, { desc = 'Stage hunk' })
+                  map('n', '<leader>gU', gs.undo_stage_hunk, { desc = 'Undo stage hunk' })
                 end
               '';
             };
@@ -279,6 +279,14 @@
               delay = 300;
               spec = [
                 {
+                  __unkeyed-1 = "<leader>b";
+                  group = "Buffer";
+                }
+                {
+                  __unkeyed-1 = "<leader>c";
+                  group = "Code";
+                }
+                {
                   __unkeyed-1 = "<leader>f";
                   group = "Find";
                 }
@@ -291,8 +299,8 @@
                   group = "Harpoon";
                 }
                 {
-                  __unkeyed-1 = "<leader>c";
-                  group = "Code";
+                  __unkeyed-1 = "<leader>w";
+                  group = "Window";
                 }
                 {
                   __unkeyed-1 = "<leader>x";
@@ -359,13 +367,13 @@
           # Buffers
           {
             mode = "n";
-            key = "<S-l>";
+            key = "]b";
             action = "<cmd>bnext<CR>";
             options.desc = "Next buffer";
           }
           {
             mode = "n";
-            key = "<S-h>";
+            key = "[b";
             action = "<cmd>bprevious<CR>";
             options.desc = "Previous buffer";
           }
@@ -373,33 +381,51 @@
             mode = "n";
             key = "<leader>bd";
             action = "<cmd>bdelete<CR>";
-            options.desc = "Close buffer";
+            options.desc = "Delete buffer";
           }
 
           # Windows
           {
             mode = "n";
-            key = "<C-h>";
+            key = "<leader>wh";
             action = "<C-w>h";
-            options.desc = "Left window";
+            options.desc = "Window left";
           }
           {
             mode = "n";
-            key = "<C-j>";
+            key = "<leader>wj";
             action = "<C-w>j";
-            options.desc = "Lower window";
+            options.desc = "Window down";
           }
           {
             mode = "n";
-            key = "<C-k>";
+            key = "<leader>wk";
             action = "<C-w>k";
-            options.desc = "Upper window";
+            options.desc = "Window up";
           }
           {
             mode = "n";
-            key = "<C-l>";
+            key = "<leader>wl";
             action = "<C-w>l";
-            options.desc = "Right window";
+            options.desc = "Window right";
+          }
+          {
+            mode = "n";
+            key = "<leader>ws";
+            action = "<cmd>split<CR>";
+            options.desc = "Split horizontal";
+          }
+          {
+            mode = "n";
+            key = "<leader>wv";
+            action = "<cmd>vsplit<CR>";
+            options.desc = "Split vertical";
+          }
+          {
+            mode = "n";
+            key = "<leader>wd";
+            action = "<cmd>close<CR>";
+            options.desc = "Close window";
           }
 
           # Misc
@@ -504,7 +530,19 @@
             options.desc = "Close diff";
           }
 
-          # Trouble
+          # Diagnostic
+          {
+            mode = "n";
+            key = "]d";
+            action.__raw = "function() vim.diagnostic.jump({ count = 1 }) end";
+            options.desc = "Next diagnostic";
+          }
+          {
+            mode = "n";
+            key = "[d";
+            action.__raw = "function() vim.diagnostic.jump({ count = -1 }) end";
+            options.desc = "Previous diagnostic";
+          }
           {
             mode = "n";
             key = "<leader>xx";
@@ -530,7 +568,7 @@
             options.desc = "Quickfix";
           }
 
-          # TODO navigation
+          # TODO
           {
             mode = "n";
             key = "]t";
@@ -541,10 +579,10 @@
             mode = "n";
             key = "[t";
             action.__raw = "function() require('todo-comments').jump_prev() end";
-            options.desc = "Prev TODO";
+            options.desc = "Previous TODO";
           }
 
-          # Folding (nvim-ufo)
+          # Folding
           {
             mode = "n";
             key = "zR";
@@ -585,9 +623,24 @@
             underline = true,
             update_in_insert = false,
             severity_sort = true,
-            float = {
-              source = 'if_many',
-            },
+          })
+
+          -- LSP keymaps
+          vim.api.nvim_create_autocmd('LspAttach', {
+            group = vim.api.nvim_create_augroup('UserLspConfig', {}),
+            callback = function(ev)
+              local opts = function(desc) return { buffer = ev.buf, desc = desc } end
+
+              vim.keymap.set('n', '<leader>cd', vim.lsp.buf.definition, opts('Definition'))
+              vim.keymap.set('n', '<leader>cD', vim.lsp.buf.declaration, opts('Declaration'))
+              vim.keymap.set('n', '<leader>ci', vim.lsp.buf.implementation, opts('Implementation'))
+              vim.keymap.set('n', '<leader>ct', vim.lsp.buf.type_definition, opts('Type definition'))
+              vim.keymap.set('n', '<leader>cR', vim.lsp.buf.references, opts('References'))
+              vim.keymap.set('n', '<leader>cr', vim.lsp.buf.rename, opts('Rename'))
+              vim.keymap.set('n', '<leader>ca', vim.lsp.buf.code_action, opts('Code action'))
+              vim.keymap.set('n', '<leader>cf', function() vim.lsp.buf.format({ async = true }) end, opts('Format'))
+              vim.keymap.set('n', '<leader>cl', vim.diagnostic.open_float, opts('Line diagnostic'))
+            end,
           })
         '';
       };
