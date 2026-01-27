@@ -52,6 +52,7 @@
           tabstop = 4;
           textwidth = 120;
           timeoutlen = 500;
+          undofile = true;
           updatetime = 250;
         };
 
@@ -195,6 +196,10 @@
               min_window_height = 15;
             };
           };
+
+          undotree = {
+            enable = true;
+          };
         };
 
         keymaps = [
@@ -269,6 +274,12 @@
             key = "<Esc>";
             action = "<cmd>nohlsearch<CR>";
             options.desc = "Clear search highlight";
+          }
+          {
+            mode = "n";
+            key = "<leader>u";
+            action = "<cmd>UndotreeToggle<CR>";
+            options.desc = "Undo tree";
           }
         ];
 
