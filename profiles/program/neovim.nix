@@ -1,10 +1,15 @@
 { ... }:
 
 {
-  modules.home-manager = {
+  modules.home-manager = { pkgs, ... }: {
     programs.nixvim = {
       enable = true;
       defaultEditor = true;
+
+      extraPackages = with pkgs; [
+        fd
+        ripgrep
+      ];
 
       colorschemes = {
         one = {
