@@ -54,6 +54,12 @@
           timeoutlen = 500;
           undofile = true;
           updatetime = 250;
+
+          # nvim-ufo fold settings
+          foldcolumn = "1";
+          foldlevel = 99;
+          foldlevelstart = 99;
+          foldenable = true;
         };
 
         performance = {
@@ -153,6 +159,17 @@
               icons = { };
               pairs = { };
               surround = { };
+            };
+          };
+
+          nvim-ufo = {
+            enable = true;
+            settings = {
+              provider_selector = ''
+                function(bufnr, filetype, buftype)
+                  return { 'lsp', 'treesitter', 'indent' }
+                end
+              '';
             };
           };
 
@@ -281,10 +298,31 @@
             action = "<cmd>UndotreeToggle<CR>";
             options.desc = "Undo tree";
           }
+
+          # Folding (nvim-ufo)
+          {
+            mode = "n";
+            key = "zR";
+            action.__raw = "function() require('ufo').openAllFolds() end";
+            options.desc = "Open all folds";
+          }
+          {
+            mode = "n";
+            key = "zM";
+            action.__raw = "function() require('ufo').closeAllFolds() end";
+            options.desc = "Close all folds";
+          }
+          {
+            mode = "n";
+            key = "zK";
+            action.__raw = "function() require('ufo').peekFoldedLinesUnderCursor() end";
+            options.desc = "Peek fold";
+          }
         ];
 
         extraConfigLua = ''
           vim.o.winborder = 'rounded'
+          vim.o.fillchars = 'eob: ,fold: ,foldopen:▾,foldsep:│,foldclose:▸'
 
           vim.diagnostic.config({
             virtual_text = {
