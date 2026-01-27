@@ -198,6 +198,10 @@
             };
           };
 
+          todo-comments = {
+            enable = true;
+          };
+
           treesitter = {
             enable = true;
             settings = {
@@ -324,6 +328,20 @@
             key = "<leader>u";
             action = "<cmd>UndotreeToggle<CR>";
             options.desc = "Undo tree";
+          }
+
+          # TODO navigation
+          {
+            mode = "n";
+            key = "]t";
+            action.__raw = "function() require('todo-comments').jump_next() end";
+            options.desc = "Next TODO";
+          }
+          {
+            mode = "n";
+            key = "[t";
+            action.__raw = "function() require('todo-comments').jump_prev() end";
+            options.desc = "Prev TODO";
           }
 
           # Folding (nvim-ufo)
