@@ -151,7 +151,9 @@
             };
           };
 
-          lint.enable = true;
+          lint = {
+            enable = true;
+          };
 
           lsp = {
             enable = true;
