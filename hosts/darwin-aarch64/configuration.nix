@@ -19,6 +19,9 @@ in
             # Replace default 'openssl' since it's out of date
             openssl
           ];
+
+          # Suppress "Last login" message in terminal
+          file.".hushlogin".text = "";
         };
       };
     };
