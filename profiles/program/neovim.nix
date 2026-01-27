@@ -96,6 +96,10 @@
             };
           };
 
+          diffview = {
+            enable = true;
+          };
+
           gitsigns = {
             enable = true;
             settings = {
@@ -106,6 +110,23 @@
                 topdelete.text = "‾";
                 changedelete.text = "~";
               };
+              on_attach = ''
+                function(bufnr)
+                  local gs = require('gitsigns')
+                  local function map(mode, l, r, opts)
+                    opts = opts or {}
+                    opts.buffer = bufnr
+                    vim.keymap.set(mode, l, r, opts)
+                  end
+                  map('n', ']g', function() gs.nav_hunk('next') end, { desc = 'Next git hunk' })
+                  map('n', '[g', function() gs.nav_hunk('prev') end, { desc = 'Previous git hunk' })
+                  map('n', '<leader>gB', function() gs.blame_line({ full = true }) end, { desc = 'Git blame line (full)' })
+                  map('n', '<leader>gp', gs.preview_hunk, { desc = 'Preview git hunk' })
+                  map('n', '<leader>gR', gs.reset_hunk, { desc = 'Reset git hunk' })
+                  map('n', '<leader>gS', gs.stage_hunk, { desc = 'Stage git hunk' })
+                  map('n', '<leader>gU', gs.undo_stage_hunk, { desc = 'Undo stage git hunk' })
+                end
+              '';
             };
           };
 
@@ -168,6 +189,16 @@
               icons = { };
               pairs = { };
               surround = { };
+            };
+          };
+
+          neogit = {
+            enable = true;
+            settings = {
+              integrations = {
+                diffview = true;
+              };
+              kind = "split";
             };
           };
 
@@ -391,6 +422,44 @@
             key = "<leader>hp";
             action.__raw = "function() require('harpoon'):list():prev() end";
             options.desc = "Prev";
+          }
+
+          # Git (neogit + diffview)
+          {
+            mode = "n";
+            key = "<leader>gg";
+            action = "<cmd>Neogit<CR>";
+            options.desc = "Neogit";
+          }
+          {
+            mode = "n";
+            key = "<leader>gc";
+            action = "<cmd>Neogit commit<CR>";
+            options.desc = "Commit";
+          }
+          {
+            mode = "n";
+            key = "<leader>gd";
+            action = "<cmd>DiffviewOpen<CR>";
+            options.desc = "Diff view";
+          }
+          {
+            mode = "n";
+            key = "<leader>gh";
+            action = "<cmd>DiffviewFileHistory %<CR>";
+            options.desc = "File history";
+          }
+          {
+            mode = "n";
+            key = "<leader>gH";
+            action = "<cmd>DiffviewFileHistory<CR>";
+            options.desc = "Branch history";
+          }
+          {
+            mode = "n";
+            key = "<leader>gq";
+            action = "<cmd>DiffviewClose<CR>";
+            options.desc = "Close diff";
           }
 
           # Trouble
