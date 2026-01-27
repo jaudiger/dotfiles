@@ -52,6 +52,16 @@
           updatetime = 250;
         };
 
+        performance = {
+          byteCompileLua = {
+            enable = true;
+            configs = true;
+            luaLib = true;
+            nvimRuntime = true;
+            plugins = true;
+          };
+        };
+
         plugins = {
           lualine = {
             enable = true;
