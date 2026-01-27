@@ -604,9 +604,12 @@
         ];
 
         extraConfigLua = ''
+          -- UI options
           vim.o.winborder = 'rounded'
           vim.o.fillchars = 'eob: ,fold: ,foldopen:▾,foldsep:│,foldclose:▸'
+          vim.opt.shortmess:append("I")
 
+          -- Diagnostic configuration
           vim.diagnostic.config({
             virtual_text = {
               prefix = '●',
