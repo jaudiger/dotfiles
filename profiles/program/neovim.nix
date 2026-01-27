@@ -100,6 +100,10 @@
             enable = true;
           };
 
+          flash = {
+            enable = true;
+          };
+
           gitsigns = {
             enable = true;
             settings = {
