@@ -219,6 +219,10 @@
             };
           };
 
+          trouble = {
+            enable = true;
+          };
+
           undotree = {
             enable = true;
           };
@@ -329,6 +333,32 @@
             key = "<leader>u";
             action = "<cmd>UndotreeToggle<CR>";
             options.desc = "Undo tree";
+          }
+
+          # Trouble
+          {
+            mode = "n";
+            key = "<leader>xx";
+            action = "<cmd>Trouble diagnostics toggle<CR>";
+            options.desc = "Diagnostics";
+          }
+          {
+            mode = "n";
+            key = "<leader>xX";
+            action = "<cmd>Trouble diagnostics toggle filter.buf=0<CR>";
+            options.desc = "Buffer diagnostics";
+          }
+          {
+            mode = "n";
+            key = "<leader>xs";
+            action = "<cmd>Trouble symbols toggle<CR>";
+            options.desc = "Symbols";
+          }
+          {
+            mode = "n";
+            key = "<leader>xq";
+            action = "<cmd>Trouble qflist toggle<CR>";
+            options.desc = "Quickfix";
           }
 
           # TODO navigation
