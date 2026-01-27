@@ -76,13 +76,14 @@
           blink-cmp = {
             enable = true;
             settings = {
-              keymap.preset = "default";
-              sources.default = [
-                "lsp"
-                "path"
-                "snippets"
-                "buffer"
-              ];
+              sources = {
+                default = [
+                  "lsp"
+                  "path"
+                  "snippets"
+                  "buffer"
+                ];
+              };
             };
           };
 
