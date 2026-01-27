@@ -63,6 +63,67 @@
         };
 
         plugins = {
+          blink-cmp = {
+            enable = true;
+            settings = {
+              keymap.preset = "default";
+              sources.default = [
+                "lsp"
+                "path"
+                "snippets"
+                "buffer"
+              ];
+            };
+          };
+
+          bufferline = {
+            enable = true;
+            settings.options = {
+              mode = "buffers";
+              show_buffer_close_icons = true;
+              show_close_icon = false;
+              diagnostics = "nvim_lsp";
+            };
+          };
+
+          conform-nvim = {
+            enable = true;
+            settings = {
+              format_on_save = {
+                timeout_ms = 500;
+                lsp_fallback = true;
+              };
+            };
+          };
+
+          gitsigns = {
+            enable = true;
+            settings = {
+              signs = {
+                add.text = "│";
+                change.text = "│";
+                delete.text = "_";
+                topdelete.text = "‾";
+                changedelete.text = "~";
+              };
+            };
+          };
+
+          indent-blankline = {
+            enable = true;
+            settings = {
+              indent.char = "┆";
+              scope.enabled = true;
+            };
+          };
+
+          lint.enable = true;
+
+          lsp = {
+            enable = true;
+            inlayHints = true;
+          };
+
           lualine = {
             enable = true;
             settings = {
@@ -91,60 +152,18 @@
             };
           };
 
-          bufferline = {
+          mini = {
             enable = true;
-            settings.options = {
-              mode = "buffers";
-              show_buffer_close_icons = true;
-              show_close_icon = false;
-              diagnostics = "nvim_lsp";
-            };
-          };
-
-          indent-blankline = {
-            enable = true;
-            settings = {
-              indent.char = "┆";
-              scope.enabled = true;
-            };
-          };
-
-          treesitter = {
-            enable = true;
-            settings = {
-              highlight.enable = true;
-              indent.enable = true;
-            };
-          };
-
-          treesitter-context = {
-            enable = true;
-            settings = {
-              max_lines = 3;
-              min_window_height = 15;
+            mockDevIcons = true;
+            modules = {
+              icons = { };
+              pairs = { };
+              surround = { };
             };
           };
 
           rainbow-delimiters = {
             enable = true;
-          };
-
-          lsp = {
-            enable = true;
-            inlayHints = true;
-          };
-
-          blink-cmp = {
-            enable = true;
-            settings = {
-              keymap.preset = "default";
-              sources.default = [
-                "lsp"
-                "path"
-                "snippets"
-                "buffer"
-              ];
-            };
           };
 
           snacks = {
@@ -168,40 +187,21 @@
             };
           };
 
-          mini = {
-            enable = true;
-            mockDevIcons = true;
-            modules = {
-              icons = { };
-              pairs = { };
-              surround = { };
-            };
-          };
-
-          gitsigns = {
+          treesitter = {
             enable = true;
             settings = {
-              signs = {
-                add.text = "│";
-                change.text = "│";
-                delete.text = "_";
-                topdelete.text = "‾";
-                changedelete.text = "~";
-              };
+              highlight.enable = true;
+              indent.enable = true;
             };
           };
 
-          conform-nvim = {
+          treesitter-context = {
             enable = true;
             settings = {
-              format_on_save = {
-                timeout_ms = 500;
-                lsp_fallback = true;
-              };
+              max_lines = 3;
+              min_window_height = 15;
             };
           };
-
-          lint.enable = true;
         };
 
         keymaps = [
