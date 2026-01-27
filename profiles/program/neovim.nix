@@ -312,6 +312,64 @@
         };
 
         keymaps = [
+          # Buffers
+          {
+            mode = "n";
+            key = "]b";
+            action = "<cmd>bnext<CR>";
+            options.desc = "Next buffer";
+          }
+          {
+            mode = "n";
+            key = "[b";
+            action = "<cmd>bprevious<CR>";
+            options.desc = "Previous buffer";
+          }
+          {
+            mode = "n";
+            key = "<leader>bd";
+            action = "<cmd>bdelete<CR>";
+            options.desc = "Delete buffer";
+          }
+
+          # Diagnostic
+          {
+            mode = "n";
+            key = "]d";
+            action.__raw = "function() vim.diagnostic.jump({ count = 1 }) end";
+            options.desc = "Next diagnostic";
+          }
+          {
+            mode = "n";
+            key = "[d";
+            action.__raw = "function() vim.diagnostic.jump({ count = -1 }) end";
+            options.desc = "Previous diagnostic";
+          }
+          {
+            mode = "n";
+            key = "<leader>xx";
+            action = "<cmd>Trouble diagnostics toggle<CR>";
+            options.desc = "Diagnostics";
+          }
+          {
+            mode = "n";
+            key = "<leader>xX";
+            action = "<cmd>Trouble diagnostics toggle filter.buf=0<CR>";
+            options.desc = "Buffer diagnostics";
+          }
+          {
+            mode = "n";
+            key = "<leader>xs";
+            action = "<cmd>Trouble symbols toggle<CR>";
+            options.desc = "Symbols";
+          }
+          {
+            mode = "n";
+            key = "<leader>xq";
+            action = "<cmd>Trouble qflist toggle<CR>";
+            options.desc = "Quickfix";
+          }
+
           # Explorer
           {
             mode = "n";
@@ -364,82 +422,62 @@
             options.desc = "TODOs";
           }
 
-          # Buffers
+          # Folding
           {
             mode = "n";
-            key = "]b";
-            action = "<cmd>bnext<CR>";
-            options.desc = "Next buffer";
+            key = "zR";
+            action.__raw = "function() require('ufo').openAllFolds() end";
+            options.desc = "Open all folds";
           }
           {
             mode = "n";
-            key = "[b";
-            action = "<cmd>bprevious<CR>";
-            options.desc = "Previous buffer";
+            key = "zM";
+            action.__raw = "function() require('ufo').closeAllFolds() end";
+            options.desc = "Close all folds";
           }
           {
             mode = "n";
-            key = "<leader>bd";
-            action = "<cmd>bdelete<CR>";
-            options.desc = "Delete buffer";
-          }
-
-          # Windows
-          {
-            mode = "n";
-            key = "<leader>wh";
-            action = "<C-w>h";
-            options.desc = "Window left";
-          }
-          {
-            mode = "n";
-            key = "<leader>wj";
-            action = "<C-w>j";
-            options.desc = "Window down";
-          }
-          {
-            mode = "n";
-            key = "<leader>wk";
-            action = "<C-w>k";
-            options.desc = "Window up";
-          }
-          {
-            mode = "n";
-            key = "<leader>wl";
-            action = "<C-w>l";
-            options.desc = "Window right";
-          }
-          {
-            mode = "n";
-            key = "<leader>ws";
-            action = "<cmd>split<CR>";
-            options.desc = "Split horizontal";
-          }
-          {
-            mode = "n";
-            key = "<leader>wv";
-            action = "<cmd>vsplit<CR>";
-            options.desc = "Split vertical";
-          }
-          {
-            mode = "n";
-            key = "<leader>wd";
-            action = "<cmd>close<CR>";
-            options.desc = "Close window";
+            key = "zK";
+            action.__raw = "function() require('ufo').peekFoldedLinesUnderCursor() end";
+            options.desc = "Peek fold";
           }
 
-          # Misc
+          # Git
           {
             mode = "n";
-            key = "<Esc>";
-            action = "<cmd>nohlsearch<CR>";
-            options.desc = "Clear highlight";
+            key = "<leader>gg";
+            action = "<cmd>Neogit<CR>";
+            options.desc = "Neogit";
           }
           {
             mode = "n";
-            key = "<leader>u";
-            action = "<cmd>UndotreeToggle<CR>";
-            options.desc = "Undo tree";
+            key = "<leader>gc";
+            action = "<cmd>Neogit commit<CR>";
+            options.desc = "Commit";
+          }
+          {
+            mode = "n";
+            key = "<leader>gd";
+            action = "<cmd>DiffviewOpen<CR>";
+            options.desc = "Diff view";
+          }
+          {
+            mode = "n";
+            key = "<leader>gh";
+            action = "<cmd>DiffviewFileHistory %<CR>";
+            options.desc = "File history";
+          }
+          {
+            mode = "n";
+            key = "<leader>gH";
+            action = "<cmd>DiffviewFileHistory<CR>";
+            options.desc = "Branch history";
+          }
+          {
+            mode = "n";
+            key = "<leader>gq";
+            action = "<cmd>DiffviewClose<CR>";
+            options.desc = "Close diff";
           }
 
           # Harpoon
@@ -492,83 +530,21 @@
             options.desc = "Prev";
           }
 
-          # Git (neogit + diffview)
+          # Misc
           {
             mode = "n";
-            key = "<leader>gg";
-            action = "<cmd>Neogit<CR>";
-            options.desc = "Neogit";
+            key = "<Esc>";
+            action = "<cmd>nohlsearch<CR>";
+            options.desc = "Clear highlight";
           }
           {
             mode = "n";
-            key = "<leader>gc";
-            action = "<cmd>Neogit commit<CR>";
-            options.desc = "Commit";
-          }
-          {
-            mode = "n";
-            key = "<leader>gd";
-            action = "<cmd>DiffviewOpen<CR>";
-            options.desc = "Diff view";
-          }
-          {
-            mode = "n";
-            key = "<leader>gh";
-            action = "<cmd>DiffviewFileHistory %<CR>";
-            options.desc = "File history";
-          }
-          {
-            mode = "n";
-            key = "<leader>gH";
-            action = "<cmd>DiffviewFileHistory<CR>";
-            options.desc = "Branch history";
-          }
-          {
-            mode = "n";
-            key = "<leader>gq";
-            action = "<cmd>DiffviewClose<CR>";
-            options.desc = "Close diff";
+            key = "<leader>u";
+            action = "<cmd>UndotreeToggle<CR>";
+            options.desc = "Undo tree";
           }
 
-          # Diagnostic
-          {
-            mode = "n";
-            key = "]d";
-            action.__raw = "function() vim.diagnostic.jump({ count = 1 }) end";
-            options.desc = "Next diagnostic";
-          }
-          {
-            mode = "n";
-            key = "[d";
-            action.__raw = "function() vim.diagnostic.jump({ count = -1 }) end";
-            options.desc = "Previous diagnostic";
-          }
-          {
-            mode = "n";
-            key = "<leader>xx";
-            action = "<cmd>Trouble diagnostics toggle<CR>";
-            options.desc = "Diagnostics";
-          }
-          {
-            mode = "n";
-            key = "<leader>xX";
-            action = "<cmd>Trouble diagnostics toggle filter.buf=0<CR>";
-            options.desc = "Buffer diagnostics";
-          }
-          {
-            mode = "n";
-            key = "<leader>xs";
-            action = "<cmd>Trouble symbols toggle<CR>";
-            options.desc = "Symbols";
-          }
-          {
-            mode = "n";
-            key = "<leader>xq";
-            action = "<cmd>Trouble qflist toggle<CR>";
-            options.desc = "Quickfix";
-          }
-
-          # TODO
+          # TODO comments
           {
             mode = "n";
             key = "]t";
@@ -582,24 +558,48 @@
             options.desc = "Previous TODO";
           }
 
-          # Folding
+          # Windows
           {
             mode = "n";
-            key = "zR";
-            action.__raw = "function() require('ufo').openAllFolds() end";
-            options.desc = "Open all folds";
+            key = "<leader>wh";
+            action = "<C-w>h";
+            options.desc = "Window left";
           }
           {
             mode = "n";
-            key = "zM";
-            action.__raw = "function() require('ufo').closeAllFolds() end";
-            options.desc = "Close all folds";
+            key = "<leader>wj";
+            action = "<C-w>j";
+            options.desc = "Window down";
           }
           {
             mode = "n";
-            key = "zK";
-            action.__raw = "function() require('ufo').peekFoldedLinesUnderCursor() end";
-            options.desc = "Peek fold";
+            key = "<leader>wk";
+            action = "<C-w>k";
+            options.desc = "Window up";
+          }
+          {
+            mode = "n";
+            key = "<leader>wl";
+            action = "<C-w>l";
+            options.desc = "Window right";
+          }
+          {
+            mode = "n";
+            key = "<leader>ws";
+            action = "<cmd>split<CR>";
+            options.desc = "Split horizontal";
+          }
+          {
+            mode = "n";
+            key = "<leader>wv";
+            action = "<cmd>vsplit<CR>";
+            options.desc = "Split vertical";
+          }
+          {
+            mode = "n";
+            key = "<leader>wd";
+            action = "<cmd>close<CR>";
+            options.desc = "Close window";
           }
         ];
 
