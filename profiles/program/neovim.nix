@@ -14,8 +14,11 @@
         ];
 
         colorschemes = {
-          one = {
+          onedark = {
             enable = true;
+            settings = {
+              style = "dark";
+            };
           };
         };
 
@@ -118,7 +121,7 @@
             enable = true;
             settings = {
               options = {
-                theme = "onelight";
+                theme = "onedark";
                 component_separators = {
                   left = "";
                   right = "";
