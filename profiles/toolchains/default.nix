@@ -1,14 +1,13 @@
-{ ... }:
-
 {
   imports = [
     ./avr.nix
     ./c.nix
-    ./cloud.nix
+    ./dockerfile.nix
     ./go.nix
     ./java.nix
     ./nix.nix
     ./nodejs.nix
+    ./openapi.nix
     ./python.nix
     ./ruby.nix
     ./rust.nix

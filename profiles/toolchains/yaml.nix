@@ -25,6 +25,9 @@ in
       home = {
         packages = with pkgs; [
           yaml-language-server
+
+          # GitHub Actions workflow linter
+          actionlint
         ];
       };
 

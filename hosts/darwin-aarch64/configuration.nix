@@ -185,8 +185,15 @@ in
 
   # Import files to setup the environment
   imports = [
-    ../../profiles/development/default.nix
-    ../../profiles/program/default.nix
+    ../../profiles/ai/default.nix
+    ../../profiles/cloud/default.nix
+    ../../profiles/communication/default.nix
+    ../../profiles/editors/default.nix
+    ../../profiles/misc/default.nix
     ../../profiles/system/default.nix
+    ../../profiles/terminal/default.nix
+    ../../profiles/toolchains/default.nix
+    ../../profiles/vcs/default.nix
+    ../../profiles/virtualization/default.nix
   ];
 }
