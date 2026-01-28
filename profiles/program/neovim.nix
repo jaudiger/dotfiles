@@ -280,14 +280,6 @@
               delay = 300;
               spec = [
                 {
-                  __unkeyed-1 = "<leader>b";
-                  group = "Buffer";
-                }
-                {
-                  __unkeyed-1 = "<leader>c";
-                  group = "Code";
-                }
-                {
                   __unkeyed-1 = "<leader>f";
                   group = "Find";
                 }
@@ -313,39 +305,7 @@
         };
 
         keymaps = [
-          # Buffers
-          {
-            mode = "n";
-            key = "]b";
-            action = "<cmd>bnext<CR>";
-            options.desc = "Next buffer";
-          }
-          {
-            mode = "n";
-            key = "[b";
-            action = "<cmd>bprevious<CR>";
-            options.desc = "Previous buffer";
-          }
-          {
-            mode = "n";
-            key = "<leader>bd";
-            action = "<cmd>bdelete<CR>";
-            options.desc = "Delete buffer";
-          }
-
           # Diagnostic
-          {
-            mode = "n";
-            key = "]d";
-            action.__raw = "function() vim.diagnostic.jump({ count = 1 }) end";
-            options.desc = "Next diagnostic";
-          }
-          {
-            mode = "n";
-            key = "[d";
-            action.__raw = "function() vim.diagnostic.jump({ count = -1 }) end";
-            options.desc = "Previous diagnostic";
-          }
           {
             mode = "n";
             key = "<leader>xx";
@@ -629,23 +589,6 @@
             severity_sort = true,
           })
 
-          -- LSP keymaps
-          vim.api.nvim_create_autocmd('LspAttach', {
-            group = vim.api.nvim_create_augroup('UserLspConfig', {}),
-            callback = function(ev)
-              local opts = function(desc) return { buffer = ev.buf, desc = desc } end
-
-              vim.keymap.set('n', '<leader>cd', vim.lsp.buf.definition, opts('Definition'))
-              vim.keymap.set('n', '<leader>cD', vim.lsp.buf.declaration, opts('Declaration'))
-              vim.keymap.set('n', '<leader>ci', vim.lsp.buf.implementation, opts('Implementation'))
-              vim.keymap.set('n', '<leader>ct', vim.lsp.buf.type_definition, opts('Type definition'))
-              vim.keymap.set('n', '<leader>cR', vim.lsp.buf.references, opts('References'))
-              vim.keymap.set('n', '<leader>cr', vim.lsp.buf.rename, opts('Rename'))
-              vim.keymap.set('n', '<leader>ca', vim.lsp.buf.code_action, opts('Code action'))
-              vim.keymap.set('n', '<leader>cf', function() vim.lsp.buf.format({ async = true }) end, opts('Format'))
-              vim.keymap.set('n', '<leader>cl', vim.diagnostic.open_float, opts('Line diagnostic'))
-            end,
-          })
         '';
       };
     };
