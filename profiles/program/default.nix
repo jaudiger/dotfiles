@@ -2,6 +2,7 @@
 
 {
   imports = [
+    ./android-tools.nix
     ./awscli.nix
     ./bat.nix
     ./carapace.nix
