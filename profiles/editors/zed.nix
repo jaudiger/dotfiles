@@ -215,6 +215,7 @@ in
         use_system_prompts = false;
         use_system_window_tabs = true;
         vertical_scroll_margin = 4;
+        vim_mode = true;
         vim = {
           cursor_shape = {
             normal = "block";
@@ -227,38 +228,78 @@ in
         };
       };
 
-      userTasks = [
-        {
-          label = "Launch Claude Code";
-          command = "claude";
-        }
-      ];
-
       userKeymaps = [
+        # Buffers
         {
-          bindings = { };
-          context = "Editor";
+          context = "Editor && VimControl && !VimWaiting && !menu";
+          bindings = {
+            "] b" = "pane::ActivateNextItem";
+            "[ b" = "pane::ActivatePreviousItem";
+          };
+        }
+
+        # Code
+        {
+          context = "Editor && VimControl && !VimWaiting && !menu";
+          bindings = {
+            "g r n" = "editor::Rename";
+            "g r r" = "editor::FindAllReferences";
+            "g r i" = "editor::GoToImplementation";
+            "g r t" = "editor::GoToTypeDefinition";
+            "g r a" = "editor::ToggleCodeActions";
+            "g O" = "outline::Toggle";
+          };
+        }
+
+        # Diagnostic
+        {
+          context = "Editor && (vim_mode == normal || vim_mode == visual) && !VimWaiting && !menu && !GitPanel";
+          bindings = {
+            "space x x" = "diagnostics::Deploy";
+            "space x X" = "diagnostics::DeployCurrentFile";
+            "space x s" = "outline::Toggle";
+          };
+        }
+
+        # Explorer
+        {
+          context = "Editor && (vim_mode == normal || vim_mode == visual) && !VimWaiting && !menu && !GitPanel";
+          bindings = {
+            "space e" = "project_panel::ToggleFocus";
+          };
+        }
+
+        # Find
+        {
+          context = "Editor && (vim_mode == normal || vim_mode == visual) && !VimWaiting && !menu && !GitPanel";
+          bindings = {
+            "space f f" = "file_finder::Toggle";
+            "space f b" = "tab_switcher::Toggle";
+            "space f g" = "pane::DeploySearch";
+            "space f h" = "zed::OpenKeymap";
+            "space f r" = "projects::OpenRecent";
+            "space f s" = "outline::Toggle";
+          };
+        }
+
+        # Git
+        {
+          context = "Editor && VimControl && !VimWaiting && !menu";
+          bindings = {
+            "] g" = "editor::GoToHunk";
+            "[ g" = "editor::GoToPreviousHunk";
+          };
         }
         {
+          context = "Editor && (vim_mode == normal || vim_mode == visual) && !VimWaiting && !menu && !GitPanel";
           bindings = {
-            "cmd-N" = [
-              "workspace::NewTerminal"
-              { "local" = true; }
-            ];
+            "space g g" = "git_panel::ToggleFocus";
+            "space g B" = "git::Blame";
+            "space g p" = "editor::ToggleSelectedDiffHunks";
+            "space g R" = "git::Restore";
+            "space g S" = "git::StageAndNext";
+            "space g U" = "git::UnstageAndNext";
           };
-          context = "Terminal";
-        }
-        {
-          bindings = {
-            "g c c" = [
-              "task::Spawn"
-              {
-                "task_name" = "Launch Claude Code";
-                "reveal_target" = "dock";
-              }
-            ];
-          };
-          context = "Workspace";
         }
       ];
 
