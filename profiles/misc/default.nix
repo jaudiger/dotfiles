@@ -1,6 +1,5 @@
 {
   imports = [
-    ./android-tools.nix
     ./espanso.nix
     ./freecad.nix
     ./insomnia.nix

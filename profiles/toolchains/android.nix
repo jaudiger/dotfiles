@@ -3,8 +3,8 @@
 {
   modules.home-manager = {
     home = {
-      packages = [
-        pkgs.android-tools
+      packages = with pkgs; [
+        android-tools
       ];
     };
   };

@@ -1,5 +1,6 @@
 {
   imports = [
+    ./android.nix
     ./avr.nix
     ./c.nix
     ./dockerfile.nix
