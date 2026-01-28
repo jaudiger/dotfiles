@@ -65,6 +65,7 @@ in
           };
         };
         auto_update = false;
+        auto_signature_help = true;
         buffer_font_family = "JetBrainsMono Nerd Font";
         buffer_font_size = 12.5;
         collaboration_panel = {
