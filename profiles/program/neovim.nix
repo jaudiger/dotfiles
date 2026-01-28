@@ -33,6 +33,7 @@
 
         opts = {
           colorcolumn = "120";
+          confirm = true;
           cursorline = true;
           expandtab = true;
           guicursor = "n-v-c:block,i-ci-ve:ver25,r-cr-o:hor20";
@@ -42,7 +43,7 @@
           listchars = "space:·,tab:→ ,trail:~,extends:>,precedes:<";
           number = true;
           relativenumber = true;
-          scrolloff = 8;
+          scrolloff = 4;
           shiftwidth = 4;
           signcolumn = "yes";
           smartcase = true;
@@ -260,7 +261,7 @@
           treesitter-context = {
             enable = true;
             settings = {
-              max_lines = 3;
+              max_lines = 4;
               min_window_height = 15;
             };
           };
