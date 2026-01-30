@@ -192,6 +192,9 @@ in
     programs.cargo = {
       enable = true;
 
+      # It will be provided by the overlay.
+      package = null;
+
       settings = {
         cache = {
           auto-clean-frequency = "7 days";
