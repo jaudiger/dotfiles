@@ -128,6 +128,7 @@ in
       };
 
       ignores = [
+        ".agents"
         ".angular"
         ".cache"
         ".claude"
@@ -145,6 +146,7 @@ in
         ".venv"
         ".vscode"
         ".zed"
+        "AGENTS.md"
         "build"
         "CLAUDE.md"
         "coverage"
