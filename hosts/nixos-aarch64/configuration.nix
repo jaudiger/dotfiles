@@ -81,7 +81,6 @@ in
   imports = [
     ../../profiles/ai/default.nix
     ../../profiles/cloud/default.nix
-    ../../profiles/communication/default.nix
     ../../profiles/editors/default.nix
     ../../profiles/misc/default.nix
     ../../profiles/system/default.nix
