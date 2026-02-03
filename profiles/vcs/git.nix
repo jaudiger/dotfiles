@@ -127,36 +127,16 @@ in
         };
       };
 
-      ignores = [
+      ignores = host.ignores ++ [
         ".agents"
-        ".angular"
-        ".cache"
         ".claude"
         ".devcontainer"
-        ".devenv"
-        ".DS_Store"
         ".envrc"
         ".gemini"
-        ".gradle"
-        ".idea"
-        ".jj"
-        ".next"
-        ".pnpm-store"
-        ".swc"
-        ".venv"
         ".vscode"
         ".zed"
-        ".zig-cache"
         "AGENTS.md"
-        "build"
         "CLAUDE.md"
-        "coverage"
-        "dist"
-        "output"
-        "node_modules"
-        "target"
-        "zig-out"
-        "__pycache__"
       ];
 
       includes = [

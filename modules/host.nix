@@ -59,6 +59,36 @@ in
       };
     };
 
+    ignores = mkOption {
+      type = types.listOf types.str;
+      default = [
+        ".angular"
+        ".cache"
+        ".devenv"
+        ".DS_Store"
+        ".git"
+        ".gradle"
+        ".idea"
+        ".jj"
+        ".next"
+        ".pnpm-store"
+        ".swc"
+        ".venv"
+        ".zig-cache"
+        "build"
+        "coverage"
+        "dist"
+        "node_modules"
+        "output"
+        "target"
+        "zig-out"
+        "__pycache__"
+      ];
+      description = ''
+        Common ignore patterns shared across tools.
+      '';
+    };
+
     security = {
       authorizedKeys = mkOption {
         type = types.listOf types.str;

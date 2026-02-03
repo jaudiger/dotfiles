@@ -1,5 +1,8 @@
-{ pkgs, ... }:
+{ config, pkgs, ... }:
 
+let
+  host = config.modules.host;
+in
 {
   modules = {
     home-manager = {
@@ -10,7 +13,7 @@
           defaultOptions = [
             "--walker=file,follow,hidden"
             "--walker-root=."
-            "--walker-skip=.angular,.cache,.devenv,.git,.gradle,.idea,.jj,.next,.pnpm-store,.swc,.venv,.zig-cache,build,coverage,dist,node_modules,output,target,zig-out,__pycache__"
+            "--walker-skip=${builtins.concatStringsSep "," host.ignores}"
             "--height=40%"
             "--layout=reverse"
             "--info=inline"

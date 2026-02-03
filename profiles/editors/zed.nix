@@ -91,28 +91,7 @@ in
         features = {
           edit_prediction_provider = "zed";
         };
-        file_scan_exclusions = [
-          "**/.angular"
-          "**/.cache"
-          "**/.devenv"
-          "**/.git"
-          "**/.gradle"
-          "**/.idea"
-          "**/.jj"
-          "**/.next"
-          "**/.pnpm-store"
-          "**/.swc"
-          "**/.venv"
-          "**/.zig-cache"
-          "**/build"
-          "**/coverage"
-          "**/dist"
-          "**/node_modules"
-          "**/output"
-          "**/target"
-          "**/zig-out"
-          "**/__pycache__"
-        ];
+        file_scan_exclusions = map (path: "**/${path}") config.modules.host.ignores;
         file_types = {
           Dockerfile = [
             "Dockerfile"
