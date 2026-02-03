@@ -146,6 +146,7 @@ in
         ".venv"
         ".vscode"
         ".zed"
+        ".zig-cache"
         "AGENTS.md"
         "build"
         "CLAUDE.md"
@@ -154,6 +155,7 @@ in
         "output"
         "node_modules"
         "target"
+        "zig-out"
         "__pycache__"
       ];
 

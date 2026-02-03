@@ -103,12 +103,14 @@ in
           "**/.pnpm-store"
           "**/.swc"
           "**/.venv"
+          "**/.zig-cache"
           "**/build"
           "**/coverage"
           "**/dist"
           "**/node_modules"
           "**/output"
           "**/target"
+          "**/zig-out"
           "**/__pycache__"
         ];
         file_types = {
