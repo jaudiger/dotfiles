@@ -42,6 +42,8 @@ in
 
         edit_mode = "vi";
 
+        error_style = "short";
+
         history = {
           file_format = "sqlite";
         };
@@ -78,8 +80,8 @@ in
 
       envFile.text = ''
         $env.NU_LIB_DIRS = [
-            ($nu.home-path | path join "Development" "git-repositories" "jaudiger" "personal-scripts")
-            ($nu.home-path | path join "Development")
+            ($nu.home-dir | path join "Development" "git-repositories" "jaudiger" "personal-scripts")
+            ($nu.home-dir | path join "Development")
         ]
       '';
     };
