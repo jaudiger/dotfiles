@@ -30,6 +30,7 @@ in
             provider = "mistral";
           };
           default_profile = "write";
+          enable_feedback = false;
           expand_edit_card = false;
           expand_terminal_card = false;
           inline_assistant_model = {
@@ -37,6 +38,7 @@ in
             provider = "mistral";
           };
           message_editor_min_lines = 8;
+          play_sound_when_agent_done = true;
           show_turn_stats = true;
           thread_summary_model = {
             model = "devstral-small-latest";
@@ -81,15 +83,13 @@ in
           };
         };
         edit_predictions = {
+          provider = "zed";
           enabled_in_text_threads = true;
           mode = "subtle";
         };
         excerpt_context_lines = 4;
         "experimental.theme_overrides" = {
           "background.appearance" = "blurred";
-        };
-        features = {
-          edit_prediction_provider = "zed";
         };
         file_scan_exclusions = map (path: "**/${path}") config.modules.host.ignores;
         file_types = {
