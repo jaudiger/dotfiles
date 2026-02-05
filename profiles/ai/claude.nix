@@ -34,14 +34,12 @@ in
         enable = true;
 
         settings = {
-          alwaysThinkingEnabled = true;
           attribution = {
             commit = "";
             pr = "";
           };
           defaultMode = "acceptEdits";
           env = {
-            CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS = 1;
             DISABLE_AUTOUPDATER = 1;
             FORCE_AUTOUPDATE_PLUGINS = 1;
             IS_DEMO = 1;
