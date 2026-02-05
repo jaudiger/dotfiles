@@ -10,6 +10,20 @@ let
   isDarwin = config.nixpkgs.hostPlatform.isDarwin;
 in
 {
+  # TODO: Remove this overlay once a nixpkgs-unstable update includes claude-code >= 2.1.32.
+  nixpkgs.overlays = [
+    (_final: prev: {
+      claude-code = prev.claude-code.overrideAttrs (_oldAttrs: rec {
+        version = "2.1.32";
+        src = prev.fetchzip {
+          url = "https://registry.npmjs.org/@anthropic-ai/claude-code/-/claude-code-${version}.tgz";
+          hash = "sha256-oN+Pl/SpMpI4JiU+x73Z9lNYwaz2mJpYnc4ssAG+oAo=";
+        };
+        npmDepsHash = "sha256-f3PDts0lWVw/uwpiREoqNy4+t8hLWjgvf5mmrmFgJT0=";
+      });
+    })
+  ];
+
   homebrew = lib.mkIf isDarwin {
     casks = [ "claude" ];
   };
@@ -27,6 +41,7 @@ in
           };
           defaultMode = "acceptEdits";
           env = {
+            CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS = 1;
             DISABLE_AUTOUPDATER = 1;
             FORCE_AUTOUPDATE_PLUGINS = 1;
             IS_DEMO = 1;
