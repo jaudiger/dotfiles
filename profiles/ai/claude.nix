@@ -34,15 +34,18 @@ in
         enable = true;
 
         settings = {
+          alwaysThinkingEnabled = true;
           attribution = {
             commit = "";
             pr = "";
           };
           defaultMode = "acceptEdits";
           env = {
-            DISABLE_AUTOUPDATER = 1;
+            CLAUDE_CODE_DISABLE_FEEDBACK_SURVEY = 1;
+            CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC = 1;
+            CLAUDE_CODE_EFFORT_LEVEL = "max";
+            CLAUDE_CODE_HIDE_ACCOUNT_INFO = 1;
             FORCE_AUTOUPDATE_PLUGINS = 1;
-            IS_DEMO = 1;
           };
           permissions = {
             allow = [
