@@ -10,16 +10,16 @@ let
   isDarwin = config.nixpkgs.hostPlatform.isDarwin;
 in
 {
-  # TODO: Remove this overlay once a nixpkgs-unstable update includes claude-code >= 2.1.32.
+  # TODO: Remove this overlay once a nixpkgs-unstable update includes claude-code >= 2.1.33.
   nixpkgs.overlays = [
     (_final: prev: {
       claude-code = prev.claude-code.overrideAttrs (_oldAttrs: rec {
-        version = "2.1.32";
+        version = "2.1.33";
         src = prev.fetchzip {
           url = "https://registry.npmjs.org/@anthropic-ai/claude-code/-/claude-code-${version}.tgz";
-          hash = "sha256-oN+Pl/SpMpI4JiU+x73Z9lNYwaz2mJpYnc4ssAG+oAo=";
+          hash = "sha256-OXbMQVnfRX6Y9WF+nBpKO1Lj0ZXbmefMBuONkSxwEGw=";
         };
-        npmDepsHash = "sha256-f3PDts0lWVw/uwpiREoqNy4+t8hLWjgvf5mmrmFgJT0=";
+        npmDepsHash = "sha256-V7Cj6bqg1mOi9lXbSS36+lENylN0XZG03hiJNZw2IEk=";
       });
     })
   ];
@@ -44,6 +44,7 @@ in
             CLAUDE_CODE_DISABLE_FEEDBACK_SURVEY = 1;
             CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC = 1;
             CLAUDE_CODE_EFFORT_LEVEL = "max";
+            CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS = 1;
             CLAUDE_CODE_HIDE_ACCOUNT_INFO = 1;
             FORCE_AUTOUPDATE_PLUGINS = 1;
           };
