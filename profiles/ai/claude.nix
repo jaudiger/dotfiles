@@ -10,16 +10,16 @@ let
   isDarwin = config.nixpkgs.hostPlatform.isDarwin;
 in
 {
-  # TODO: Remove this overlay once a nixpkgs-unstable update includes claude-code >= 2.1.33.
+  # TODO: Remove this overlay once a nixpkgs-unstable update includes claude-code >= 2.1.34.
   nixpkgs.overlays = [
     (_final: prev: {
       claude-code = prev.claude-code.overrideAttrs (_oldAttrs: rec {
-        version = "2.1.33";
+        version = "2.1.34";
         src = prev.fetchzip {
           url = "https://registry.npmjs.org/@anthropic-ai/claude-code/-/claude-code-${version}.tgz";
-          hash = "sha256-OXbMQVnfRX6Y9WF+nBpKO1Lj0ZXbmefMBuONkSxwEGw=";
+          hash = "sha256-J3kltFY5nR3PsRWbW310VqD/6hhfMbVSvynv0eaIi3M=";
         };
-        npmDepsHash = "sha256-V7Cj6bqg1mOi9lXbSS36+lENylN0XZG03hiJNZw2IEk=";
+        npmDepsHash = "sha256-n762einDxLUUXWMsfdPVhA/kn0ywlJgFQ2ZGoEk3E68=";
       });
     })
   ];
