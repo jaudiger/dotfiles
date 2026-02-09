@@ -15,7 +15,8 @@
   modules.home-manager.home = {
     packages = with pkgs; [
       zig # Or 'zigpkgs.master' to use nightly builds, 'zigpkgs."X.Y.Z"' to use a specific version
-      zls
+      # TODO: re-enable once upstream issue is resolved
+      # zls
 
       superhtml
       supermd
