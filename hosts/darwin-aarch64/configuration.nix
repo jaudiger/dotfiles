@@ -55,7 +55,7 @@ in
       };
     };
 
-    # Add ability to used TouchID or Apple Watch for sudo authentication
+    # Add ability to use TouchID or Apple Watch for sudo authentication
     security.pam.services.sudo_local.touchIdAuth = true;
     security.pam.services.sudo_local.watchIdAuth = true;
 
@@ -77,10 +77,11 @@ in
 
     # Trackpad parameters
     system.defaults.trackpad.Clicking = true;
+    system.defaults.trackpad.Dragging = true;
     system.defaults.trackpad.TrackpadRightClick = true;
+    system.defaults.trackpad.TrackpadThreeFingerDrag = true;
 
     # Global parameters
-    system.defaults.NSGlobalDomain.AppleFontSmoothing = 1;
     system.defaults.NSGlobalDomain.AppleIconAppearanceTheme = "RegularAutomatic";
     system.defaults.NSGlobalDomain.AppleInterfaceStyleSwitchesAutomatically = true;
     system.defaults.NSGlobalDomain.AppleScrollerPagingBehavior = true;
@@ -109,22 +110,31 @@ in
     system.defaults.NSGlobalDomain.NSTextShowsControlCharacters = true;
     system.defaults.NSGlobalDomain.NSUseAnimatedFocusRing = false;
     system.defaults.NSGlobalDomain.NSWindowShouldDragOnGesture = true;
+    # iCloud
+    system.defaults.NSGlobalDomain.NSDocumentSaveNewDocumentsToCloud = false;
+    # Inline predictive text
+    system.defaults.NSGlobalDomain.NSAutomaticInlinePredictionEnabled = false;
+    # Scrollbar
+    system.defaults.NSGlobalDomain.AppleShowScrollBars = "WhenScrolling";
+    # Regional
+    system.defaults.NSGlobalDomain.AppleICUForce24HourTime = true;
+    system.defaults.NSGlobalDomain.AppleMeasurementUnits = "Centimeters";
+    system.defaults.NSGlobalDomain.AppleMetricUnits = 1;
+    system.defaults.NSGlobalDomain.AppleTemperatureUnit = "Celsius";
 
-    # Stage manager parameters
-    system.defaults.WindowManager.GloballyEnabled = false;
-    system.defaults.WindowManager.AutoHide = true;
-    system.defaults.WindowManager.EnableTilingByEdgeDrag = true;
-    system.defaults.WindowManager.EnableTopTilingByEdgeDrag = true;
-    system.defaults.WindowManager.EnableTilingOptionAccelerator = true;
-    system.defaults.WindowManager.EnableTiledWindowMargins = true;
+    # Window Manager parameters
+    system.defaults.WindowManager.EnableStandardClickToShowDesktop = false;
 
     # Login parameters
+    system.defaults.loginwindow.DisableConsoleAccess = true;
     system.defaults.loginwindow.GuestEnabled = false;
     system.defaults.loginwindow.RestartDisabled = true;
     system.defaults.loginwindow.ShutDownDisabled = true;
     system.defaults.loginwindow.SleepDisabled = true;
 
     # Finder parameters
+    system.defaults.finder._FXShowPosixPathInTitle = true;
+    system.defaults.finder._FXSortFoldersFirst = true;
     system.defaults.finder.AppleShowAllFiles = true;
     system.defaults.finder.CreateDesktop = false;
     system.defaults.finder.FXDefaultSearchScope = "SCcf"; # Current folder
@@ -133,7 +143,9 @@ in
     system.defaults.finder.FXRemoveOldTrashItems = true; # Remove items in the trash after 30 days
     system.defaults.finder.NewWindowTarget = "Home";
     system.defaults.finder.QuitMenuItem = true;
+    system.defaults.finder.ShowExternalHardDrivesOnDesktop = false;
     system.defaults.finder.ShowPathbar = true;
+    system.defaults.finder.ShowRemovableMediaOnDesktop = false;
     system.defaults.finder.ShowStatusBar = true;
 
     # Dock parameters
@@ -142,7 +154,6 @@ in
     system.defaults.dock.autohide-time-modifier = 0.5;
     system.defaults.dock.expose-group-apps = false;
     system.defaults.dock.launchanim = false;
-    system.defaults.dock.mineffect = "genie";
     system.defaults.dock.expose-animation-duration = 0.1;
     system.defaults.dock.minimize-to-application = true;
     system.defaults.dock.mouse-over-hilite-stack = true;
@@ -153,25 +164,28 @@ in
     system.defaults.dock.showhidden = true;
     system.defaults.dock.tilesize = 42;
     system.defaults.dock.wvous-bl-corner = 11; # Launchpad
-    system.defaults.dock.wvous-br-corner = 1; # Disabled
     system.defaults.dock.wvous-tl-corner = 2; # Mission Control
-    system.defaults.dock.wvous-tr-corner = 1; # Disabled
 
     # Calendar parameters
     system.defaults.iCal."first day of week" = "Monday";
-    system.defaults.iCal.CalendarSidebarShown = true;
     system.defaults.iCal."TimeZone support enabled" = true;
 
     # Activity Monitor parameters
     system.defaults.ActivityMonitor.IconType = 5;
-    system.defaults.ActivityMonitor.ShowCategory = 100; # All Processes
-    system.defaults.ActivityMonitor.SortColumn = "CPUUsage";
-    system.defaults.ActivityMonitor.SortDirection = 0; # Descending
+
+    # Screensaver parameters
+    system.defaults.screensaver.askForPassword = true;
+    system.defaults.screensaver.askForPasswordDelay = 0;
+
+    # Control center parameters
+    system.defaults.controlcenter.Bluetooth = true;
+
+    # Menu bar clock parameters
+    system.defaults.menuExtraClock.Show24Hour = true;
 
     # Screencapture parameters
     system.defaults.screencapture.disable-shadow = true;
     system.defaults.screencapture.target = "clipboard";
-    system.defaults.screencapture.location = "/tmp"; # If target is "file", the location is the folder
 
     system = {
       # Used for backwards compatibility, please read the changelog before changing.
