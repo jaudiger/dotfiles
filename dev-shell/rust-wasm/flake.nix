@@ -58,7 +58,7 @@
 
               binaryen
               trunk
-              wasm-bindgen-cli_0_2_106
+              wasm-bindgen-cli_0_2_108
               wasm-pack
             ];
 
