@@ -8,7 +8,6 @@
     ./k9s.nix
     ./kor.nix
     ./kubectl.nix
-    ./telepresence.nix
     ./terraform.nix
     ./trivy.nix
     ./wrangler.nix
