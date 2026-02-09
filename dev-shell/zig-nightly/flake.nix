@@ -49,7 +49,7 @@
               with pkgs;
               [ ]
               ++ lib.optionals pkgs.stdenv.isDarwin [
-                apple-sdk_15
+                apple-sdk_26
               ];
           };
         }
