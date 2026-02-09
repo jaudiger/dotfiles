@@ -9,6 +9,14 @@ in
     modules = {
       host = {
         username = "jaudiger";
+
+        shell = {
+          sessionVariables = {
+            # Prune Homebrew cache entries older than 7 days when `brew cleanup` runs
+            HOMEBREW_CLEANUP_MAX_AGE_DAYS = "7";
+            HOMEBREW_NO_ENV_HINTS = "1";
+          };
+        };
       };
 
       # Default packages
