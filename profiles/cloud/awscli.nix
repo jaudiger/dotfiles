@@ -1,4 +1,4 @@
-{ config, pkgs, ... }:
+{ config, ... }:
 
 let
   host = config.modules.host;
@@ -15,12 +15,6 @@ in
           output = "json";
         };
       };
-    };
-
-    home = {
-      packages = with pkgs; [
-        eks-node-viewer
-      ];
     };
   };
 

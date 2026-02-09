@@ -51,12 +51,6 @@ in
           claude = {
             ignore_system_version = false;
           };
-          codex = {
-            ignore_system_version = false;
-          };
-          gemini = {
-            ignore_system_version = false;
-          };
         };
         auto_install_extensions = {
           html = false;
@@ -299,7 +293,6 @@ in
         "neocmake"
         "nix"
         "nu"
-        "ruby"
         "terraform"
         "toml"
         "xml"

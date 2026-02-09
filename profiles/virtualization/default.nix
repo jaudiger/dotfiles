@@ -4,6 +4,5 @@
     ./docker.nix
     ./lima.nix
     ./qemu.nix
-    ./utm.nix
   ];
 }

@@ -12,12 +12,4 @@ in
   homebrew = lib.mkIf isDarwin {
     casks = [ "chatgpt" ];
   };
-
-  modules = {
-    home-manager = {
-      programs.codex = {
-        enable = true;
-      };
-    };
-  };
 }

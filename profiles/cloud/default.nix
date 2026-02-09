@@ -10,6 +10,5 @@
     ./kubectl.nix
     ./terraform.nix
     ./trivy.nix
-    ./wrangler.nix
   ];
 }

@@ -42,7 +42,6 @@ in
       taps = [
         "daveshanley/vacuum"
         "iann0036/iamlive"
-        "osx-cross/avr"
       ];
 
       greedyCasks = true;

@@ -15,7 +15,6 @@
     home = {
       packages = with pkgs; [
         pnpm
-        bun
 
         nodePackages.prettier
         nodePackages.eslint

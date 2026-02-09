@@ -1,7 +1,5 @@
 {
   imports = [
-    ./android.nix
-    ./avr.nix
     ./c.nix
     ./dockerfile.nix
     ./go.nix
@@ -10,7 +8,6 @@
     ./nodejs.nix
     ./openapi.nix
     ./python.nix
-    ./ruby.nix
     ./rust.nix
     ./shell.nix
     ./texlive.nix
