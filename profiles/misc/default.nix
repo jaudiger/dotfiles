@@ -2,7 +2,6 @@
   imports = [
     ./discord.nix
     ./freecad.nix
-    ./insomnia.nix
     ./logitech.nix
     ./retroarch.nix
     ./steam.nix
