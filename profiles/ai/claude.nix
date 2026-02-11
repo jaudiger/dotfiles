@@ -19,6 +19,14 @@ in
       programs.claude-code = {
         enable = true;
 
+        skills = {
+          code-audit = ../../config/claude-code/skills/code-audit;
+          code-review = ../../config/claude-code/skills/code-review;
+          code-security = ../../config/claude-code/skills/code-security;
+          code-test = ../../config/claude-code/skills/code-test;
+          deep-review = ../../config/claude-code/skills/deep-review;
+        };
+
         settings = {
           alwaysThinkingEnabled = true;
           attribution = {
@@ -157,6 +165,70 @@ in
         file."claudeCodeStatusLine" = {
           source = ../../config/claude-code/status-line;
           target = ".claude/scripts/status-line";
+        };
+
+        file."claudeCodeMetaLearnSkill" = {
+          target = ".claude/skills/meta-learn/SKILL.md";
+          text = ''
+            ---
+            name: meta-learn
+            description: >
+              Review the current session for skill/project-config gaps and
+              stale patterns, then update the relevant files.
+            allowed-tools: Read, Grep, Glob, Edit, Write
+            ---
+
+            # Self-Improve
+
+            Review what was accomplished in this session. Identify any patterns,
+            methodologies, or language-specific knowledge that were used but are
+            NOT currently captured in:
+
+            **Global skills** — `${host.dotfilesDirectory}/config/claude-code/skills/`:
+            - `code-audit/` — bug hunting (methodology/ + lang/)
+            - `code-review/` — changeset review (aspects/)
+            - `code-security/` — vulnerability analysis (domain/ + lang/)
+            - `code-test/` — test quality audit (practice/ + lang/)
+            - `deep-review/` — orchestrated multi-skill analysis
+
+            **Project-level Claude files** — in the current working repository:
+            - `CLAUDE.md` at the repo root
+            - `.claude/settings.json`
+            - `.claude/commands/`
+            - `.claude/rules/`
+            - `.claude/agents/`
+
+            ## Phase 1 — Gap detection
+
+            For each gap found:
+            1. State which file should be updated and why
+            2. Show the proposed addition
+            3. Apply the edit after confirmation
+
+            When adding a new concern/aspect/domain to a skill, update both
+            the SKILL.md coverage matrix and create the corresponding sub-file.
+
+            ## Phase 2 — Staleness detection
+
+            Read through all skill files and project Claude files that were
+            relevant to this session. Flag any content that is out of date:
+            - Deprecated API patterns, removed functions, renamed tools
+            - Language version assumptions that no longer hold
+            - References to files, modules, or dependencies absent from the repo
+            - Checklist items now redundant with modern compiler/linter defaults
+
+            For each stale item:
+            1. Quote the outdated content
+            2. Explain why it is stale
+            3. Propose the updated replacement
+            4. Apply the edit after confirmation
+
+            If any out-of-date content is detected, suggest concrete modifications
+            to update it — even if the current task did not require that knowledge.
+            Do not silently ignore stale guidance.
+
+            If no gaps or stale content are found, say so explicitly.
+          '';
         };
       };
     };
