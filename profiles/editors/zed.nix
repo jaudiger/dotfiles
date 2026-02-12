@@ -20,7 +20,6 @@ in
 
       userSettings = {
         agent = {
-          always_allow_tool_actions = true;
           commit_message_model = {
             model = "devstral-small-latest";
             provider = "mistral";
@@ -43,6 +42,9 @@ in
           thread_summary_model = {
             model = "devstral-small-latest";
             provider = "mistral";
+          };
+          tool_permissions = {
+            default = "allow";
           };
           use_modifier_to_send = true;
         };
