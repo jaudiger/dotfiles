@@ -198,8 +198,8 @@ in
     system.defaults.screencapture.target = "clipboard";
 
     system = {
-      # Used for backwards compatibility, please read the changelog before changing.
-      stateVersion = 4;
+      # Used for backwards compatibility, please read the changelog (https://github.com/nix-darwin/nix-darwin/blob/master/CHANGELOG) before changing.
+      stateVersion = 6;
     };
   };
 
