@@ -1,15 +1,13 @@
-# NOTE: vacuum is not available in nixpkgs
-{
-  config,
-  lib,
-  ...
-}:
+{ pkgs, ... }:
 
-let
-  isDarwin = config.nixpkgs.hostPlatform.isDarwin;
-in
 {
-  homebrew = lib.mkIf isDarwin {
-    brews = [ "vacuum" ];
+  modules = {
+    home-manager = {
+      home = {
+        packages = with pkgs; [
+          vacuum-go
+        ];
+      };
+    };
   };
 }

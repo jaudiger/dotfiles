@@ -50,7 +50,6 @@ in
       };
 
       taps = [
-        "daveshanley/vacuum"
         "iann0036/iamlive"
       ];
 
