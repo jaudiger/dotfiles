@@ -91,7 +91,10 @@ in
     system.defaults.controlcenter.Bluetooth = true;
 
     # Language & locale parameters
-    system.defaults.CustomUserPreferences.NSGlobalDomain.AppleLanguages = [ "en-FR" "fr-FR" ];
+    system.defaults.CustomUserPreferences.NSGlobalDomain.AppleLanguages = [
+      "en-FR"
+      "fr-FR"
+    ];
     system.defaults.CustomUserPreferences.NSGlobalDomain.AppleLocale = "en_FR";
 
     # Dock parameters
@@ -205,7 +208,7 @@ in
 
     system = {
       # Used for backwards compatibility, please read the changelog (https://github.com/nix-darwin/nix-darwin/blob/master/CHANGELOG) before changing.
-      stateVersion = 4;
+      stateVersion = 6;
     };
   };
 
