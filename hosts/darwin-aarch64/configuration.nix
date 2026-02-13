@@ -90,12 +90,13 @@ in
     # Control center parameters
     system.defaults.controlcenter.Bluetooth = true;
 
-    # Language & locale parameters
+    # Custom user preferences
     system.defaults.CustomUserPreferences.NSGlobalDomain.AppleLanguages = [
       "en-FR"
       "fr-FR"
     ];
     system.defaults.CustomUserPreferences.NSGlobalDomain.AppleLocale = "en_FR";
+    system.defaults.CustomUserPreferences."com.apple.Siri".StatusMenuVisible = false;
 
     # Dock parameters
     system.defaults.dock.autohide = true;
@@ -114,7 +115,9 @@ in
     system.defaults.dock.showhidden = true;
     system.defaults.dock.tilesize = 42;
     system.defaults.dock.wvous-bl-corner = 11; # Launchpad
+    system.defaults.dock.wvous-br-corner = 1; # Disabled
     system.defaults.dock.wvous-tl-corner = 2; # Mission Control
+    system.defaults.dock.wvous-tr-corner = 13; # Lock Screen
 
     # Finder parameters
     system.defaults.finder._FXShowPosixPathInTitle = true;
@@ -200,6 +203,8 @@ in
     system.defaults.trackpad.Dragging = true;
     system.defaults.trackpad.TrackpadRightClick = true;
     system.defaults.trackpad.TrackpadThreeFingerDrag = true;
+    system.defaults.trackpad.TrackpadFourFingerHorizSwipeGesture = 2; # Switch between full-screen apps
+    system.defaults.trackpad.TrackpadFourFingerPinchGesture = 2; # Pinch = Launchpad, spread = Show Desktop
 
     # Window Manager parameters
     system.defaults.WindowManager.EnableStandardClickToShowDesktop = false;
