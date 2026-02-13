@@ -8,7 +8,13 @@ Some parts of the configuration are not public and are encrypted using [sops](ht
 
 ### Prerequisites
 
-Install Nix on the machine:
+Install Homebrew (only on macOS):
+
+```bash
+bash <(curl --proto '=https' --tlsv1.2 -L https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)
+```
+
+Install Nix:
 
 ```bash
 sh <(curl --proto '=https' --tlsv1.2 -L https://nixos.org/nix/install)
