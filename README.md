@@ -26,7 +26,7 @@ sh <(curl --proto '=https' --tlsv1.2 -L https://nixos.org/nix/install)
 Start an ephemeral Nix shell with GPG, import your private key, then run the first switch — all from the same shell session:
 
 ```bash
-nix shell nixpkgs#gnupg
+nix --extra-experimental-features 'flakes nix-command' shell nixpkgs#gnupg
 
 gpg --import /path/to/private-key.asc
 ```
@@ -34,7 +34,7 @@ gpg --import /path/to/private-key.asc
 On macOS:
 
 ```bash
-nix --extra-experimental-features 'flakes nix-command' run nix-darwin -- switch --flake github:jaudiger/dotfiles#<HOST>
+sudo nix --extra-experimental-features 'flakes nix-command' run nix-darwin -- switch --flake github:jaudiger/dotfiles#<HOST>
 ```
 
 On NixOS:
