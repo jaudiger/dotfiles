@@ -36,6 +36,8 @@ in
     homebrew = {
       enable = true;
 
+      enableZshIntegration = true;
+
       global = {
         autoUpdate = false;
         brewfile = true;

@@ -47,11 +47,6 @@ in
         enable = true;
         package = pkgs.zsh-syntax-highlighting;
       };
-
-      profileExtra = ''
-        # Source Homebrew shell environment variables
-        eval "$(/opt/homebrew/bin/brew shellenv)"
-      '';
     };
   };
 }
