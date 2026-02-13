@@ -84,11 +84,64 @@ in
     # Startup parameters
     system.startup.chime = false;
 
-    # Trackpad parameters
-    system.defaults.trackpad.Clicking = true;
-    system.defaults.trackpad.Dragging = true;
-    system.defaults.trackpad.TrackpadRightClick = true;
-    system.defaults.trackpad.TrackpadThreeFingerDrag = true;
+    # Activity Monitor parameters
+    system.defaults.ActivityMonitor.IconType = 5;
+
+    # Control center parameters
+    system.defaults.controlcenter.Bluetooth = true;
+
+    # Language & locale parameters
+    system.defaults.CustomUserPreferences.NSGlobalDomain.AppleLanguages = [ "en-FR" "fr-FR" ];
+    system.defaults.CustomUserPreferences.NSGlobalDomain.AppleLocale = "en_FR";
+
+    # Dock parameters
+    system.defaults.dock.autohide = true;
+    system.defaults.dock.autohide-delay = 0.1;
+    system.defaults.dock.autohide-time-modifier = 0.5;
+    system.defaults.dock.expose-group-apps = false;
+    system.defaults.dock.launchanim = false;
+    system.defaults.dock.expose-animation-duration = 0.1;
+    system.defaults.dock.minimize-to-application = true;
+    system.defaults.dock.mouse-over-hilite-stack = true;
+    system.defaults.dock.mru-spaces = false;
+    system.defaults.dock.orientation = "left";
+    system.defaults.dock.persistent-apps = [ ];
+    system.defaults.dock.persistent-others = [ "${host.homeDirectory}/Development/git-repositories" ];
+    system.defaults.dock.show-recents = false;
+    system.defaults.dock.showhidden = true;
+    system.defaults.dock.tilesize = 42;
+    system.defaults.dock.wvous-bl-corner = 11; # Launchpad
+    system.defaults.dock.wvous-tl-corner = 2; # Mission Control
+
+    # Finder parameters
+    system.defaults.finder._FXShowPosixPathInTitle = true;
+    system.defaults.finder._FXSortFoldersFirst = true;
+    system.defaults.finder.AppleShowAllFiles = true;
+    system.defaults.finder.CreateDesktop = false;
+    system.defaults.finder.FXDefaultSearchScope = "SCcf"; # Current folder
+    system.defaults.finder.FXEnableExtensionChangeWarning = false;
+    system.defaults.finder.FXPreferredViewStyle = "clmv"; # Column View
+    system.defaults.finder.FXRemoveOldTrashItems = true; # Remove items in the trash after 30 days
+    system.defaults.finder.NewWindowTarget = "Home";
+    system.defaults.finder.QuitMenuItem = true;
+    system.defaults.finder.ShowExternalHardDrivesOnDesktop = false;
+    system.defaults.finder.ShowPathbar = true;
+    system.defaults.finder.ShowRemovableMediaOnDesktop = false;
+    system.defaults.finder.ShowStatusBar = true;
+
+    # Calendar parameters
+    system.defaults.iCal."first day of week" = "Monday";
+    system.defaults.iCal."TimeZone support enabled" = true;
+
+    # Login parameters
+    system.defaults.loginwindow.DisableConsoleAccess = true;
+    system.defaults.loginwindow.GuestEnabled = false;
+    system.defaults.loginwindow.RestartDisabled = true;
+    system.defaults.loginwindow.ShutDownDisabled = true;
+    system.defaults.loginwindow.SleepDisabled = true;
+
+    # Menu bar clock parameters
+    system.defaults.menuExtraClock.Show24Hour = true;
 
     # Global parameters
     system.defaults.NSGlobalDomain.AppleIconAppearanceTheme = "RegularAutomatic";
@@ -131,74 +184,28 @@ in
     system.defaults.NSGlobalDomain.AppleMetricUnits = 1;
     system.defaults.NSGlobalDomain.AppleTemperatureUnit = "Celsius";
 
-    # Window Manager parameters
-    system.defaults.WindowManager.EnableStandardClickToShowDesktop = false;
-
-    # Login parameters
-    system.defaults.loginwindow.DisableConsoleAccess = true;
-    system.defaults.loginwindow.GuestEnabled = false;
-    system.defaults.loginwindow.RestartDisabled = true;
-    system.defaults.loginwindow.ShutDownDisabled = true;
-    system.defaults.loginwindow.SleepDisabled = true;
-
-    # Finder parameters
-    system.defaults.finder._FXShowPosixPathInTitle = true;
-    system.defaults.finder._FXSortFoldersFirst = true;
-    system.defaults.finder.AppleShowAllFiles = true;
-    system.defaults.finder.CreateDesktop = false;
-    system.defaults.finder.FXDefaultSearchScope = "SCcf"; # Current folder
-    system.defaults.finder.FXEnableExtensionChangeWarning = false;
-    system.defaults.finder.FXPreferredViewStyle = "clmv"; # Column View
-    system.defaults.finder.FXRemoveOldTrashItems = true; # Remove items in the trash after 30 days
-    system.defaults.finder.NewWindowTarget = "Home";
-    system.defaults.finder.QuitMenuItem = true;
-    system.defaults.finder.ShowExternalHardDrivesOnDesktop = false;
-    system.defaults.finder.ShowPathbar = true;
-    system.defaults.finder.ShowRemovableMediaOnDesktop = false;
-    system.defaults.finder.ShowStatusBar = true;
-
-    # Dock parameters
-    system.defaults.dock.autohide = true;
-    system.defaults.dock.autohide-delay = 0.1;
-    system.defaults.dock.autohide-time-modifier = 0.5;
-    system.defaults.dock.expose-group-apps = false;
-    system.defaults.dock.launchanim = false;
-    system.defaults.dock.expose-animation-duration = 0.1;
-    system.defaults.dock.minimize-to-application = true;
-    system.defaults.dock.mouse-over-hilite-stack = true;
-    system.defaults.dock.mru-spaces = false;
-    system.defaults.dock.orientation = "left";
-    system.defaults.dock.persistent-others = [ "${host.homeDirectory}/Development/git-repositories" ];
-    system.defaults.dock.show-recents = false;
-    system.defaults.dock.showhidden = true;
-    system.defaults.dock.tilesize = 42;
-    system.defaults.dock.wvous-bl-corner = 11; # Launchpad
-    system.defaults.dock.wvous-tl-corner = 2; # Mission Control
-
-    # Calendar parameters
-    system.defaults.iCal."first day of week" = "Monday";
-    system.defaults.iCal."TimeZone support enabled" = true;
-
-    # Activity Monitor parameters
-    system.defaults.ActivityMonitor.IconType = 5;
+    # Screencapture parameters
+    system.defaults.screencapture.disable-shadow = true;
+    system.defaults.screencapture.target = "clipboard";
 
     # Screensaver parameters
     system.defaults.screensaver.askForPassword = true;
     system.defaults.screensaver.askForPasswordDelay = 0;
 
-    # Control center parameters
-    system.defaults.controlcenter.Bluetooth = true;
+    # Trackpad parameters
+    system.defaults.trackpad.Clicking = true;
+    system.defaults.trackpad.Dragging = true;
+    system.defaults.trackpad.TrackpadRightClick = true;
+    system.defaults.trackpad.TrackpadThreeFingerDrag = true;
 
-    # Menu bar clock parameters
-    system.defaults.menuExtraClock.Show24Hour = true;
-
-    # Screencapture parameters
-    system.defaults.screencapture.disable-shadow = true;
-    system.defaults.screencapture.target = "clipboard";
+    # Window Manager parameters
+    system.defaults.WindowManager.EnableStandardClickToShowDesktop = false;
+    system.defaults.WindowManager.StandardHideWidgets = true;
+    system.defaults.WindowManager.StageManagerHideWidgets = true;
 
     system = {
       # Used for backwards compatibility, please read the changelog (https://github.com/nix-darwin/nix-darwin/blob/master/CHANGELOG) before changing.
-      stateVersion = 6;
+      stateVersion = 4;
     };
   };
 
