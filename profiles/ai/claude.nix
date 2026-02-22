@@ -24,6 +24,7 @@ in
           code-review = ../../config/claude-code/skills/code-review;
           code-security = ../../config/claude-code/skills/code-security;
           code-test = ../../config/claude-code/skills/code-test;
+          deep-resolve = ../../config/claude-code/skills/deep-resolve;
           deep-review = ../../config/claude-code/skills/deep-review;
           meta-learn = ''
             ---
