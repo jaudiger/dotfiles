@@ -78,7 +78,9 @@ Extract from the report:
 4. **Affected areas** — file paths, function names, modules, endpoints mentioned
 5. **Labels/tags** — issue labels that hint at category (bug, security, performance, etc.)
 
-## Phase 2 — Assess relevance
+## Phase 2 — Validate report
+
+### 2a — Assess relevance
 
 Before exploring the codebase, determine whether the report is actionable:
 
@@ -94,11 +96,40 @@ If the report is **ambiguous**:
 - List what is unclear
 - Ask the user for clarification before proceeding
 
-If the report is **relevant**: proceed to Phase 3.
+If the report is **relevant**: proceed to 2b.
+
+### 2b — Factual verification
+
+Cross-reference every concrete claim in the report against the actual codebase.
+This is a lightweight, read-only check — do NOT run the code.
+
+1. **Paths and symbols** — Do the files, modules, functions, types, or endpoints
+   mentioned in the report actually exist? Use Glob and Grep to verify.
+2. **Code structure** — Does the code at the referenced locations match what the
+   report describes (e.g., function signatures, control flow, data types)?
+   Read the relevant source to confirm.
+3. **Described behavior** — Does the code logic support the behavior the report
+   claims? Trace the relevant code paths by reading to see whether the described
+   scenario is plausible given the current source.
+4. **Versions and dependencies** — If the report references specific library
+   versions, APIs, or features, confirm they match what the project actually uses.
+
+For each claim, record one of:
+- **Confirmed** — the codebase matches the report's claim.
+- **Incorrect** — the codebase contradicts the claim (note what actually exists).
+- **Unverifiable** — the claim cannot be confirmed or denied from source alone.
+
+**Outcome:**
+- If critical claims are **incorrect** (e.g., the described function does not
+  exist, the code path works differently than stated): inform the user with
+  specifics, ask whether to proceed or stop.
+- If most claims are **unverifiable** but none are contradicted: note the
+  uncertainty and proceed with caution to Phase 3.
+- If claims are **confirmed**: proceed to Phase 3.
 
 ## Phase 3 — Deep codebase exploration
 
-This is the most critical phase. Do NOT skip or abbreviate it.
+This is a critical phase. Do NOT skip or abbreviate it.
 
 ### 3a — Detect language, framework, version
 
@@ -128,31 +159,43 @@ Using the problem statement and any file/function hints from the report:
 
 1. **Locate the symptom** — find the exact code location where the reported
    behavior manifests (the crash site, the wrong output, the missing handling).
-2. **Trace upstream** — follow the data/control flow backward to find where the
-   real defect originates. The symptom location is often not the root cause.
-3. **Trace downstream** — identify all consumers of the affected code to
-   understand the blast radius of a change.
-4. **Read related modules** — read adjacent modules, shared utilities, type
+2. **Trace upstream** — follow the data/control flow backward from the symptom
+   toward the origin of the data or decision that causes the defect.
+3. **Read related modules** — read adjacent modules, shared utilities, type
    definitions, and configuration that interact with the affected area.
-5. **Read tests** — find and read existing tests for the affected area. Note
+4. **Read tests** — find and read existing tests for the affected area. Note
    what is covered and what is not.
 
-### 3d — Identify the root cause
+## Phase 4 — Root cause & impact
 
-With full context, determine:
+### 4a — Root cause identification
+
+With the full exploration context from Phase 3, determine:
 
 1. **What is actually wrong** — the defect, not just the symptom.
 2. **Why it exists** — what design assumption or oversight led to this state.
-3. **What else is affected** — other code paths that share the same flaw or
-   fragile pattern.
-4. **What the correct design should be** — how this area should work given the
+3. **What the correct design should be** — how this area should work given the
    overall architecture, not just how to suppress the symptom.
 
-## Phase 4 — Selective analysis via sub-skills
+### 4b — Impact analysis
 
-Based on the root cause and issue category, invoke relevant sub-skills for
+Consolidate the full blast radius of the defect and the planned fix:
+
+1. **Downstream consumers** — identify all callers and consumers of the affected
+   code. Trace how the defect propagates through each consumer.
+2. **Sibling patterns** — use Grep to find other code locations that use the
+   same flawed pattern. Record each match with file path and line number.
+3. **Related fragile code** — identify adjacent code that shares assumptions
+   with the defect (e.g., relies on the same invalid invariant).
+4. **Test gap assessment** — cross-reference the affected code paths against
+   existing test coverage. Record which paths have tests, which lack coverage,
+   and which tests are likely to break from the fix.
+
+## Phase 5 — Selective analysis via sub-skills
+
+Based on the root cause identified in Phase 4, invoke relevant sub-skills for
 deeper targeted analysis. This is optional — only invoke sub-skills when their
-specialized methodology adds value beyond what Phase 3 already uncovered.
+specialized methodology adds value beyond what Phases 3–4 already uncovered.
 
 ### Skill selection criteria
 
@@ -211,12 +254,12 @@ section above:
 ```
 ## Gathered Context
 
-Affected area: `<symbol_or_file>` at <file>:<start_line>-<end_line>
+Target: `<symbol_or_file>` at <file>:<start_line>-<end_line>
 Language: <language>
 Framework: <framework> <version>
 
 ### Root cause analysis
-<Summary of the root cause identified in Phase 3>
+<Summary of the root cause identified in Phase 4>
 
 ### Source
 <affected file content or symbol definitions>
@@ -260,10 +303,10 @@ Targets: <affected code regions>
    and the matching `lang/$LANG.md`.
 3. Wait for all Task agents to complete and collect results.
 
-## Phase 5 — Resolve
+## Phase 6 — Resolve
 
-Incorporate findings from Phase 4 sub-skills (if invoked) into the root cause
-analysis from Phase 3. Sub-skill findings may reveal additional defect instances,
+Incorporate findings from Phase 5 sub-skills (if invoked) into the root cause
+analysis from Phase 4. Sub-skill findings may reveal additional defect instances,
 deeper security implications, or test gaps not visible during manual exploration.
 
 Apply changes that fix the root cause and prevent recurrence. This is where the
@@ -271,29 +314,19 @@ skill diverges from analysis-only tools — it modifies the codebase.
 
 ### Resolution principles
 
-1. **Fix the root cause, not the symptom.** If the symptom is a null pointer
-   crash but the root cause is that the data model allows an invalid state,
-   restructure the data model.
-
-2. **Rework when it leads to a better architecture.** If the fix requires
-   bolting a special case onto a fragile abstraction, replace the abstraction.
-   Do not preserve bad designs out of caution — the goal is the best
-   future-proof codebase.
-
-3. **Fix all instances, not just the reported one.** If the same flawed pattern
-   exists elsewhere, fix every occurrence. Use Grep to find all instances.
-
-4. **Update or add tests.** Every fix must be accompanied by tests that:
+1. **Update or add tests.** Every fix must be accompanied by tests that:
    - Reproduce the original failure (regression test)
    - Cover the new behavior
    - Cover edge cases discovered during exploration
+   - Address test gaps identified in Phase 4b impact analysis
 
-5. **Update documentation if behavior changes.** If the fix changes public API
+2. **Update documentation if behavior changes.** If the fix changes public API
    behavior, update relevant documentation.
 
-6. **Clean up collateral damage.** If reworking a module leaves dead code,
-   unused imports, or orphaned helpers — remove them completely. No backwards-
-   compatibility shims or `// removed` comments.
+3. **Clean up and leave no debt.** If reworking a module leaves dead code,
+   unused imports, or orphaned helpers — remove them completely. Do not leave
+   TODO comments, feature flags for old behavior, or backwards-compatibility
+   shims. No `// removed` comments or renamed `_unused` variables.
 
 ### Comment rules
 
@@ -317,7 +350,7 @@ skill diverges from analysis-only tools — it modifies the codebase.
 4. **Run checks** — if the project has a build command, linter, or test suite,
    run them. Fix any failures introduced by the changes.
 
-## Phase 6 — Summary
+## Phase 7 — Summary
 
 After all changes are applied and verified, output a summary:
 
@@ -351,22 +384,11 @@ that warrants future attention. "None" if the fix is complete.>
 
 ## Rules
 
-- **Always explore first.** Never propose or apply changes to code you have not
+- **Explore before acting.** Never propose or apply changes to code you have not
   read and understood in context. Phase 3 is not optional.
-- **Root cause over symptom.** If you find yourself adding a special case,
-  guard clause, or workaround — stop and re-examine whether a deeper fix exists.
-- **Rework over patch.** Do not preserve a bad design to minimize diff size.
-  Cleaner architecture is the priority, not incremental safety.
-- **No architectural debt.** Do not leave TODO comments, feature flags for old
-  behavior, or backwards-compatibility shims. If something needs to change,
-  change it now.
-- **Comments describe what, not why.** The report and commit history are the
-  "why". Code comments explain "what" for future readers.
-- **Complete fixes.** Fix all instances of a pattern, not just the one
-  mentioned in the report. Use Grep to find siblings.
-- **Test everything.** Every behavioral change must have corresponding test
-  coverage.
-- **Break things if needed.** The goal is the best possible codebase. Do not
+- **Break callers if needed.** The goal is the best possible codebase. Do not
   compromise the fix to avoid breaking callers — fix the callers too.
 - **No hallucinated fixes.** If the root cause cannot be determined with
   confidence, say so and ask for more information rather than guessing.
+- **Comments describe what, not why.** The report and commit history are the
+  "why". Code comments explain "what" for future readers.

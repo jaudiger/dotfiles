@@ -57,7 +57,9 @@ Bare paths (no prefix) are treated as `file:PATH` for backward compatibility.
 
 ---
 
-## Phase 1 — Parse input
+## Phase 1 — Parse and validate input
+
+### 1a — Syntax validation
 
 Classify each target by prefix and validate syntax:
 
@@ -68,6 +70,17 @@ Classify each target by prefix and validate syntax:
 
 **Constraint:** Do not allow mixing `diff:` targets with `file:`/`folder:`/`symbol:` targets in one invocation. If the user mixes them, report the error and ask them to separate into two invocations.
 
+### 1b — Semantic validation
+
+- **Empty file check** — for `file:` targets, verify the file is non-empty. If
+  every `file:` target is empty, report "All target files are empty" and stop.
+- **Folder source-file check** — for `folder:` targets, defer validation until
+  after Phase 2 language detection (the folder must contain files matching the
+  detected language).
+- **Symbol resolution confirmation** — for `symbol:` targets, emit a
+  confirmation of the resolved symbol (name, kind, location) after Phase 3
+  symbol resolution completes.
+
 ## Phase 2 — Detect language, framework, version
 
 1. **Language** — determine from file extensions in target paths or diff changeset:
@@ -75,6 +88,10 @@ Classify each target by prefix and validate syntax:
 2. **Framework and version** — inspect project config files:
    - `Cargo.toml`, `package.json`, `go.mod`, `pom.xml`, `build.gradle`, `pyproject.toml`, `build.zig.zon`, `requirements.txt`, `tsconfig.json`, etc.
 3. Record findings for inclusion in context passed to sub-skills.
+
+**Deferred folder validation:** For any `folder:` targets from Phase 1b, verify
+the folder contains source files matching the detected language. If not, report
+"No <language> source files found in <folder>" and exclude that target.
 
 ## Phase 3 — Gather context
 
@@ -149,27 +166,35 @@ Scan the gathered code for patterns and select ALL matching concerns (no artific
 | Error handling paths in source | code-test: `negative-testing` |
 | No clear pattern match | Safe defaults: code-audit `error-handling`+`lifecycle`, code-security `input-validation`+`config` |
 
-Filter out concerns not available for the detected language (check each skill's Available languages table).
+Filter out concerns not available for the detected language (check each skill's
+Available languages table).
 
 ## Phase 5 — Invoke skills via Task agents
 
-Dispatch each skill as a **Task agent** (`subagent_type: general-purpose`). This is necessary because skills with `context: fork` don't see conversation history, so context must be injected explicitly. Task agents also allow parallel execution.
+### 5a — Task dispatch
 
-### Preparing each Task prompt
+Dispatch each skill as a **Task agent** (`subagent_type: general-purpose`). This
+is necessary because skills with `context: fork` don't see conversation history,
+so context must be injected explicitly. Task agents also allow parallel execution.
 
-For each skill invocation, use the absolute paths from the "Skills directory" section above:
+#### Preparing each Task prompt
+
+For each skill invocation, use the absolute paths from the "Skills directory"
+section above:
 
 1. Read `<skill-path>/SKILL.md` (e.g., `~/.claude/skills/code-audit/SKILL.md`).
 2. Read `<skill-path>/lang/$LANG.md` for the detected language (e.g., `~/.claude/skills/code-audit/lang/rust.md`).
 3. Read `<skill-path>/methodology/$CONCERN.md`, `<skill-path>/domain/$DOMAIN.md`, or `<skill-path>/practice/$PRACTICE.md` for the selected concerns.
-4. Construct a Task prompt that includes all of the above plus the gathered context.
+4. Construct a Task prompt (`subagent_type: general-purpose`) that includes all
+   of the above plus the gathered context.
 
-### Context injection format
+#### Context injection format
 
 ```
 ## Gathered Context
 
 Target: `<symbol_name>` at <file>:<start_line>-<end_line>
+Language: <language>
 Framework: <framework> <version>
 
 ### Source
@@ -205,12 +230,30 @@ Use the gathered context to inform your analysis.
 Targets: <target specification>
 ```
 
-### Invocation order
+#### Invocation order
 
 1. If `diff:` target: launch code-review Task agent **first**, wait for results.
-2. Then launch remaining skills (code-audit, code-security, code-test) as **parallel Task agents** — one Task per selected concern/domain/practice.
+2. Then launch remaining skills (code-audit, code-security, code-test) as
+   **parallel Task agents** — one Task per selected concern/domain/practice.
 3. For multi-language changesets: invoke per-language with the appropriate files.
 4. Wait for all Task agents to complete and collect results.
+
+### 5b — Pattern-scope analysis
+
+After all Task agents complete, assess how widely each Critical and High finding
+applies across the codebase:
+
+1. For each Critical or High finding, extract the **code pattern** that
+   constitutes the defect (e.g., a function call without error check, an unsafe
+   cast, a missing validation).
+2. Use **Grep** to search the full codebase for sibling occurrences of the same
+   pattern.
+3. **Classify** each match:
+   - **Same defect** — the match exhibits the identical problem.
+   - **Similar but safe** — the pattern appears but is handled correctly.
+   - **False positive** — syntactic match but semantically unrelated.
+4. **Record scope** for each finding: count of "same defect" matches plus a
+   `file:line` list of each occurrence.
 
 ## Phase 6 — Synthesize report
 
@@ -230,6 +273,9 @@ Combine all skill results into a unified report:
 
 ## Critical and High Findings
 <deduplicated findings from all skills, attributed to originating skill>
+<For each finding, append scope annotation:>
+<  Scope: Also found at N other locations (file1:line, file2:line, ...)>
+<  — or: Scope: Unique to reviewed code>
 
 ## Medium Findings
 <deduplicated medium-severity findings>
@@ -240,6 +286,10 @@ Combine all skill results into a unified report:
 ## Cross-Cutting Observations
 <patterns that span multiple skills — e.g., error handling issues found by both
 code-audit and code-review, or security concerns that also affect test coverage>
+
+## Systemic Patterns
+<patterns from Phase 5b that appear across multiple locations in the codebase,
+grouped by pattern type with total occurrence count and representative examples>
 
 ## Recommendations
 ### Must fix
