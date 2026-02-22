@@ -314,11 +314,14 @@ skill diverges from analysis-only tools — it modifies the codebase.
 
 ### Resolution principles
 
-1. **Update or add tests.** Every fix must be accompanied by tests that:
-   - Reproduce the original failure (regression test)
-   - Cover the new behavior
-   - Cover edge cases discovered during exploration
-   - Address test gaps identified in Phase 4b impact analysis
+1. **Consolidate then extend tests.** Before adding new tests, consolidate
+   existing tests for the affected area — remove redundant cases, merge
+   overlapping tests, and simplify shared setup where possible. Then ensure
+   the test suite includes:
+   - Reproduction of the original failure (regression test)
+   - Coverage of the new behavior
+   - Edge cases discovered during exploration
+   - Test gaps identified in Phase 4b impact analysis
 
 2. **Update documentation if behavior changes.** If the fix changes public API
    behavior, update relevant documentation.
