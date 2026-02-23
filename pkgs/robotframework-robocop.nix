@@ -6,7 +6,7 @@
   hatchling,
   jinja2,
   robotframework,
-  typer-slim,
+  typer,
   rich,
   tomli,
   tomli-w,
@@ -14,11 +14,12 @@
   platformdirs,
   pytz,
   msgpack,
+  typing-extensions,
 }:
 
 buildPythonPackage rec {
   pname = "robotframework-robocop";
-  version = "7.2.0";
+  version = "8.2.0";
   pyproject = true;
 
   disabled = pythonOlder "3.10";
@@ -27,7 +28,7 @@ buildPythonPackage rec {
     owner = "MarketSquare";
     repo = "robotframework-robocop";
     rev = "v${version}";
-    hash = "sha256-3FeHUNxbsCWVBlXE/IkWzUKUeBCzsQDKGSj7F+RX1TI=";
+    hash = "sha256-3nyMLl8k+f5VgMy44/iVMdmJqRqRuUUQUm0g5UQYmMc=";
   };
 
   nativeBuildInputs = [
@@ -38,7 +39,7 @@ buildPythonPackage rec {
   propagatedBuildInputs = [
     jinja2
     robotframework
-    typer-slim
+    typer
     rich
     tomli
     tomli-w
@@ -46,6 +47,7 @@ buildPythonPackage rec {
     platformdirs
     pytz
     msgpack
+    typing-extensions
   ];
 
   pythonImportsCheck = [ "robocop" ];
