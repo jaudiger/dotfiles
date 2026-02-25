@@ -1,8 +1,8 @@
-# Go — Language-Specific Patterns
+# Go -- Language-Specific Patterns
 
 ## Valid concerns
 
-leaks, deadlocks, races, lifecycle, overflow, error-handling, async-bugs, injection
+leaks, deadlocks, races, lifecycle, overflow, error-handling, async-bugs, injection, type-safety
 
 ## Allocation and resource patterns
 
@@ -20,7 +20,7 @@ leaks, deadlocks, races, lifecycle, overflow, error-handling, async-bugs, inject
 - `sync.WaitGroup`: `Add` must be called before `go func()`, not inside the goroutine. `Add` after `Wait` is a race.
 - `sync.Once`: verify the function passed to `Do` does not block on something that also calls `Do` (deadlock).
 - Map concurrent access: concurrent read + write on `map` causes runtime panic. Use `sync.Map` or protect with mutex.
-- Range variable capture pre-Go 1.22: `for _, v := range items { go func() { use(v) }() }` — `v` is shared. Use `go func(v T) { use(v) }(v)` or upgrade to Go 1.22+.
+- Range variable capture pre-Go 1.22: `for _, v := range items { go func() { use(v) }() }` -- `v` is shared. Use `go func(v T) { use(v) }(v)` or upgrade to Go 1.22+.
 - Channel close: only the sender should close. Closing a closed channel panics. Receiving from closed channel returns zero value.
 
 ## Error handling patterns
@@ -36,21 +36,30 @@ leaks, deadlocks, races, lifecycle, overflow, error-handling, async-bugs, inject
 
 - Integer overflow wraps silently (no panic, no UB). `int` is platform-dependent (32 or 64 bit).
 - `int` to `int32` / `uint32` truncation: use explicit bounds check.
-- `len()` returns `int` — on 32-bit platforms, large slices may overflow `int32`.
+- `len()` returns `int` -- on 32-bit platforms, large slices may overflow `int32`.
 - `math.MaxInt`, `math.MinInt` for bounds checking.
 - Unsigned subtraction: Go does not have unsigned literals by default but `uint` wraps on underflow.
 
 ## Async/goroutine patterns
 
-- Fire-and-forget goroutines: `go func() { ... }()` — errors are silently lost unless explicitly handled inside.
+- Fire-and-forget goroutines: `go func() { ... }()` -- errors are silently lost unless explicitly handled inside.
 - Goroutine leak detection: look for goroutines blocked on channel receive/send with no producer/consumer or no context cancellation.
 - `select` with `default`: non-blocking. Without `default`: blocking. Verify intent.
-- `context.Done()` not checked in long loops inside goroutines — the goroutine runs after cancellation.
+- `context.Done()` not checked in long loops inside goroutines -- the goroutine runs after cancellation.
 
 ## Injection patterns
 
 - `os/exec.Command`: first argument is the binary, rest are args (safe). Piping through `sh -c` with string concatenation is command injection.
 - `database/sql`: use `?` or `$1` placeholders. Flag string concatenation in query strings.
 - `filepath.Join` with user input: does not prevent `..` traversal. Use `filepath.Clean` then check prefix.
-- `net/http`: header values from user input — check for CRLF injection.
+- `net/http`: header values from user input -- check for CRLF injection.
 - `html/template` auto-escapes. `text/template` does NOT. Verify the correct package is used.
+
+## Type safety patterns
+
+- `interface{}`/`any` type assertions without comma-ok form: `v := x.(int)` panics vs `v, ok := x.(int)`.
+- Type switch without `default`: missing variant silently does nothing.
+- Nil interface vs nil concrete value: `var x error; var p *MyError; x = p; x != nil` is true even though `p` is nil.
+- `unsafe.Pointer` conversions: `unsafe.Pointer` to `uintptr` and back -- pointer may be moved by GC between the two operations.
+- Generic constraints: `any` constraint allows types that may not support the intended operations.
+- `reflect.Value` without type validation: runtime panics on wrong kind.
