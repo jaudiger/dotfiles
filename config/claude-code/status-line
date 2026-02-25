@@ -19,13 +19,23 @@ def format_number [n: int]: nothing -> string {
 }
 
 def status_line [input: record]: nothing -> nothing {
-    # Extract token usage (default to 0 if missing)
+    # Extract cumulative token usage across the session (default to 0 if missing)
     let input_tokens = $input
-      | get -o context_window.current_usage.input_tokens
+      | get -o context_window.total_input_tokens
       | default 0
     let output_tokens = $input
-      | get -o context_window.current_usage.output_tokens
+      | get -o context_window.total_output_tokens
       | default 0
+
+    # Extract cache-read tokens (default to 0 if missing or null)
+    let cache_read_tokens = $input
+      | get -o context_window.current_usage.cache_read_input_tokens
+      | default 0
+
+    # Extract exceeds 200k token threshold flag
+    let exceeds_200k = $input
+      | get -o exceeds_200k_tokens
+      | default false
 
     # Extract context window usage percentage
     let context_pct = $input
@@ -56,13 +66,23 @@ def status_line [input: record]: nothing -> nothing {
       | default 0
       | into string --decimals 2
 
-    # Build output: ↑0/↓0 [0%] | +0/-0 | $0.00
+    # Build output: ↑0/↓0 ⚡0 [0%] ⚠ | +0/-0 | $0.00
     let tokens = $"(ansi green)↑(format_number $input_tokens)(ansi reset)/(ansi yellow)↓(format_number $output_tokens)(ansi reset)"
+    let cache = if $cache_read_tokens > 0 {
+        $" (ansi cyan)⚡(format_number $cache_read_tokens)(ansi reset)"
+    } else {
+        ""
+    }
     let context = $"($context_color)[($context_pct)%](ansi reset)"
+    let warn_200k = if $exceeds_200k {
+        $" (ansi red)⚠(ansi reset)"
+    } else {
+        ""
+    }
     let lines = $"(ansi green)+($lines_added)(ansi reset)/(ansi red)-($lines_removed)(ansi reset)"
     let cost_str = $"$($cost)"
 
-    print -n $"($tokens) ($context) | ($lines) | ($cost_str)"
+    print -n $"($tokens)($cache) ($context)($warn_200k) | ($lines) | ($cost_str)"
 }
 
 # Status line function for Claude Code UI
