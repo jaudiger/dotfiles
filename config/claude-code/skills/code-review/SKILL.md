@@ -1,10 +1,10 @@
 ---
 name: code-review
 description: >
-  Review code from local modifications, branches, commits, pull requests, or
-  direct file/symbol targets. Run /code-review to see available modes. All
-  review aspects are applied by default; append aspect names after -- to narrow
-  the focus.
+  Review code quality from local modifications, branches, commits, pull
+  requests (PRs), or direct file/symbol targets. Run /code-review to see
+  available modes. All review aspects are applied by default; append aspect
+  names after -- to narrow the focus.
 argument-hint: [targets...] [-- aspect...]
 allowed-tools: Bash, Read, Grep, Glob
 ---
@@ -14,7 +14,7 @@ allowed-tools: Bash, Read, Grep, Glob
 ## Interactive mode (no arguments)
 
 If the user did not provide any targets, print the usage guide below and wait
-for their reply. Do NOT use the AskUserQuestion tool — output the guide as
+for their reply. Do NOT use the AskUserQuestion tool -- output the guide as
 formatted text directly in the conversation.
 
 ### Usage
@@ -38,13 +38,13 @@ Bare paths (no prefix) are treated as `file:PATH` for backward compatibility.
 
 #### Resolution rules
 
-**`file:PATH[#L1-L2]`** — Read the file. If `#L1-L2` is present, review only that line range but read enough surrounding context (imports, type definitions) to understand it.
+**`file:PATH[#L1-L2]`** -- Read the file. If `#L1-L2` is present, review only that line range but read enough surrounding context (imports, type definitions) to understand it.
 
-**`folder:PATH`** — Glob for source files within PATH. Treat each discovered file as a `file:` target.
+**`folder:PATH`** -- Glob for source files within PATH. Treat each discovered file as a `file:` target.
 
-**`symbol:PATH:LINE[#L1-L2]`** — Read the file at PATH. Identify the innermost function, method, struct, class, enum, or trait definition containing LINE. Review that symbol boundary (from signature to closing delimiter). If `#L1-L2` is appended, focus on that range within the symbol.
+**`symbol:PATH:LINE[#L1-L2]`** -- Read the file at PATH. Identify the innermost function, method, struct, class, enum, or trait definition containing LINE. Review that symbol boundary (from signature to closing delimiter). If `#L1-L2` is appended, focus on that range within the symbol.
 
-**`diff:SOURCE`** — Resolve the diff:
+**`diff:SOURCE`** -- Resolve the diff:
 
 | Source | Resolution |
 |--------|------------|
@@ -56,15 +56,15 @@ Bare paths (no prefix) are treated as `file:PATH` for backward compatibility.
 
 #### Edge cases
 
-- `symbol:` LINE on blank/comment/import → scan up/down ~20 lines for nearest symbol; error if none found.
-- Nested symbols (closures, inner functions) → resolve to innermost enclosing.
-- `#L1-L2` where L2 > file length → clamp to file length; L1 > file length → error.
-- `folder:` with no matching files → report "No source files found."
-- Empty diff → report "No changes found" and stop.
+- `symbol:` LINE on blank/comment/import -> scan up/down ~20 lines for nearest symbol; error if none found.
+- Nested symbols (closures, inner functions) -> resolve to innermost enclosing.
+- `#L1-L2` where L2 > file length -> clamp to file length; L1 > file length -> error.
+- `folder:` with no matching files -> report "No source files found."
+- Empty diff -> report "No changes found" and stop.
 
-### Aspects (optional filter — all applied by default)
+### Aspects (optional filter -- all applied by default)
 
-`correctness` · `design` · `security` · `performance` · `error-handling` · `testing` · `maintainability`
+`correctness` | `design` | `security` | `performance` | `error-handling` | `testing` | `maintainability`
 
 ### Examples
 
@@ -81,16 +81,16 @@ Bare paths (no prefix) are treated as `file:PATH` for backward compatibility.
 
 ## Review procedure
 
-### Step 1 — Resolve targets
+### Step 1 -- Resolve targets
 
 Resolve all targets into code regions using the target resolution rules above.
 
 - For `diff:` targets: obtain the raw diff and extract changed files and changed line regions (hunks).
-- For `file:`/`folder:`/`symbol:` targets: there is no diff — the code region itself is the review subject. Review it as a general code quality review (applying aspects to the code directly rather than to a changeset).
+- For `file:`/`folder:`/`symbol:` targets: there is no diff -- the code region itself is the review subject. Review it as a general code quality review (applying aspects to the code directly rather than to a changeset).
 
 If there are no code regions to review (empty diff, no files found), report it and stop.
 
-### Step 2 — Gather context
+### Step 2 -- Gather context
 
 1. For `diff:` targets: extract the list of changed files from the diff. Read each changed file in full using the Read tool. Skip deleted files. If a file exceeds 2 000 lines, read only the regions surrounding changed hunks (200 lines of context around each hunk).
 2. For `file:`/`folder:`/`symbol:` targets: read the target files/regions. For `symbol:` targets, read the full file to understand context around the symbol.
@@ -109,13 +109,13 @@ If there are no code regions to review (empty diff, no files found), report it a
 4. For PRs (`diff:pr:`), use the PR title and description to understand the
    author's stated intent. Evaluate the changes against that intent.
 
-### Step 3 — Detect languages
+### Step 3 -- Detect languages
 
 Determine the language(s) from file extensions in the changeset or target files. Use this to
 inform language-aware feedback (idiomatic patterns, common pitfalls) but do
 not load external files.
 
-### Step 4 — Apply aspects
+### Step 4 -- Apply aspects
 
 For each selected aspect (all seven by default, or only those listed after
 `--`), read the corresponding [`aspects/<aspect>.md`](aspects/) checklist and
@@ -127,20 +127,20 @@ is necessary to understand a new bug.
 
 For `file:`/`folder:`/`symbol:` targets: review the code region directly, applying each aspect as a general code quality evaluation.
 
-### Step 5 — Produce findings
+### Step 5 -- Produce findings
 
 For each finding, provide:
 
 - **File** and **line range** in the current version of the file.
-- **Aspect** (`correctness`, `design`, `security`, …).
+- **Aspect** (`correctness`, `design`, `security`, ...).
 - **Severity**:
-  - `blocker` — must fix before merge; functional bug, security issue, or data loss risk.
-  - `warning` — should fix; correctness risk, poor design, or maintainability concern.
-  - `nit` — optional; style, naming, minor simplification.
-- **Description** — what is wrong and why it matters.
-- **Suggestion** — a concrete fix, alternative approach, or question for the author.
+  - `blocker` -- must fix before merge; functional bug, security issue, or data loss risk.
+  - `warning` -- should fix; correctness risk, poor design, or maintainability concern.
+  - `nit` -- optional; style, naming, minor simplification.
+- **Description** -- what is wrong and why it matters.
+- **Suggestion** -- a concrete fix, alternative approach, or question for the author.
 
-### Step 6 — Summary
+### Step 6 -- Summary
 
 1. A table of all findings grouped by severity.
 2. A one-paragraph overall assessment: is this code ready to merge as-is (for diffs),
