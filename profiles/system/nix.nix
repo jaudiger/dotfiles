@@ -5,8 +5,6 @@ let
   host = config.modules.host;
 in
 {
-  nixpkgs.config.allowUnfree = true;
-
   nix = {
     settings = {
       download-buffer-size = 134217728; # 128MB

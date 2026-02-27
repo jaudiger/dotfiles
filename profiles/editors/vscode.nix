@@ -10,6 +10,8 @@ let
   isLinux = config.nixpkgs.hostPlatform.isLinux;
 in
 {
+  modules.host.unfreePackages = lib.optionals isLinux [ "vscode" ];
+
   homebrew = lib.mkIf isDarwin {
     casks = [ "visual-studio-code" ];
   };

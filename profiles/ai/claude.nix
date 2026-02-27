@@ -15,6 +15,8 @@ in
   };
 
   modules = {
+    host.unfreePackages = [ "claude-code" ];
+
     home-manager = {
       programs.claude-code = {
         enable = true;

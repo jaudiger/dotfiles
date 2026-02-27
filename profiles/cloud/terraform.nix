@@ -2,6 +2,8 @@
 
 {
   modules = {
+    host.unfreePackages = [ "terraform" ];
+
     home-manager = {
       home = {
         packages = with pkgs; [

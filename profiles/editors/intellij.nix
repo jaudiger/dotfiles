@@ -14,6 +14,8 @@ in
     casks = [ "intellij-idea-ce" ];
   };
 
+  modules.host.unfreePackages = lib.optionals isLinux [ "idea" ];
+
   modules.home-manager.home.packages = lib.optionals isLinux [
     pkgs.jetbrains.idea
   ];
