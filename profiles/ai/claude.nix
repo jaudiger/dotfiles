@@ -28,6 +28,7 @@ in
           code-test = ../../config/claude-code/skills/code-test;
           deep-resolve = ../../config/claude-code/skills/deep-resolve;
           deep-review = ../../config/claude-code/skills/deep-review;
+          lang-zig = ../../config/claude-code/skills/lang-zig;
           meta-learn = ''
             ---
             name: meta-learn
