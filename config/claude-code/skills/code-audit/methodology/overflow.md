@@ -6,7 +6,7 @@ Signed and unsigned integer overflow, underflow, truncation, and widening conver
 
 ## Systematic Procedure
 
-### Step 1 — Inventory arithmetic on integers from external input
+### Step 1: Inventory arithmetic on integers from external input
 
 For every integer value derived from external input (network, file, user input, deserialization):
 
@@ -14,7 +14,7 @@ For every integer value derived from external input (network, file, user input, 
 2. Trace every arithmetic operation performed on it (add, subtract, multiply, shift, negate).
 3. Verify bounds checking or saturation before/after each operation.
 
-### Step 2 — Check addition and multiplication overflow
+### Step 2: Check addition and multiplication overflow
 
 For every `a + b`, `a * b`, or `a += b` on integer types:
 
@@ -23,7 +23,7 @@ For every `a + b`, `a * b`, or `a += b` on integer types:
 3. If wrapping: does subsequent code assume the result is >= both operands?
 4. Flag any use of the result as a buffer size, array index, or allocation size.
 
-### Step 3 — Check subtraction underflow
+### Step 3: Check subtraction underflow
 
 For every `a - b` on unsigned integers:
 
@@ -31,7 +31,7 @@ For every `a - b` on unsigned integers:
 2. If unsigned: the result wraps to a very large number. Flag if used as a size or index.
 3. Check loop termination: `for (unsigned i = n; i >= 0; i--)` never terminates.
 
-### Step 4 — Check narrowing conversions and casts
+### Step 4: Check narrowing conversions and casts
 
 For every cast from a wider type to a narrower type (e.g., u64 to u32, i64 to i32, int to short):
 
@@ -39,7 +39,7 @@ For every cast from a wider type to a narrower type (e.g., u64 to u32, i64 to i3
 2. Can truncation cause the cast value to be wildly different from the original?
 3. Flag any unchecked cast of external input or computed values used for sizes, indices, or offsets.
 
-### Step 5 — Check signed/unsigned conversion
+### Step 5: Check signed/unsigned conversion
 
 For every conversion between signed and unsigned:
 
@@ -47,13 +47,13 @@ For every conversion between signed and unsigned:
 2. Can a large unsigned value be interpreted as a negative signed value?
 3. Flag comparisons between signed and unsigned (implicit promotion rules differ by language).
 
-### Step 6 — Check shift operations
+### Step 6: Check shift operations
 
 1. Shifting by >= bit width of the type is undefined behavior in C/C++ and produces zero or wraps in other languages. Verify the shift amount is bounds-checked.
 2. Left shift of a signed negative value: undefined in C, varies in other languages.
 3. Right shift of a signed negative: arithmetic vs logical shift varies by language/platform.
 
-### Step 7 — Check size_t/usize/len calculations
+### Step 7: Check size_t/usize/len calculations
 
 1. Array length calculations: `end - start` when end < start.
 2. Buffer size calculations: `header_size + payload_size` when payload_size is attacker-controlled.

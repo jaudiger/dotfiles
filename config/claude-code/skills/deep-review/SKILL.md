@@ -4,7 +4,7 @@ description: >
   Comprehensive read-only multi-dimensional code analysis. Orchestrates
   code-review, code-audit, code-security, and code-test with centralized
   context gathering. Input is source code targets (file, folder, symbol, or
-  diff) -- NOT issue reports. For resolving bug reports and issues, use
+  diff); NOT issue reports. For resolving bug reports and issues, use
   deep-resolve instead.
 argument-hint: [targets...]
 allowed-tools: Bash, Read, Grep, Glob, Task, WebFetch
@@ -24,7 +24,7 @@ All `Read` calls for skill files MUST use the absolute paths listed above.
 ## Interactive mode (no arguments)
 
 If the user did not provide any targets, print the usage guide below and wait
-for their reply. Do NOT use the AskUserQuestion tool -- output the guide as
+for their reply. Do NOT use the AskUserQuestion tool; output the guide as
 formatted text directly in the conversation.
 
 ### Usage
@@ -58,35 +58,35 @@ Bare paths (no prefix) are treated as `file:PATH` for backward compatibility.
 
 ---
 
-## Phase 1 -- Parse and validate input
+## Phase 1: Parse and validate input
 
-### 1a -- Syntax validation
+### 1a: Syntax validation
 
 Classify each target by prefix and validate syntax:
 
-- `file:PATH[#L1-L2]` -- validate PATH exists
-- `folder:PATH` -- validate PATH is a directory
-- `symbol:PATH:LINE[#L1-L2]` -- validate PATH exists and LINE is a positive integer
-- `diff:SOURCE` -- validate source format (local, branch[:REF], pr:N/URL, commit:SHA)
+- `file:PATH[#L1-L2]`: validate PATH exists
+- `folder:PATH`: validate PATH is a directory
+- `symbol:PATH:LINE[#L1-L2]`: validate PATH exists and LINE is a positive integer
+- `diff:SOURCE`: validate source format (local, branch[:REF], pr:N/URL, commit:SHA)
 
 **Constraint:** Do not allow mixing `diff:` targets with `file:`/`folder:`/`symbol:` targets in one invocation. If the user mixes them, report the error and ask them to separate into two invocations.
 
-### 1b -- Semantic validation
+### 1b: Semantic validation
 
-- **Empty file check** -- for `file:` targets, verify the file is non-empty. If
+- **Empty file check**; for `file:` targets, verify the file is non-empty. If
   every `file:` target is empty, report "All target files are empty" and stop.
-- **Folder source-file check** -- for `folder:` targets, defer validation until
+- **Folder source-file check**; for `folder:` targets, defer validation until
   after Phase 2 language detection (the folder must contain files matching the
   detected language).
-- **Symbol resolution confirmation** -- for `symbol:` targets, emit a
+- **Symbol resolution confirmation**; for `symbol:` targets, emit a
   confirmation of the resolved symbol (name, kind, location) after Phase 3
   symbol resolution completes.
 
-## Phase 2 -- Detect language, framework, version
+## Phase 2: Detect language, framework, version
 
-1. **Language** -- determine from file extensions in target paths or diff changeset:
-   - `.rs` -> rust, `.go` -> go, `.ts`/`.tsx` -> ts, `.java` -> java, `.c`/`.h` -> c, `.zig` -> zig, `.py` -> python
-2. **Framework and version** -- inspect project config files:
+1. **Language**; determine from file extensions in target paths or diff changeset:
+   - `.rs` to rust, `.go` to go, `.ts`/`.tsx` to ts, `.java` to java, `.c`/`.h` to c, `.zig` to zig, `.py` to python
+2. **Framework and version**; inspect project config files:
    - `Cargo.toml`, `package.json`, `go.mod`, `pom.xml`, `build.gradle`, `pyproject.toml`, `build.zig.zon`, `requirements.txt`, `tsconfig.json`, etc.
 3. Record findings for inclusion in context passed to sub-skills.
 
@@ -94,7 +94,7 @@ Classify each target by prefix and validate syntax:
 the folder contains source files matching the detected language. If not, report
 "No <language> source files found in <folder>" and exclude that target.
 
-## Phase 3 -- Gather context
+## Phase 3: Gather context
 
 Context depth varies by input type:
 
@@ -122,7 +122,7 @@ If the diff is empty, report "No changes found" and stop.
 For each `symbol:` target:
 1. Read the file at PATH. Identify the innermost function, method, struct, class, enum, or trait definition containing LINE.
 2. If LINE lands on blank/comment/import, scan up/down ~20 lines for nearest symbol; error if none found.
-3. Nested symbols -> resolve to innermost enclosing.
+3. Nested symbols to resolve to innermost enclosing.
 4. Read the full symbol definition (signature to closing delimiter).
 5. For each function/method called within the symbol: use Grep to find its definition, then Read it. Collect up to the first-level callees.
 6. For parameter types and return types: find their definitions (struct/class/enum/trait/interface).
@@ -130,7 +130,7 @@ For each `symbol:` target:
 8. Find up to 5 callers of this symbol using Grep.
 9. For complex call graphs, use Task(Explore) to assist.
 
-## Phase 4 -- Select skills and concerns
+## Phase 4: Select skills and concerns
 
 ### Skill selection
 
@@ -170,9 +170,9 @@ Scan the gathered code for patterns and select ALL matching concerns (no artific
 Filter out concerns not available for the detected language (check each skill's
 Available languages table).
 
-## Phase 5 -- Invoke skills via Task agents
+## Phase 5: Invoke skills via Task agents
 
-### 5a -- Task dispatch
+### 5a: Task dispatch
 
 Dispatch each skill as a **Task agent** (`subagent_type: general-purpose`). This
 is necessary because skills with `context: fork` don't see conversation history,
@@ -202,7 +202,7 @@ Framework: <framework> <version>
 <file content or symbol definition>
 
 ### Called functions
-- `<function_name>()` at <file>:<line> -- <return type summary>
+- `<function_name>()` at <file>:<line>; <return type summary>
   <function body>
 
 ### Type definitions
@@ -213,7 +213,7 @@ Framework: <framework> <version>
 - <caller_name> (<file>:<line>)
 
 ### Related tests
-- <test_file>:<line> -- <test function name>
+- <test_file>:<line>; <test function name>
   <test body>
 
 ## Skill Instructions
@@ -235,11 +235,11 @@ Targets: <target specification>
 
 1. If `diff:` target: launch code-review Task agent **first**, wait for results.
 2. Then launch remaining skills (code-audit, code-security, code-test) as
-   **parallel Task agents** -- one Task per selected concern/domain/practice.
+   **parallel Task agents**; one Task per selected concern/domain/practice.
 3. For multi-language changesets: invoke per-language with the appropriate files.
 4. Wait for all Task agents to complete and collect results.
 
-### 5b -- Pattern-scope analysis
+### 5b: Pattern-scope analysis
 
 After all Task agents complete, assess how widely each Critical and High finding
 applies across the codebase:
@@ -250,13 +250,13 @@ applies across the codebase:
 2. Use **Grep** to search the full codebase for sibling occurrences of the same
    pattern.
 3. **Classify** each match:
-   - **Same defect** -- the match exhibits the identical problem.
-   - **Similar but safe** -- the pattern appears but is handled correctly.
-   - **False positive** -- syntactic match but semantically unrelated.
+   - **Same defect**; the match exhibits the identical problem.
+   - **Similar but safe**; the pattern appears but is handled correctly.
+   - **False positive**; syntactic match but semantically unrelated.
 4. **Record scope** for each finding: count of "same defect" matches plus a
    `file:line` list of each occurrence.
 
-## Phase 6 -- Synthesize report
+## Phase 6: Synthesize report
 
 Combine all skill results into a unified report:
 
@@ -276,7 +276,7 @@ Combine all skill results into a unified report:
 <deduplicated findings from all skills, attributed to originating skill>
 <For each finding, append scope annotation:>
 <  Scope: Also found at N other locations (file1:line, file2:line, ...)>
-<  -- or: Scope: Unique to reviewed code>
+< ; or: Scope: Unique to reviewed code>
 
 ## Medium Findings
 <deduplicated medium-severity findings>
@@ -285,7 +285,7 @@ Combine all skill results into a unified report:
 <deduplicated low-severity findings>
 
 ## Cross-Cutting Observations
-<patterns that span multiple skills -- e.g., error handling issues found by both
+<patterns that span multiple skills; e.g., error handling issues found by both
 code-audit and code-review, or security concerns that also affect test coverage>
 
 ## Systemic Patterns
@@ -310,7 +310,7 @@ When the same file+line+issue appears across multiple skills, merge into a singl
 ## Rules
 
 - Read-only analysis. Do not modify any files.
-- Do not skip context gathering -- the centralized context is the value over running individual skills separately.
+- Do not skip context gathering; the centralized context is the value over running individual skills separately.
 - Let sub-skills run their full procedure. Do not truncate or summarize their instructions.
 - If a skill finds no issues, note it in the report rather than omitting it.
 - For large changesets (50+ files), warn the user and suggest narrowing scope.

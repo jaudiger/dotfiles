@@ -6,7 +6,7 @@ Floating promises, unhandled async errors, shared mutable state across await poi
 
 ## Systematic Procedure
 
-### Step 1 — Check for floating promises and unhandled futures
+### Step 1: Check for floating promises and unhandled futures
 
 For every async function call, promise creation, or future spawn:
 
@@ -15,7 +15,7 @@ For every async function call, promise creation, or future spawn:
 3. Flag any async function call whose return value is not captured.
 4. Flag `.then()` chains without a terminal `.catch()` or error handler.
 
-### Step 2 — Check error handling across async boundaries
+### Step 2: Check error handling across async boundaries
 
 For every try/catch around async code:
 
@@ -25,7 +25,7 @@ For every try/catch around async code:
 4. For promise combinators (all, race, allSettled): if one promise rejects, are the others cleaned up (cancelled, aborted)?
 5. `Promise.all` partial failure: are successfully-resolved resources released if one promise fails?
 
-### Step 3 — Check shared mutable state across await points
+### Step 3: Check shared mutable state across await points
 
 For every mutable variable accessed both before and after an await/yield:
 
@@ -34,14 +34,14 @@ For every mutable variable accessed both before and after an await/yield:
 3. Are multiple async tasks writing to the same variable without coordination?
 4. Flag any check-then-act pattern where the check and act are separated by an await.
 
-### Step 4 — Check concurrent task lifecycle
+### Step 4: Check concurrent task lifecycle
 
 1. Spawned tasks: are they tracked? Can the parent cancel or wait for them?
 2. Fire-and-forget tasks: are errors handled inside the task?
 3. Task cancellation: does the task check for cancellation and clean up resources?
 4. Goroutine/task leak: can a spawned unit block forever with no cancellation path?
 
-### Step 5 — Check callback and event-driven patterns
+### Step 5: Check callback and event-driven patterns
 
 1. Event listeners added without corresponding removal in teardown.
 2. Callbacks that reference state (`this`, closed-over variables) that may be stale or disposed when the callback fires.
@@ -49,9 +49,9 @@ For every mutable variable accessed both before and after an await/yield:
 4. Stream/iterator consumption without error event handling.
 5. Callbacks that fire after the owning component is destroyed.
 
-### Step 6 — Check async function correctness
+### Step 6: Check async function correctness
 
-1. Async function with no await inside: likely a bug — the function is async for no reason, or an await is missing.
+1. Async function with no await inside: likely a bug; the function is async for no reason, or an await is missing.
 2. Await inside a loop with no concurrency control: should it use batching or a concurrency limiter?
 3. Sequential awaits that could be parallel: not a bug, but flag for review if performance-sensitive.
 

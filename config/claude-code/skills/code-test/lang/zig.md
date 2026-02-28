@@ -1,4 +1,4 @@
-# Zig — Testing Patterns
+# Zig: Testing Patterns
 
 ## Valid practices
 
@@ -8,10 +8,10 @@ branch-coverage, edge-cases, assertions, isolation, negative-testing, mutation-r
 
 - **Language version**: read `build.zig.zon` for the Zig version or minimum version field. Check `.zigversion` if present. Inspect `build.zig` for version-specific API usage.
 - **Test framework**: Zig uses the built-in `test` keyword and `std.testing` namespace. There are no mainstream third-party test frameworks. Check:
-  - `std.testing.expect` — boolean assertion.
-  - `std.testing.expectEqual` — equality assertion.
-  - `std.testing.expectError` — error assertion.
-  - `std.testing.allocator` — testing allocator that detects leaks.
+  - `std.testing.expect`: boolean assertion.
+  - `std.testing.expectEqual`: equality assertion.
+  - `std.testing.expectError`: error assertion.
+  - `std.testing.allocator`: testing allocator that detects leaks.
   - Custom test runners: check `build.zig` for `.setTestRunner()` or custom test filter configuration.
 - **Build system**: `zig build test` via `build.zig`. Check for test steps and test filters in the build file.
 - **Version-sensitive features**: Zig is pre-1.0 and the stdlib API changes between versions. Read the actual `@import("std")` usage in test files rather than assuming any specific API shape. Check `build.zig.zon` for the version and adapt recommendations accordingly.
@@ -21,7 +21,7 @@ branch-coverage, edge-cases, assertions, isolation, negative-testing, mutation-r
 - Tests are inline: `test "description" { ... }` blocks within the source file.
 - Tests can also be in separate files imported in `build.zig` test steps.
 - `std.testing` provides the assertion functions.
-- `std.testing.allocator` is a `GeneralPurposeAllocator` configured to detect leaks — tests using this allocator get automatic leak detection on scope exit.
+- `std.testing.allocator` is a `GeneralPurposeAllocator` configured to detect leaks; tests using this allocator get automatic leak detection on scope exit.
 
 ## Language-specific patterns
 
@@ -33,7 +33,7 @@ branch-coverage, edge-cases, assertions, isolation, negative-testing, mutation-r
   - Functions accepting `Allocator` are tested with `std.testing.FailingAllocator` to simulate allocation failure at every allocation site.
 
 ### Error handling
-- Zig uses error unions (`!T`) — check that tests cover:
+- Zig uses error unions (`!T`); check that tests cover:
   - The success path (unwrap with `try` or `catch`).
   - Each error in the error set (use `std.testing.expectError`).
   - Error propagation: if a function propagates errors from callees, test that each callee error is correctly propagated.
@@ -46,7 +46,7 @@ branch-coverage, edge-cases, assertions, isolation, negative-testing, mutation-r
 
 ### Optional values
 - Functions returning `?T` should be tested for both `null` and non-null returns.
-- Tests should not use `.?` (force unwrap) without first establishing that the value is non-null — this hides the assertion.
+- Tests should not use `.?` (force unwrap) without first establishing that the value is non-null; this hides the assertion.
 - `orelse unreachable` in tests is acceptable only when the test has already ensured the value is present.
 
 ### Slice and pointer safety

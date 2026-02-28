@@ -1,4 +1,4 @@
-# Go — Security Patterns
+# Go: Security Patterns
 
 ## Valid domains
 
@@ -6,27 +6,27 @@ authn, authz, crypto, input-validation, transport, logging, config
 
 ## Cryptography and secure random (Go 1.24+)
 
-- **CSPRNG**: `crypto/rand.Read()` — guaranteed not to fail since Go 1.24 (no error return needed). Reject: `math/rand`, `math/rand/v2` for any security purpose.
+- **CSPRNG**: `crypto/rand.Read()`: guaranteed not to fail since Go 1.24 (no error return needed). Reject: `math/rand`, `math/rand/v2` for any security purpose.
 - **New stdlib crypto packages (Go 1.24)**: `crypto/mlkem` (post-quantum ML-KEM-768/1024), `crypto/hkdf`, `crypto/pbkdf2`, `crypto/sha3`. Prefer these over third-party equivalents when available.
 - **Password hashing**: `golang.org/x/crypto/bcrypt` (`bcrypt.GenerateFromPassword` with cost >= 10), `golang.org/x/crypto/argon2` (`argon2.IDKey`). Reject: plain SHA256/SHA512 of password.
 - **Constant-time comparison**: `crypto/subtle.ConstantTimeCompare()`. Reject: `==`, `bytes.Equal()`, `strings.EqualFold()` on secrets/MACs.
 - **Symmetric encryption**: `crypto/aes` with `crypto/cipher.NewGCM()` (AES-GCM), `golang.org/x/crypto/chacha20poly1305`. Reject: ECB mode, `cipher.NewCBCEncrypter` without separate MAC.
-- **Deprecated (Go 1.24)**: `cipher.NewOFB`, `cipher.NewCFBEncrypter`, `cipher.NewCFBDecrypter` — use AEAD modes or `cipher.NewCTR`.
+- **Deprecated (Go 1.24)**: `cipher.NewOFB`, `cipher.NewCFBEncrypter`, `cipher.NewCFBDecrypter`: use AEAD modes or `cipher.NewCTR`.
 - **Key exchange**: `crypto/tls` supports X25519MLKEM768 by default in Go 1.24.
-- **Go 1.26**: `EncryptPKCS1v15`/`DecryptPKCS1v15` deprecated — use OAEP. New `crypto/hpke` package.
+- **Go 1.26**: `EncryptPKCS1v15`/`DecryptPKCS1v15` deprecated; use OAEP. New `crypto/hpke` package.
 - **Secure zeroing**: Go does not have a stdlib secure-zero. Use `crypto/subtle` or manually zero slices with a loop that the compiler cannot optimize away. Consider `memguard` for sensitive values.
 
 ## Authentication and session management
 
-- **JWT**: use `golang-jwt/jwt/v5` — call `jwt.Parse()` with explicit `jwt.WithValidMethods()`. Reject: `jwt.ParseUnverified()` for trusted decisions, accepting `none` algorithm.
+- **JWT**: use `golang-jwt/jwt/v5`: call `jwt.Parse()` with explicit `jwt.WithValidMethods()`. Reject: `jwt.ParseUnverified()` for trusted decisions, accepting `none` algorithm.
 - **Cookie flags**: `http.Cookie{Secure: true, HttpOnly: true, SameSite: http.SameSiteStrictMode}`.
-- **Session management**: `gorilla/sessions` or `scs` — verify session ID regeneration on login.
+- **Session management**: `gorilla/sessions` or `scs`: verify session ID regeneration on login.
 
 ## Input validation
 
 - **SQL injection**: `database/sql` with `?` or `$1` placeholders. Flag string concatenation or `fmt.Sprintf` in query strings.
 - **Command injection**: `os/exec.Command()` uses argument array (safe). Flag `exec.Command("sh", "-c", userInput)`.
-- **HTML escaping**: `html/template` auto-escapes. Reject: `text/template` for HTML output — no escaping.
+- **HTML escaping**: `html/template` auto-escapes. Reject: `text/template` for HTML output; no escaping.
 - **Path traversal**: `filepath.Join(base, userInput)` does not prevent `..`. Use `filepath.Clean()` then verify `strings.HasPrefix(cleaned, base)`.
 
 ## Transport and TLS

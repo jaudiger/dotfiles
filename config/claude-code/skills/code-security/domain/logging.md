@@ -6,7 +6,7 @@ Sensitive data in logs, PII redaction/masking, security event logging, log injec
 
 ## Systematic Procedure
 
-### Step 1 — Identify all logging calls
+### Step 1: Identify all logging calls
 
 Scan the file for every call that writes to logs:
 
@@ -17,7 +17,7 @@ Scan the file for every call that writes to logs:
 
 Record each with its line number and the data being logged.
 
-### Step 2 — Check for sensitive data in logs
+### Step 2: Check for sensitive data in logs
 
 For each logging call, check whether the logged data contains:
 
@@ -30,14 +30,14 @@ For each logging call, check whether the logged data contains:
 
 Flag any logging call that outputs these values in plaintext.
 
-### Step 3 — Check PII redaction/masking
+### Step 3: Check PII redaction/masking
 
 1. Are there redaction or masking utilities in use? Verify they cover all sensitive fields.
 2. Is redaction applied consistently across all logging paths (not just some)?
 3. Is the redaction adequate (full masking or truncation, not just partial hiding like `****1234`)?
 4. Is structured logging used to separate data from message templates (preventing accidental inclusion)?
 
-### Step 4 — Check security event logging
+### Step 4: Check security event logging
 
 Verify that the following security-relevant events are logged (when applicable to the code):
 
@@ -49,14 +49,14 @@ Verify that the following security-relevant events are logged (when applicable t
 
 For each event type that should be logged but is not, flag as a finding.
 
-### Step 5 — Check log injection prevention
+### Step 5: Check log injection prevention
 
 1. Can user-controlled input create fake log entries by injecting newlines (`\n`, `\r\n`)?
 2. Can user input inject control characters that corrupt log formatting?
 3. Is user input sanitized or escaped before inclusion in log messages?
 4. Is structured logging (JSON, key-value) used instead of string interpolation?
 
-### Step 6 — Check log level appropriateness
+### Step 6: Check log level appropriateness
 
 1. Are security events logged at an appropriate level (INFO or WARN, not DEBUG)?
 2. Are sensitive details that should never appear in production logged at DEBUG level (still a risk if DEBUG is enabled)?

@@ -6,7 +6,7 @@ SQL injection, command injection, path traversal, template injection, header inj
 
 ## Systematic Procedure
 
-### Step 1 — Identify all external input entry points
+### Step 1: Identify all external input entry points
 
 For every source of untrusted data:
 
@@ -19,7 +19,7 @@ For every source of untrusted data:
 
 Record each entry point with its line number and the variable that holds it.
 
-### Step 2 — Trace input to dangerous sinks
+### Step 2: Trace input to dangerous sinks
 
 For each input identified in Step 1, trace forward through assignments, transformations, and function calls. Flag when the input reaches any of these sinks:
 
@@ -33,7 +33,7 @@ For each input identified in Step 1, trace forward through assignments, transfor
 8. **Regular expression construction**: user input used to build regex patterns. Check for ReDoS (catastrophic backtracking).
 9. **Deserialization of untrusted data**: deserializing user-controlled bytes into objects (pickle, Java serialization, YAML unsafe_load).
 
-### Step 3 — Verify sanitization at each sink
+### Step 3: Verify sanitization at each sink
 
 For each input-to-sink path found:
 
@@ -42,7 +42,7 @@ For each input-to-sink path found:
 3. Is the sanitization applied at the right point? (Sanitizing early then transforming the string can re-introduce the vulnerability.)
 4. Is an allowlist used where possible instead of a denylist? (Denylists are easily bypassed.)
 
-### Step 4 — Check path traversal specifically
+### Step 4: Check path traversal specifically
 
 For every file path constructed from user input:
 
@@ -51,7 +51,7 @@ For every file path constructed from user input:
 3. Can null bytes truncate the path (relevant in C and some runtimes)?
 4. On Windows: check for alternate data streams (`:`) and reserved names (CON, PRN, etc.).
 
-### Step 5 — Check deserialization safety
+### Step 5: Check deserialization safety
 
 1. Is untrusted data deserialized with a safe deserializer? (JSON is generally safe; pickle, YAML full load, Java ObjectInputStream are dangerous.)
 2. Are deserialized objects validated before use?

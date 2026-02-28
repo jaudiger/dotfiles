@@ -8,7 +8,7 @@ Evaluate test coverage and quality for the changeset.
 
 - Is every new code path exercised by at least one test?
 - Are modified behaviors covered by updated or new tests?
-- Are deleted tests still needed — did they cover behavior that still exists
+- Are deleted tests still needed; did they cover behavior that still exists
   elsewhere?
 
 ### 2. Edge cases and boundaries
@@ -21,7 +21,7 @@ Evaluate test coverage and quality for the changeset.
 
 - Do assertions verify behavior and outcomes, not implementation details?
 - Are test names descriptive of the scenario and expected result?
-- Is each test independent and repeatable — no shared mutable state, no
+- Is each test independent and repeatable; no shared mutable state, no
   ordering dependency?
 
 ### 4. Missing test scenarios

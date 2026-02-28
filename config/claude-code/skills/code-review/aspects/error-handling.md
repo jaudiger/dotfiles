@@ -35,7 +35,7 @@ Evaluate how the changeset handles failure cases.
 
 - Do error messages exposed to end users avoid leaking internals (stack
   traces, file paths, SQL queries)?
-- Are error messages actionable — can the user understand what went wrong and
+- Are error messages actionable; can the user understand what went wrong and
   what to do?
 - Are error codes or types stable for programmatic consumers?
 

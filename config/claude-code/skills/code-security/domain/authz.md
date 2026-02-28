@@ -6,7 +6,7 @@ Server-side authorization enforcement, insecure direct object references (IDOR),
 
 ## Systematic Procedure
 
-### Step 1 — Identify authorization decision points
+### Step 1: Identify authorization decision points
 
 Scan the file for every location that:
 
@@ -17,7 +17,7 @@ Scan the file for every location that:
 
 Record each with its line number and the authorization logic used.
 
-### Step 2 — Verify server-side enforcement
+### Step 2: Verify server-side enforcement
 
 For every action that should be restricted:
 
@@ -25,7 +25,7 @@ For every action that should be restricted:
 2. Is the check performed before the action is executed (not after)?
 3. Does the check use the authenticated user's identity from the session/token, not from a client-supplied field?
 
-### Step 3 — Check for insecure direct object references (IDOR)
+### Step 3: Check for insecure direct object references (IDOR)
 
 For every endpoint that accesses an object by user-supplied identifier:
 
@@ -33,27 +33,27 @@ For every endpoint that accesses an object by user-supplied identifier:
 2. Can a user access another user's resources by changing the ID in the request?
 3. Are sequential / predictable IDs used without authorization checks?
 
-### Step 4 — Check for privilege escalation
+### Step 4: Check for privilege escalation
 
 1. **Horizontal**: can a user access resources belonging to another user at the same privilege level?
 2. **Vertical**: can a regular user access admin-level functionality by manipulating requests?
 3. Are role checks consistent across all endpoints for the same resource?
 4. Can a user self-assign elevated roles or permissions?
 
-### Step 5 — Verify default-deny
+### Step 5: Verify default-deny
 
 1. Is the default behavior to deny access unless explicitly granted?
 2. Are new endpoints protected by default, or do they require explicit authorization configuration?
 3. Is there a catch-all / fallback that denies unrecognized routes?
 
-### Step 6 — Check for path-based bypass
+### Step 6: Check for path-based bypass
 
 1. Can authorization be bypassed via URL encoding (e.g., `%2F` for `/`, `%2e%2e` for `..`)?
 2. Can authorization be bypassed via parameter pollution or duplicate parameters?
 3. Are route parameters validated and normalized before authorization checks?
 4. Is path traversal possible to reach protected resources?
 
-### Step 7 — Check for mass assignment / overposting
+### Step 7: Check for mass assignment / overposting
 
 1. Does the code bind request parameters directly to internal objects without an allowlist?
 2. Can a user set fields they should not control (role, isAdmin, price, balance) by adding extra parameters?

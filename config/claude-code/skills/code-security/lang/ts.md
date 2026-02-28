@@ -1,4 +1,4 @@
-# TypeScript — Security Patterns
+# TypeScript: Security Patterns
 
 ## Valid domains
 
@@ -10,7 +10,7 @@ authn, authz, crypto, input-validation, transport, logging, config
 - **Constant-time comparison**: `crypto.timingSafeEqual()`. Reject: `===`, `==`, `Buffer.compare()` on secrets/MACs.
 - **Password hashing**: `bcrypt` package (`bcrypt.hash` with saltRounds >= 10), `argon2` package. Web Crypto API supports Argon2 algorithms. Reject: plain SHA256/MD5 of password.
 - **Symmetric encryption**: `crypto.createCipheriv('aes-256-gcm', ...)` with AEAD. Reject: `aes-256-cbc` without separate MAC, `des`, `rc4`, `createCipher()` (deprecated, derives key from password with MD5).
-- **Node.js 24 LTS**: uses OpenSSL 3.5, security level 2 — RSA < 2048 and RC4 prohibited.
+- **Node.js 24 LTS**: uses OpenSSL 3.5, security level 2; RSA < 2048 and RC4 prohibited.
 - **Key/secret handling**: avoid storing secrets in `string` (immutable, not zeroable). Use `Buffer` and fill with zero after use (`buf.fill(0)`). Consider `sodium-native` for secure memory.
 
 ## Authentication and session management
@@ -33,14 +33,14 @@ authn, authz, crypto, input-validation, transport, logging, config
 - **Command injection**: `child_process.execFile('cmd', [arg1, arg2])` (safe). Reject: `child_process.exec(userInput)`, `child_process.execSync(cmd + userInput)`.
 - **XSS**: `DOMPurify` for HTML sanitization. Flag: `innerHTML`, `dangerouslySetInnerHTML`, `document.write()` with user input.
 - **Path traversal**: `path.join(base, userInput)` does not prevent `..`. Use `path.resolve()` then verify `result.startsWith(base)`.
-- **Regex DoS**: `new RegExp(userInput)` — flag always. Use `validator.js` or `re2` for safe regex on user input.
+- **Regex DoS**: `new RegExp(userInput)`: flag always. Use `validator.js` or `re2` for safe regex on user input.
 - **Prototype pollution**: flag `Object.assign(target, userInput)`, `_.merge(target, userInput)`, `JSON.parse` spread into objects without validation.
 
 ## Transport and TLS
 
 - **HTTPS**: `https.createServer()` with TLS configuration. Set `minVersion: 'TLSv1.2'` on `tls.createSecureContext()`.
 - **Certificate verification**: flag `NODE_TLS_REJECT_UNAUTHORIZED=0`, `rejectUnauthorized: false` in production.
-- **HTTP security headers**: `helmet` middleware — enables HSTS, CSP, X-Frame-Options, X-Content-Type-Options, etc. Verify it is applied to all routes.
+- **HTTP security headers**: `helmet` middleware; enables HSTS, CSP, X-Frame-Options, X-Content-Type-Options, etc. Verify it is applied to all routes.
 - **CORS**: `cors` middleware. Flag: `origin: '*'` with `credentials: true`. Use explicit origin allowlist.
 - **Cookie flags**: `express-session` or `cookie-parser` with `{ secure: true, httpOnly: true, sameSite: 'strict' }`.
 - **SSRF**: validate URL scheme and hostname before `fetch(userUrl)` or `axios.get(userUrl)`.

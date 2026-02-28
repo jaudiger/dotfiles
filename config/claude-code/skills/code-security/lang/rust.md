@@ -1,4 +1,4 @@
-# Rust — Security Patterns
+# Rust: Security Patterns
 
 ## Valid domains
 
@@ -6,7 +6,7 @@ authn, authz, crypto, input-validation, transport, logging, config
 
 ## Cryptography and secure random
 
-- **Crypto backends**: `aws-lc-rs` (now default rustls backend) — provides FIPS 140-3 compliance and post-quantum ML-KEM support. `ring` as alternative. Reject: rolling custom crypto primitives.
+- **Crypto backends**: `aws-lc-rs` (now default rustls backend); provides FIPS 140-3 compliance and post-quantum ML-KEM support. `ring` as alternative. Reject: rolling custom crypto primitives.
 - **CSPRNG**: `rand::rngs::OsRng`, `rand::thread_rng()` (backed by OS entropy). `getrandom` crate for raw OS randomness. Reject: `rand::rngs::SmallRng`, `rand::rngs::StdRng::seed_from_u64(constant)` for security purposes.
 - **Password hashing**: `argon2` crate (`argon2::Argon2::hash_password`), `bcrypt` crate. Reject: plain SHA256/SHA512 of password.
 - **Secret types**: `secrecy::Secret<T>` wraps sensitive values, prevents accidental logging/display. `secrecy::ExposeSecret` for controlled access.
@@ -17,7 +17,7 @@ authn, authz, crypto, input-validation, transport, logging, config
 
 ## Authentication and session management
 
-- **JWT**: `jsonwebtoken` crate — use `jsonwebtoken::decode()` with `Validation` struct (algorithm, audience, issuer). Reject: `dangerous_insecure_decode()` for trusted decisions.
+- **JWT**: `jsonwebtoken` crate; use `jsonwebtoken::decode()` with `Validation` struct (algorithm, audience, issuer). Reject: `dangerous_insecure_decode()` for trusted decisions.
 - **Session management**: `tower-sessions`, `actix-session`. Verify session ID regeneration on login, secure cookie flags.
 - **Cookie flags**: `cookie::Cookie::build().secure(true).http_only(true).same_site(SameSite::Strict)`.
 
@@ -30,7 +30,7 @@ authn, authz, crypto, input-validation, transport, logging, config
 ## Input validation
 
 - **SQL injection**: `sqlx` with `query!()` / `query_as!()` (compile-time checked), `diesel` with type-safe query builder. Flag: `sqlx::query(&format!("SELECT ... {}", user_input))`.
-- **Command injection**: `std::process::Command::new("cmd").arg(user_input)` (safe — each arg is separate). Reject: `Command::new("sh").arg("-c").arg(format!("... {}", user_input))`.
+- **Command injection**: `std::process::Command::new("cmd").arg(user_input)` (safe; each arg is separate). Reject: `Command::new("sh").arg("-c").arg(format!("... {}", user_input))`.
 - **HTML escaping**: no auto-escaping in `format!`. Use template engines with escaping (`askama`, `tera`, `maud`). Flag: `format!("<div>{}</div>", user_input)` in HTTP responses.
 - **Path traversal**: `std::path::Path::join(user_input)` does not prevent `..`. Canonicalize with `.canonicalize()` then check `.starts_with(base)`.
 - **Deserialization**: `serde` is generally safe (no arbitrary code execution), but validate deserialized data. `serde_json`, `serde_yaml`: parse then validate against domain types.

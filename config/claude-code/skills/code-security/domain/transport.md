@@ -6,7 +6,7 @@ TLS configuration, certificate validation, HTTP security headers (HSTS, CSP, X-F
 
 ## Systematic Procedure
 
-### Step 1 — Identify network communication points
+### Step 1: Identify network communication points
 
 Scan the file for every call that:
 
@@ -18,7 +18,7 @@ Scan the file for every call that:
 
 Record each with its line number and the specific API used.
 
-### Step 2 — Check TLS configuration
+### Step 2: Check TLS configuration
 
 For each TLS/SSL setup:
 
@@ -28,7 +28,7 @@ For each TLS/SSL setup:
 4. Are self-signed certificates accepted in production code? (Acceptable in test/dev only.)
 5. Is certificate pinning used where appropriate (mobile apps, high-security APIs)?
 
-### Step 3 — Check HTTP security headers
+### Step 3: Check HTTP security headers
 
 For HTTP responses served by the application:
 
@@ -39,7 +39,7 @@ For HTTP responses served by the application:
 5. **Referrer-Policy**: is it configured to limit referrer leakage?
 6. **Permissions-Policy**: is it set to restrict browser features (camera, microphone, geolocation)?
 
-### Step 4 — Check CORS configuration
+### Step 4: Check CORS configuration
 
 1. Is `Access-Control-Allow-Origin` set to `*` (wildcard)? Flag if credentials are also allowed.
 2. Is the origin validated against an explicit allowlist (not reflected from the request)?
@@ -47,7 +47,7 @@ For HTTP responses served by the application:
 4. Is `Access-Control-Allow-Credentials` set to `true` only when necessary?
 5. Is `Access-Control-Max-Age` configured to a reasonable value?
 
-### Step 5 — Check cookie security
+### Step 5: Check cookie security
 
 For every cookie set by the application:
 
@@ -57,13 +57,13 @@ For every cookie set by the application:
 4. Is the `Path` attribute restricted appropriately?
 5. Is the `Domain` attribute not overly broad?
 
-### Step 6 — Check for sensitive data in URLs
+### Step 6: Check for sensitive data in URLs
 
 1. Are tokens, passwords, API keys, or session IDs passed as URL query parameters?
 2. Are sensitive values included in URL paths that may be logged?
 3. Are redirect URLs validated to prevent open redirect?
 
-### Step 7 — Check for SSRF
+### Step 7: Check for SSRF
 
 For every outbound HTTP request constructed from user input:
 

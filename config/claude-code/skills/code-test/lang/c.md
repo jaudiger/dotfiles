@@ -1,4 +1,4 @@
-# C — Testing Patterns
+# C: Testing Patterns
 
 ## Valid practices
 
@@ -8,20 +8,20 @@ branch-coverage, edge-cases, assertions, isolation, negative-testing, mutation-r
 
 - **Language version**: read `CMakeLists.txt` (`CMAKE_C_STANDARD`, `set(CMAKE_C_STANDARD xx)`), `Makefile` (look for `-std=cxx` flags), or `compile_commands.json`.
 - **Test framework**: C has no built-in test framework. Check build files and includes for:
-  - Google Test / Google Mock (`gtest`, `gmock`) — C++ test framework often used for C code via `extern "C"`.
-  - CMocka (`cmocka.h`) — pure C mocking and testing.
-  - Unity (`unity.h`) — lightweight embedded-friendly test framework.
-  - Check (`check.h`) — C unit testing framework with fork-based isolation.
-  - CUnit (`CUnit.h`) — classic C unit testing.
-  - Criterion (`criterion/criterion.h`) — modern C/C++ testing.
-  - µnit (`munit.h`) — minimal unit testing.
-  - Custom `assert`-based test harness — look for `main()` functions in test files using `assert()`.
+  - Google Test / Google Mock (`gtest`, `gmock`); C++ test framework often used for C code via `extern "C"`.
+  - CMocka (`cmocka.h`); pure C mocking and testing.
+  - Unity (`unity.h`); lightweight embedded-friendly test framework.
+  - Check (`check.h`); C unit testing framework with fork-based isolation.
+  - CUnit (`CUnit.h`); classic C unit testing.
+  - Criterion (`criterion/criterion.h`); modern C/C++ testing.
+  - munit (`munit.h`); minimal unit testing.
+  - Custom `assert`-based test harness; look for `main()` functions in test files using `assert()`.
 - **Build system**: identify whether tests are compiled and run via `cmake`, `make test`, `ctest`, `meson test`, or custom scripts.
-- **Sanitizers**: check for `-fsanitize=address,undefined,leak` in compiler flags — these augment test effectiveness.
+- **Sanitizers**: check for `-fsanitize=address,undefined,leak` in compiler flags; these augment test effectiveness.
 
 ## Test file conventions
 
-- No standard convention — varies by project and framework.
+- No standard convention; varies by project and framework.
 - Common: `test_*.c`, `*_test.c`, files in `test/` or `tests/` directory.
 - With Google Test: `*_test.cc` or `*_test.cpp` wrapping C headers.
 - Test discovery depends on the framework (Google Test auto-registers, Unity/CMocka require manual listing).
@@ -46,7 +46,7 @@ branch-coverage, edge-cases, assertions, isolation, negative-testing, mutation-r
   - Success (usually 0 or positive).
   - Each documented error code.
   - `errno` value after failure (verify it is set correctly and not stale).
-- Check that tests do not ignore return values — a common C testing gap.
+- Check that tests do not ignore return values; a common C testing gap.
 
 ### Integer types and overflow
 - Test boundary values for each integer type used: `0`, `1`, `-1`, `INT_MAX`, `INT_MIN`, `UINT_MAX`, `SIZE_MAX`.

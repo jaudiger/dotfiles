@@ -1,4 +1,4 @@
-# Go — Testing Patterns
+# Go: Testing Patterns
 
 ## Valid practices
 
@@ -8,15 +8,15 @@ branch-coverage, edge-cases, assertions, isolation, negative-testing, mutation-r
 
 - **Language version**: read `go.mod` for the `go` directive (e.g., `go 1.xx`). This determines available stdlib testing features.
 - **Test framework**: Go uses the `testing` stdlib package by default. Check imports for third-party frameworks:
-  - `github.com/stretchr/testify` — assertion and mock helpers.
-  - `github.com/onsi/ginkgo` / `github.com/onsi/gomega` — BDD-style.
-  - `github.com/google/go-cmp` — structural comparison.
-  - `pgregory.net/rapid` or `github.com/leanovate/gopter` — property-based testing.
+  - `github.com/stretchr/testify`: assertion and mock helpers.
+  - `github.com/onsi/ginkgo` / `github.com/onsi/gomega`: BDD-style.
+  - `github.com/google/go-cmp`: structural comparison.
+  - `pgregory.net/rapid` or `github.com/leanovate/gopter`: property-based testing.
 - **Version-sensitive features**: check the `go` directive before recommending:
-  - `t.Cleanup()` — not available in all versions.
-  - `t.Setenv()` — added later.
-  - `testing/fstest` — check availability.
-  - `t.Parallel()` — available since early versions but interacts with closures in range loops differently depending on version (loop variable capture fix).
+  - `t.Cleanup()`: not available in all versions.
+  - `t.Setenv()`: added later.
+  - `testing/fstest`: check availability.
+  - `t.Parallel()`: available since early versions but interacts with closures in range loops differently depending on version (loop variable capture fix).
   Read the actual test imports and usage to confirm what is available.
 
 ## Test file conventions
@@ -39,7 +39,7 @@ Go convention favors table-driven tests. When reviewing, check:
 - The table is not a single entry (that is just a regular test with extra ceremony).
 
 ### Error checking
-Go has no exceptions — errors are values. Check:
+Go has no exceptions; errors are values. Check:
 - Tests verify `err != nil` AND the specific error (via `errors.Is`, `errors.As`, or string matching).
 - Tests do not only check `err == nil` without verifying the return value.
 - Sentinel errors and custom error types are tested specifically.
@@ -51,7 +51,7 @@ Go has no exceptions — errors are values. Check:
 ### Goroutine and concurrency
 - Tests using `t.Parallel()` must not close over loop variables captured by reference (unless the Go version fixes this).
 - Tests spawning goroutines should use `t.Cleanup()` or synchronization to avoid goroutine leaks.
-- Race conditions in tests can be detected with `-race` flag — but this is runtime, not structural. Check for shared state in parallel tests.
+- Race conditions in tests can be detected with `-race` flag; but this is runtime, not structural. Check for shared state in parallel tests.
 
 ### Context handling
 - Functions accepting `context.Context` should be tested with cancelled and timed-out contexts.

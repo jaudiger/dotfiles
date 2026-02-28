@@ -9,7 +9,7 @@ Evaluate the structural quality and design decisions in the changeset.
 - Is the new code at the right level of abstraction for its location in the
   project?
 - Are implementation details leaking across module boundaries?
-- Is there premature abstraction — generalized code used in only one place?
+- Is there premature abstraction; generalized code used in only one place?
 
 ### 2. Responsibility and cohesion
 
@@ -31,7 +31,7 @@ Evaluate the structural quality and design decisions in the changeset.
 
 - Does the change introduce code that duplicates existing functionality
   elsewhere in the codebase?
-- If similar code exists, should a shared utility be extracted — or is the
+- If similar code exists, should a shared utility be extracted; or is the
   duplication acceptable at this stage?
 
 ### 5. Coupling

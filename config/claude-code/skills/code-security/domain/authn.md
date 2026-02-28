@@ -6,7 +6,7 @@ Password hashing, credential storage, token validation, session lifecycle, sessi
 
 ## Systematic Procedure
 
-### Step 1 — Identify authentication entry points
+### Step 1: Identify authentication entry points
 
 Scan the file for every function or handler that:
 
@@ -17,7 +17,7 @@ Scan the file for every function or handler that:
 
 Record each with its line number and the variables that carry credentials or tokens.
 
-### Step 2 — Check password hashing
+### Step 2: Check password hashing
 
 For every path that stores or verifies a password:
 
@@ -26,13 +26,13 @@ For every path that stores or verifies a password:
 3. Is the work factor / cost parameter configured to a reasonable value? (bcrypt cost >= 10, argon2 memory >= 64 MiB.)
 4. Is the hash comparison done in constant time?
 
-### Step 3 — Check credential storage
+### Step 3: Check credential storage
 
 1. Are passwords, API keys, or tokens stored in plaintext anywhere (database, config, logs, comments)?
 2. Are credentials hardcoded in source code? Check string literals, constants, environment variable defaults.
 3. Are credentials transmitted in URL query parameters (visible in logs, referrer headers)?
 
-### Step 4 — Check token validation
+### Step 4: Check token validation
 
 For every JWT or similar token:
 
@@ -41,7 +41,7 @@ For every JWT or similar token:
 3. Is the algorithm enforced? Flag acceptance of `none` algorithm or algorithm confusion (RS256 vs HS256).
 4. Are token secrets/keys of sufficient length and entropy?
 
-### Step 5 — Check session lifecycle
+### Step 5: Check session lifecycle
 
 1. Is a new session ID generated on login (session fixation prevention)?
 2. Is the session ID rotated on privilege escalation (e.g., after MFA step)?
@@ -49,14 +49,14 @@ For every JWT or similar token:
 4. Are idle timeout and absolute timeout enforced?
 5. Is there a mechanism to revoke all sessions for a user?
 
-### Step 6 — Check session storage and transport
+### Step 6: Check session storage and transport
 
 1. Cookie flags: `Secure` (HTTPS only), `HttpOnly` (no JS access), `SameSite` (CSRF mitigation)?
 2. Is the session ID of sufficient length and entropy (>= 128 bits from CSPRNG)?
 3. Are session IDs exposed in URLs (URL rewriting)?
 4. Is session data stored server-side with the cookie containing only the session ID?
 
-### Step 7 — Check MFA flow integrity
+### Step 7: Check MFA flow integrity
 
 1. Can the MFA step be bypassed by directly accessing post-MFA endpoints?
 2. Is the MFA verification state tied to the session, not just a client-side flag?

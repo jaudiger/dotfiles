@@ -44,21 +44,21 @@ in
             methodologies, or language-specific knowledge that were used but are
             NOT currently captured in:
 
-            **Global skills** — `${host.dotfilesDirectory}/config/claude-code/skills/`:
-            - `code-audit/` — bug hunting (methodology/ + lang/)
-            - `code-review/` — changeset review (aspects/)
-            - `code-security/` — vulnerability analysis (domain/ + lang/)
-            - `code-test/` — test quality audit (practice/ + lang/)
-            - `deep-review/` — orchestrated multi-skill analysis
+            **Global skills** (`${host.dotfilesDirectory}/config/claude-code/skills/`):
+            - `code-audit/`: bug hunting (methodology/ + lang/)
+            - `code-review/`: changeset review (aspects/)
+            - `code-security/`: vulnerability analysis (domain/ + lang/)
+            - `code-test/`: test quality audit (practice/ + lang/)
+            - `deep-review/`: orchestrated multi-skill analysis
 
-            **Project-level Claude files** — in the current working repository:
+            **Project-level Claude files** (in the current working repository):
             - `CLAUDE.md` at the repo root
             - `.claude/settings.json`
             - `.claude/commands/`
             - `.claude/rules/`
             - `.claude/agents/`
 
-            ## Phase 1 — Gap detection
+            ## Phase 1: Gap detection
 
             For each gap found:
             1. State which file should be updated and why
@@ -68,7 +68,7 @@ in
             When adding a new concern/aspect/domain to a skill, update both
             the SKILL.md coverage matrix and create the corresponding sub-file.
 
-            ## Phase 2 — Staleness detection
+            ## Phase 2: Staleness detection
 
             Read through all skill files and project Claude files that were
             relevant to this session. Flag any content that is out of date:
@@ -84,7 +84,7 @@ in
             4. Apply the edit after confirmation
 
             If any out-of-date content is detected, suggest concrete modifications
-            to update it — even if the current task did not require that knowledge.
+            to update it, even if the current task did not require that knowledge.
             Do not silently ignore stale guidance.
 
             If no gaps or stale content are found, say so explicitly.
