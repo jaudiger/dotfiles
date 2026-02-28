@@ -10,28 +10,17 @@
         add_newline = false;
         command_timeout = 2000;
         continuation_prompt = "[.](bold yellow) ";
+        format = "$all$cmd_duration$line_break$character";
 
         aws.disabled = true;
         azure.disabled = true;
+        battery.disabled = true;
         container.disabled = true;
         docker_context.disabled = true;
         gcloud.disabled = true;
         nix_shell.disabled = true;
         openstack.disabled = true;
         package.disabled = true;
-
-        battery = {
-          full_symbol = "🔋";
-          charging_symbol = "🔌";
-          discharging_symbol = "⚡";
-        };
-
-        battery.display = [
-          {
-            threshold = 30;
-            style = "bold red";
-          }
-        ];
 
         character = {
           success_symbol = "[➜](bold green)";
@@ -40,7 +29,7 @@
 
         cmd_duration = {
           min_time = 10000;
-          format = "[⏱ $duration]($style)";
+          format = "\\[[⏱ $duration]($style)\\]";
         };
 
         directory = {
@@ -50,12 +39,12 @@
         };
 
         git_branch = {
-          symbol = "🌱 ";
+          symbol = "";
           style = "bold yellow";
         };
 
         git_commit = {
-          tag_symbol = "🔖";
+          tag_symbol = "";
           style = "bold white";
           only_detached = false;
           tag_disabled = false;
@@ -66,7 +55,6 @@
           disabled = false;
           added_style = "bold dimmed green";
           deleted_style = "bold dimmed red";
-          only_nonzero_diffs = false;
           format = "\\([+$added]($added_style)/[-$deleted]($deleted_style)\\)";
         };
 
@@ -75,40 +63,28 @@
         };
 
         git_status = {
-          conflicted = "⚔️";
-          ahead = "🏎️💨×$count";
-          behind = "🐢×$count";
-          diverged = "🏎️💨×$ahead_count 🐢×$behind_count";
-          untracked = "🛤️";
-          stashed = "📦";
-          modified = "📝×$count";
-          staged = "🗃️×$count";
-          renamed = "📛×$count";
-          deleted = "🗑️×$count";
-          style = "bold white";
+          conflicted = "=$count";
+          ahead = "↑$count";
+          behind = "↓$count";
+          diverged = "↑$ahead_count↓$behind_count";
+          untracked = "?$count";
+          stashed = "*";
+          modified = "!$count";
+          staged = "+$count";
+          renamed = "»$count";
+          deleted = "✘$count";
+          style = "bold yellow";
         };
 
         hostname = {
-          ssh_only = false;
           format = "@[$hostname]($style): ";
           style = "bold dimmed white";
         };
 
-        memory_usage = {
-          disabled = false;
-          threshold = 70;
-          symbol = "";
-        };
-
-        sudo = {
-          disabled = false;
-          format = "[$symbol]($style)";
-        };
 
         username = {
           format = "[$user]($style)";
           style_user = "bold dimmed yellow";
-          show_always = true;
         };
       };
     };
