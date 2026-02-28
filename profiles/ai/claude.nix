@@ -91,6 +91,45 @@ in
           '';
         };
 
+        rules = {
+          ascii-only = ''
+            # ASCII-only output
+
+            Use only ASCII characters in all generated text: code, comments,
+            commit messages, PR titles/descriptions, branch names, and
+            conversational replies.
+
+            ## Banned characters
+
+            Never produce any of these Unicode characters:
+            - Em dash (U+2014), en dash (U+2013)
+            - Curly/smart quotes (U+2018, U+2019, U+201C, U+201D)
+            - Horizontal ellipsis (U+2026)
+            - Unicode arrows (U+2190 through U+2194)
+            - Bullet (U+2022)
+            - Non-breaking space (U+00A0)
+            - Any other fancy Unicode punctuation
+
+            ## Style guidance
+
+            Avoid leaning on dashes and arrows in prose. Prefer rephrasing:
+            - Instead of parenthetical dashes ("X -- an important thing -- is Y"),
+              use commas, parentheses, or split into two sentences.
+            - Instead of arrow notation ("A -> B") in explanatory text,
+              write "A leads to B", "A then B", or use a list.
+            - Reserve `--` for CLI flags and argument separators.
+            - Reserve `->` for code and type signatures, not prose.
+
+            ## Exceptions
+
+            - String literals / test fixtures that explicitly require Unicode.
+            - File content that already contains non-ASCII text being preserved
+              as-is (e.g., translations, user-facing i18n strings).
+            - Identifiers or names that naturally contain non-ASCII characters
+              (e.g., a person's name in a comment or attribution).
+          '';
+        };
+
         settings = {
           alwaysThinkingEnabled = true;
           attribution = {
