@@ -128,6 +128,71 @@ in
             - Identifiers or names that naturally contain non-ASCII characters
               (e.g., a person's name in a comment or attribution).
           '';
+          comment-style = ''
+            # Human-sounding code comments
+
+            Write comments that read like a human developer wrote them. Avoid
+            any pattern that reveals machine-generated origin.
+
+            ## Banned patterns
+
+            Never use these in code comments:
+            - Numbered sequences: `1.`, `2.`, `Step 1`, `Phase 1`, or any
+              numbered/lettered enumeration
+            - Section banners: `// -- SECTION --`, `// === SECTION ===`,
+              `// --- SECTION ---`, `/* ======= */`, or any decorative
+              separator line
+            - Lists of any kind, whether bullet, numbered, or dash-separated,
+              in both inline and doc comments. Fold the information into
+              flowing prose sentences instead.
+            - Inline examples: do not illustrate with concrete values in
+              parentheses or after "e.g." or "for example". Describe
+              the behavior abstractly. If a concrete value is essential
+              for understanding, put it in a test, not a comment.
+
+            ## Brevity rules
+
+            - Inside function bodies, keep comments to one short sentence or
+              a few words. If the code needs more explanation, the code itself
+              should be clearer.
+            - Doc comments on function, type, or module declarations may be
+              longer, but still keep them concise and direct.
+            - Never restate what the code already says. `// increment counter`
+              above `counter += 1` adds nothing.
+
+            ## Tone
+
+            - Write plain, direct English as if leaving a note for a colleague.
+            - Avoid formal or tutorial-style phrasing ("It should be noted
+              that...", "This function is responsible for...").
+            - Avoid hedging ("This might be needed because..."). Either state
+              the fact or remove the comment.
+          '';
+          test-style = ''
+            # Testing practices
+
+            ## Extend before create
+
+            Before writing a new test case, check whether an existing test
+            already covers the same Arrange and Act. If it does, add the
+            new assertion there. Only create a new test when the scenario
+            (setup or action) genuinely differs.
+
+            ## One concept per test
+
+            Each test verifies one logical behavior. Multiple assertions
+            are fine when they all check facets of the same behavior.
+            Do not combine unrelated checks in a single test.
+
+            ## Keep tests minimal
+
+            - Only arrange what the test actually needs.
+            - Avoid logic in tests: no conditionals or branching.
+              Loops are acceptable for table-driven / parameterized tests.
+            - No helper abstractions for a single test. Inline the setup.
+            - Prefer literal values over computed ones so expected results
+              are obvious at a glance.
+          '';
         };
 
         settings = {

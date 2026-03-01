@@ -7,7 +7,7 @@ description: >
   issue URL or shorthand, or a file containing a report); NOT source code
   targets. For read-only code analysis, use deep-review instead.
 argument-hint: [source...]
-allowed-tools: Bash, Read, Grep, Glob, Edit, Write, Task, WebFetch
+allowed-tools: AskUserQuestion, Bash, Read, Grep, Glob, Edit, Task, WebFetch
 ---
 
 # Deep Resolve
@@ -57,6 +57,23 @@ Multiple sources can be combined to provide additional context.
 ```
 
 ---
+
+## Progress tracking
+
+Create all phase tasks upfront with TaskCreate, then track each with `in_progress` / `completed` as work proceeds.
+
+| Task subject | activeForm |
+|--------------|------------|
+| Ingest report | Ingesting report |
+| Validate report | Validating report |
+| Explore codebase | Exploring codebase |
+| Identify root cause and impact | Identifying root cause and impact |
+| Run sub-skill analysis | Running sub-skill analysis |
+| Confirm resolution scope | Confirming resolution scope |
+| Resolve | Resolving |
+| Write summary | Writing summary |
+
+This is mandatory. Never skip task creation or updates.
 
 ## Phase 1: Ingest report
 
@@ -303,11 +320,32 @@ Targets: <affected code regions>
    and the matching `lang/$LANG.md`.
 3. Wait for all Task agents to complete and collect results.
 
-## Phase 6: Resolve
+## Phase 6: Scope confirmation
+
+Before resolving, consolidate every related work item surfaced during
+Phases 3-5 that falls outside the minimal fix for the reported issue.
+Sources include sibling patterns and related fragile code from Phase 4b,
+test gaps from Phase 4b, additional defect instances or edge cases found
+by Phase 5 sub-skills, and deeper security or design concerns raised by
+sub-skill findings.
+
+If there are related work items, present them to the user with
+AskUserQuestion (multiSelect: true). Each option should briefly describe
+the item and which file or area it affects. Let the user pick which items
+to include in the current resolution scope.
+
+Items the user selects become part of Phase 7 alongside the core fix.
+Items the user declines are excluded entirely from the resolution and
+from the Phase 8 summary (they were offered and refused, not forgotten).
+
+If no related items were found, skip this step and proceed directly.
+
+## Phase 7: Resolve
 
 Incorporate findings from Phase 5 sub-skills (if invoked) into the root cause
 analysis from Phase 4. Sub-skill findings may reveal additional defect instances,
 deeper security implications, or test gaps not visible during manual exploration.
+Include all items the user selected in Phase 6.
 
 Apply changes that fix the root cause and prevent recurrence. This is where the
 skill diverges from analysis-only tools; it modifies the codebase.
@@ -321,7 +359,7 @@ skill diverges from analysis-only tools; it modifies the codebase.
    - Reproduction of the original failure (regression test)
    - Coverage of the new behavior
    - Edge cases discovered during exploration
-   - Test gaps identified in Phase 4b impact analysis
+   - Test gaps identified in Phase 4b impact analysis and selected in Phase 6
 
 2. **Update documentation if behavior changes.** If the fix changes public API
    behavior, update relevant documentation.
@@ -344,16 +382,23 @@ skill diverges from analysis-only tools; it modifies the codebase.
 1. **Plan the changes**; before editing, list every file that needs to change
    and what the change will be. Verify that the changes are consistent with
    each other and with the overall architecture.
-2. **Apply changes**; edit files using the smallest set of precise
-   modifications that achieve the goal. Prefer targeted edits over full file
-   rewrites unless a full rewrite is genuinely cleaner.
-3. **Verify consistency**; after applying all changes, re-read the modified
+2. **Check plan against Phase 4a design**; compare the planned changes against
+   the correct design identified in Phase 4a-3. If the plan is a behavioral
+   patch (changes how the code behaves in the specific failing case) rather
+   than a structural fix (changes the design so the defect class cannot occur),
+   reconsider the approach. Prefer structural fixes that make the defect class
+   impossible by construction over behavioral patches that merely avoid the
+   specific trigger.
+3. **Apply changes**; implement the correct design identified in Phase 4a.
+   Prefer targeted edits over full file rewrites unless a full rewrite is
+   genuinely cleaner.
+4. **Verify consistency**; after applying all changes, re-read the modified
    files to confirm correctness. Check that imports, type signatures, and
    cross-module references are consistent.
-4. **Run checks**; if the project has a build command, linter, or test suite,
+5. **Run checks**; if the project has a build command, linter, or test suite,
    run them. Fix any failures introduced by the changes.
 
-## Phase 7: Summary
+## Phase 8: Summary
 
 After all changes are applied and verified, output a summary:
 
@@ -380,9 +425,18 @@ After all changes are applied and verified, output a summary:
 ### Removed
 - `path/to/dead_code.rs`: <what was cleaned up and why it was dead>
 
+## Resolution Quality
+
+Was the primary fix a structural rework or a behavioral patch?
+- **Structural**: the defect class is impossible by construction after this change.
+- **Behavioral**: the specific trigger is avoided but the underlying pattern remains.
+
+If behavioral, explain why a structural fix was not feasible.
+
 ## Remaining Risks
-<Any areas that could not be fully addressed, or related fragility
-that warrants future attention. "None" if the fix is complete.>
+<Only genuine risks that could not be offered as scope items in Phase 6,
+such as risks requiring upstream changes or external dependencies.
+"None" if the fix is complete. Do not repeat items the user declined.>
 ```
 
 ## Rules

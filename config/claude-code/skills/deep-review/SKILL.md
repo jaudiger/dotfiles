@@ -58,6 +58,21 @@ Bare paths (no prefix) are treated as `file:PATH` for backward compatibility.
 
 ---
 
+## Progress tracking
+
+Create all phase tasks upfront with TaskCreate, then track each with `in_progress` / `completed` as work proceeds.
+
+| Task subject | activeForm |
+|--------------|------------|
+| Parse and validate input | Parsing and validating input |
+| Detect language, framework, version | Detecting language, framework, version |
+| Gather context | Gathering context |
+| Select skills and concerns | Selecting skills and concerns |
+| Invoke skills via Task agents | Invoking skills via Task agents |
+| Synthesize report | Synthesizing report |
+
+This is mandatory. Never skip task creation or updates.
+
 ## Phase 1: Parse and validate input
 
 ### 1a: Syntax validation
