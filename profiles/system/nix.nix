@@ -33,8 +33,6 @@ in
         "";
 
     optimise = {
-      # Prefer to use this option instead of "nix.settings.auto-optimise-store"
-      # More information: https://github.com/nix-darwin/nix-darwin/pull/1152
       automatic = true;
     };
 
