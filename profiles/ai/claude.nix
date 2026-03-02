@@ -230,6 +230,7 @@ in
               "Bash(find:*)"
               "Bash(gh * list:*)"
               "Bash(gh * view:*)"
+              "Bash(gh pr diff:*)"
               "Bash(gh search:*)"
               "Bash(git branch:*)"
               "Bash(git diff:*)"
