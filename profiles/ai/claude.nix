@@ -95,9 +95,7 @@ in
           ascii-only = ''
             # ASCII-only output
 
-            Use only ASCII characters in all generated text: code, comments,
-            commit messages, PR titles/descriptions, branch names, and
-            conversational replies.
+            Use only ASCII characters in all generated text.
 
             ## Banned characters
 
@@ -108,64 +106,66 @@ in
             - Unicode arrows (U+2190 through U+2194)
             - Bullet (U+2022)
             - Non-breaking space (U+00A0)
-            - Any other fancy Unicode punctuation
 
             ## Style guidance
 
-            Avoid leaning on dashes and arrows in prose. Prefer rephrasing:
-            - Instead of parenthetical dashes ("X -- an important thing -- is Y"),
-              use commas, parentheses, or split into two sentences.
-            - Instead of arrow notation ("A -> B") in explanatory text,
-              write "A leads to B", "A then B", or use a list.
-            - Reserve `--` for CLI flags and argument separators.
-            - Reserve `->` for code and type signatures, not prose.
+            Do not use `--` or `->` in prose. Reserve `--` for CLI flags
+            and `->` for code and type signatures. Rephrase with commas,
+            parentheses, or separate sentences.
 
             ## Exceptions
 
-            - String literals / test fixtures that explicitly require Unicode.
-            - File content that already contains non-ASCII text being preserved
-              as-is (e.g., translations, user-facing i18n strings).
-            - Identifiers or names that naturally contain non-ASCII characters
-              (e.g., a person's name in a comment or attribution).
+            Permitted when preserving existing non-ASCII content, in string
+            literals that require Unicode, or in names that naturally
+            contain non-ASCII characters.
+          '';
+          comment-banned-patterns = ''
+            # Banned patterns in code comments
+
+            NEVER use any of the following in code comments.
+
+            ## No numbered sequences
+
+            Do not use `1.`, `2.`, `Step 1`, `Phase 1`, or any
+            numbered/lettered enumeration.
+
+            ## No section banners
+
+            Do not use `// -- SECTION --`, `// === SECTION ===`,
+            `// --- SECTION ---`, `/* ======= */`, or any decorative
+            separator line.
+
+            ## No lists
+
+            Do not use bullet, numbered, or dash-separated lists. Fold
+            the information into flowing prose sentences instead.
+
+            ## No concrete examples
+
+            Do not illustrate with concrete values. Avoid "e.g.",
+            "for example", "such as", "like", and bare parenthetical
+            values. Describe behavior abstractly. If a concrete value
+            is essential for understanding, put it in a test.
           '';
           comment-style = ''
             # Human-sounding code comments
 
-            Write comments that read like a human developer wrote them. Avoid
-            any pattern that reveals machine-generated origin.
+            Write comments that read like a human developer wrote them.
 
-            ## Banned patterns
+            ## Brevity
 
-            Never use these in code comments:
-            - Numbered sequences: `1.`, `2.`, `Step 1`, `Phase 1`, or any
-              numbered/lettered enumeration
-            - Section banners: `// -- SECTION --`, `// === SECTION ===`,
-              `// --- SECTION ---`, `/* ======= */`, or any decorative
-              separator line
-            - Lists of any kind, whether bullet, numbered, or dash-separated,
-              in both inline and doc comments. Fold the information into
-              flowing prose sentences instead.
-            - Inline examples: do not illustrate with concrete values in
-              parentheses or after "e.g." or "for example". Describe
-              the behavior abstractly. If a concrete value is essential
-              for understanding, put it in a test, not a comment.
-
-            ## Brevity rules
-
-            - Inside function bodies, keep comments to one short sentence or
-              a few words. If the code needs more explanation, the code itself
-              should be clearer.
-            - Doc comments on function, type, or module declarations may be
-              longer, but still keep them concise and direct.
-            - Never restate what the code already says. `// increment counter`
-              above `counter += 1` adds nothing.
+            - Inside function bodies, keep comments to one short sentence
+              or a few words.
+            - Doc comments may be longer, but still concise and direct.
+            - Never restate what the code already says.
 
             ## Tone
 
-            - Write plain, direct English as if leaving a note for a colleague.
-            - Avoid formal or tutorial-style phrasing ("It should be noted
-              that...", "This function is responsible for...").
-            - Avoid hedging ("This might be needed because..."). Either state
+            - Write plain, direct English as if leaving a note for a
+              colleague.
+            - Avoid formal phrasing ("It should be noted that...",
+              "This function is responsible for...").
+            - Avoid hedging ("This might be needed because..."). State
               the fact or remove the comment.
           '';
           test-style = ''
@@ -173,22 +173,19 @@ in
 
             ## Extend before create
 
-            Before writing a new test case, check whether an existing test
-            already covers the same Arrange and Act. If it does, add the
-            new assertion there. Only create a new test when the scenario
-            (setup or action) genuinely differs.
+            Add assertions to an existing test when the setup and action
+            match. Only create a new test for a genuinely different scenario.
 
             ## One concept per test
 
             Each test verifies one logical behavior. Multiple assertions
             are fine when they all check facets of the same behavior.
-            Do not combine unrelated checks in a single test.
 
             ## Keep tests minimal
 
             - Only arrange what the test actually needs.
-            - Avoid logic in tests: no conditionals or branching.
-              Loops are acceptable for table-driven / parameterized tests.
+            - No logic in tests: no conditionals or branching. Loops
+              are acceptable for table-driven / parameterized tests.
             - No helper abstractions for a single test. Inline the setup.
             - Prefer literal values over computed ones so expected results
               are obvious at a glance.
