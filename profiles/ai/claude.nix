@@ -205,6 +205,7 @@ in
             CLAUDE_CODE_HIDE_ACCOUNT_INFO = 1;
             FORCE_AUTOUPDATE_PLUGINS = 1;
           };
+          model = "opusplan";
           permissions = {
             allow = [
               "Bash(cargo bench:*)"
