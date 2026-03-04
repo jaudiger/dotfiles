@@ -50,8 +50,8 @@ in
         };
         agent_buffer_font_size = 11.5;
         agent_servers = {
-          claude = {
-            ignore_system_version = false;
+          claude-acp = {
+            type = "registry";
           };
         };
         auto_install_extensions = {
