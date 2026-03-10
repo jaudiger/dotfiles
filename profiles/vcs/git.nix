@@ -133,6 +133,7 @@ in
         ".devcontainer"
         ".envrc"
         ".gemini"
+        ".mcp.json"
         ".vscode"
         ".zed"
         "AGENTS.md"
