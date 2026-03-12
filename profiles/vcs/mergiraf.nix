@@ -1,9 +1,12 @@
-{ pkgs, ... }:
+{ ... }:
 
 {
   modules.home-manager = {
-    home = {
-      packages = with pkgs; [ mergiraf ];
+    programs.mergiraf = {
+      enable = true;
+
+      enableGitIntegration = true;
+      enableJujutsuIntegration = true;
     };
   };
 }

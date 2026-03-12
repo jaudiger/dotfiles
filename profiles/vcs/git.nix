@@ -70,11 +70,6 @@ in
         merge = {
           autoStash = true;
           conflictstyle = "diff3";
-
-          mergiraf = {
-            name = "mergiraf";
-            driver = "mergiraf merge --git %O %A %B -s %S -x %X -y %Y -p %P -l %L";
-          };
         };
 
         protocol = {
@@ -155,12 +150,6 @@ in
     };
 
     home = {
-      file."gitAttributes" = {
-        # This file is generated almost manually with 'mergiraf languages --gitattributes'
-        source = ../../config/git/attributes;
-        target = ".config/git/attributes";
-      };
-
       file."gitWorkConfig" = {
         source = ../../config/git/work.config;
         target = ".config/git/work.config";

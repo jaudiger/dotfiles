@@ -47,21 +47,6 @@ in
           hunk-level = "line";
         };
 
-        merge-tools = {
-          mergiraf = {
-            program = "mergiraf";
-            merge-conflict-exit-codes = [ 1 ];
-            merge-args = [
-              "merge"
-              "$base"
-              "$left"
-              "$right"
-              "-o"
-              "$output"
-            ];
-          };
-        };
-
         remotes.origin = {
           auto-track-bookmarks = "glob:*";
         };
@@ -88,7 +73,6 @@ in
           conflict-marker-style = "git";
           default-command = "status";
           editor = "nvim";
-          merge-editor = "mergiraf";
         };
 
         # Default user
