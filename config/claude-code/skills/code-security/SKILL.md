@@ -5,7 +5,7 @@ description: >
   /code-security to see available languages and security domains. Each domain
   applies a targeted checklist to the given targets and produces a structured
   report.
-argument-hint: [lang] [domain] [targets...]
+argument-hint: "[lang] [domain] [targets...]"
 allowed-tools: Bash, Read, Grep, Glob
 ---
 

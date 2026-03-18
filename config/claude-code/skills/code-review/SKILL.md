@@ -5,7 +5,7 @@ description: >
   requests (PRs), or direct file/symbol targets. Run /code-review to see
   available modes. All review aspects are applied by default; append aspect
   names after; to narrow the focus.
-argument-hint: [targets...] [-- aspect...]
+argument-hint: "[targets...] [-- aspect...]"
 allowed-tools: Bash, Read, Grep, Glob
 ---
 

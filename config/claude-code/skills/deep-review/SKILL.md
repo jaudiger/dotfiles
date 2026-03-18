@@ -6,7 +6,7 @@ description: >
   context gathering. Input is source code targets (file, folder, symbol, or
   diff); NOT issue reports. For resolving bug reports and issues, use
   deep-resolve instead.
-argument-hint: [targets...]
+argument-hint: "[targets...]"
 allowed-tools: Bash, Read, Grep, Glob, Task, WebFetch
 ---
 

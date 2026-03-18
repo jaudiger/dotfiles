@@ -6,7 +6,7 @@ description: >
   than applying incremental patches. Input is an issue source (GitHub/GitLab
   issue URL or shorthand, or a file containing a report); NOT source code
   targets. For read-only code analysis, use deep-review instead.
-argument-hint: [source...]
+argument-hint: "[source...]"
 allowed-tools: AskUserQuestion, Bash, Read, Grep, Glob, Edit, Task, WebFetch
 ---
 

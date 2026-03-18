@@ -5,7 +5,7 @@ description: >
   resistance. Run /code-test to see available languages and practices. Each
   practice applies a targeted checklist to the given targets and their
   corresponding tests, producing a structured report.
-argument-hint: [lang] [practice] [targets...]
+argument-hint: "[lang] [practice] [targets...]"
 allowed-tools: Bash, Read, Grep, Glob
 ---
 

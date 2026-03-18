@@ -4,7 +4,7 @@ description: >
   Audit source files for bugs and defects using static analysis. Run
   /code-audit to see available languages and concerns. Each concern applies a
   targeted checklist to the given targets and produces a structured report.
-argument-hint: [lang] [concern] [targets...]
+argument-hint: "[lang] [concern] [targets...]"
 allowed-tools: Bash, Read, Grep, Glob
 ---
 

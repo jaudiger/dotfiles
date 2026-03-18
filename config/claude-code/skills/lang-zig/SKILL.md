@@ -5,7 +5,7 @@ description: >
   guidance on I/O, JSON, memory management, error handling, comptime,
   types, testing, build system, and syntax idioms. Run /lang-zig to see
   available topics.
-argument-hint: [topic...]
+argument-hint: "[topic...]"
 allowed-tools: Read, Grep, Glob
 ---
 
