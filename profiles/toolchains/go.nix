@@ -82,5 +82,17 @@ in
         };
       };
     };
+
+    # Claude Code configuration
+    programs.claude-code.lspServers = {
+      gopls = {
+        command = "gopls";
+        args = [ "serve" ];
+        extensionToLanguage = {
+          ".go" = "go";
+          ".mod" = "gomod";
+        };
+      };
+    };
   };
 }

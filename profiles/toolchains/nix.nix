@@ -55,5 +55,15 @@ in
         };
       };
     };
+
+    # Claude Code configuration
+    programs.claude-code.lspServers = {
+      nixd = {
+        command = "nixd";
+        extensionToLanguage = {
+          ".nix" = "nix";
+        };
+      };
+    };
   };
 }

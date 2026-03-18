@@ -260,5 +260,15 @@ in
         };
       };
     };
+
+    # Claude Code configuration
+    programs.claude-code.lspServers = {
+      rust-analyzer = {
+        command = "rust-analyzer";
+        extensionToLanguage = {
+          ".rs" = "rust";
+        };
+      };
+    };
   };
 }

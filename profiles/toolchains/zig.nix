@@ -12,15 +12,27 @@
     })
   ];
 
-  modules.home-manager.home = {
-    packages = with pkgs; [
-      zig # Or 'zigpkgs.master' to use nightly builds, 'zigpkgs."X.Y.Z"' to use a specific version
-      zls
+  modules.home-manager = {
+    home = {
+      packages = with pkgs; [
+        zig # Or 'zigpkgs.master' to use nightly builds, 'zigpkgs."X.Y.Z"' to use a specific version
+        zls
 
-      superhtml
-      supermd
-      ziggy
-      zine
-    ];
+        superhtml
+        supermd
+        ziggy
+        zine
+      ];
+    };
+
+    # Claude Code configuration
+    programs.claude-code.lspServers = {
+      zls = {
+        command = "zls";
+        extensionToLanguage = {
+          ".zig" = "zig";
+        };
+      };
+    };
   };
 }

@@ -18,5 +18,17 @@
         };
       };
     };
+
+    # Claude Code configuration
+    programs.claude-code.lspServers = {
+      bash-language-server = {
+        command = "bash-language-server";
+        args = [ "start" ];
+        extensionToLanguage = {
+          ".sh" = "bash";
+          ".bash" = "bash";
+        };
+      };
+    };
   };
 }

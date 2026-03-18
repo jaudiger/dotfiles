@@ -49,6 +49,18 @@ in
           };
         };
       };
+
+      # Claude Code configuration
+      programs.claude-code.lspServers = {
+        yaml-language-server = {
+          command = "yaml-language-server";
+          args = [ "--stdio" ];
+          extensionToLanguage = {
+            ".yaml" = "yaml";
+            ".yml" = "yaml";
+          };
+        };
+      };
     };
   };
 }

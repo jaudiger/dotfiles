@@ -69,6 +69,26 @@ in
         '';
       };
 
+      # Claude Code configuration
+      programs.claude-code.lspServers = {
+        ruff = {
+          command = "ruff";
+          args = [ "server" ];
+          extensionToLanguage = {
+            ".py" = "python";
+            ".pyi" = "python";
+          };
+        };
+        ty = {
+          command = "ty";
+          args = [ "server" ];
+          extensionToLanguage = {
+            ".py" = "python";
+            ".pyi" = "python";
+          };
+        };
+      };
+
       # Zed configuration
       programs.zed-editor.userSettings = {
         languages = {

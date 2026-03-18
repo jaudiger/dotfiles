@@ -67,6 +67,16 @@ in
           };
         };
       };
+
+      # Claude Code configuration
+      programs.claude-code.lspServers = {
+        jdtls = {
+          command = "jdtls";
+          extensionToLanguage = {
+            ".java" = "java";
+          };
+        };
+      };
     };
   };
 }
