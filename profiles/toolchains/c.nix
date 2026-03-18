@@ -33,6 +33,32 @@ in
         ++ lib.optionals isDarwin [ clang ];
     };
 
+    home-manager = {
+      # Neovim configuration
+      programs.nixvim = {
+        plugins.lsp.servers = {
+          clangd = {
+            enable = true;
+          };
+        };
+      };
+
+      # Claude Code configuration
+      programs.claude-code.lspServers = {
+        clangd = {
+          command = "clangd";
+          extensionToLanguage = {
+            ".c" = "c";
+            ".h" = "c";
+            ".cpp" = "cpp";
+            ".cc" = "cpp";
+            ".cxx" = "cpp";
+            ".hpp" = "cpp";
+          };
+        };
+      };
+    };
+
     host.shell.aliases = lib.mkMerge [
       {
         # Cppcheck
