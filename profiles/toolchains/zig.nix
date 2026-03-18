@@ -25,6 +25,15 @@
       ];
     };
 
+    # Neovim configuration
+    programs.nixvim = {
+      plugins.lsp.servers = {
+        zls = {
+          enable = true;
+        };
+      };
+    };
+
     # Claude Code configuration
     programs.claude-code.lspServers = {
       zls = {
