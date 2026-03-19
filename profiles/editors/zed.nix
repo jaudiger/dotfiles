@@ -107,6 +107,7 @@ in
         };
         git_panel = {
           dock = "right";
+          file_icons = true;
           tree_view = true;
         };
         indent_guides = {
