@@ -131,6 +131,7 @@ in
         preferred_line_length = 120;
         project_panel = {
           dock = "right";
+          git_status_indicator = true;
         };
         read_only_files = [
           "**/Cargo.lock"
