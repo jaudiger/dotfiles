@@ -81,7 +81,6 @@
           style = "bold dimmed white";
         };
 
-
         username = {
           format = "[$user]($style)";
           style_user = "bold dimmed yellow";
