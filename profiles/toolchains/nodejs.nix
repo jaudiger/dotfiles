@@ -16,8 +16,8 @@
       packages = with pkgs; [
         pnpm
 
-        nodePackages.prettier
-        nodePackages.eslint
+        prettier
+        eslint
       ];
     };
   };
