@@ -79,9 +79,8 @@ in
           };
         };
         edit_predictions = {
-          provider = "zed";
-          enabled_in_text_threads = true;
           mode = "subtle";
+          provider = "zed";
         };
         excerpt_context_lines = 4;
         "experimental.theme_overrides" = {
