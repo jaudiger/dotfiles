@@ -270,9 +270,6 @@
             enable = true;
           };
 
-          undotree = {
-            enable = true;
-          };
 
           which-key = {
             enable = true;
@@ -501,7 +498,7 @@
           {
             mode = "n";
             key = "<leader>u";
-            action = "<cmd>UndotreeToggle<CR>";
+            action = "<cmd>Undotree<CR>";
             options.desc = "Undo tree";
           }
 
@@ -567,8 +564,12 @@
         extraConfigLua = ''
           -- UI options
           vim.o.winborder = 'rounded'
+          vim.o.pumborder = 'rounded'
           vim.o.fillchars = 'eob: ,fold: ,foldopen:▾,foldsep:│,foldclose:▸'
           vim.opt.shortmess:append("I")
+
+          -- Redesigned messages/cmdline UI
+          require('vim._core.ui2').enable()
 
           -- Diagnostic configuration
           vim.diagnostic.config({
