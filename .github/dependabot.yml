@@ -5,3 +5,11 @@ updates:
     schedule:
       interval: "weekly"
       day: "sunday"
+
+  - package-ecosystem: "nix"
+    directories:
+      - "/"
+      - "/dev-shell/*"
+    schedule:
+      interval: "weekly"
+      day: "sunday"
