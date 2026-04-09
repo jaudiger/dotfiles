@@ -37,7 +37,7 @@ in
             provider = "mistral";
           };
           message_editor_min_lines = 8;
-          play_sound_when_agent_done = true;
+          play_sound_when_agent_done = "when_hidden";
           show_turn_stats = true;
           thread_summary_model = {
             model = "devstral-small-latest";
@@ -121,9 +121,6 @@ in
           };
         };
         line_indicator_format = "short";
-        notification_panel = {
-          button = false;
-        };
         outline_panel = {
           dock = "right";
         };
