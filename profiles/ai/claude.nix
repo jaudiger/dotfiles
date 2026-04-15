@@ -29,6 +29,7 @@ in
           deep-resolve = ../../config/claude-code/skills/deep-resolve;
           deep-review = ../../config/claude-code/skills/deep-review;
           lang-zig = ../../config/claude-code/skills/lang-zig;
+          lang-zig-upgrade-0-16 = ../../config/claude-code/skills/lang-zig-upgrade-0.16;
           meta-learn = ''
             ---
             name: meta-learn
