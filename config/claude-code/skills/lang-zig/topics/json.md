@@ -1,8 +1,5 @@
 # JSON Parsing & Serialization
 
-> **Source**: [Zig 0.15.2 Language Reference](https://ziglang.org/documentation/0.15.2/),
-> [Zig 0.15.1 Release Notes](https://ziglang.org/download/0.15.1/release-notes.html)
-
 ## Parsing with `std.json.parseFromSlice`
 
 ```zig

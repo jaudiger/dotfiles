@@ -1,19 +1,55 @@
 # I/O System, Format Strings & HTTP
 
-> **Source**: [Zig 0.15.1 Release Notes](https://ziglang.org/download/0.15.1/release-notes.html)
+## The `std.Io` Type
 
-## I/O System
+All I/O requires an `Io` instance. Anything that potentially blocks control flow or introduces nondeterminism is owned by the I/O interface.
+
+### Obtaining `Io`
+
+In application `main` via Juicy Main:
+
+```zig
+pub fn main(init: std.process.Init) !void {
+    const io = init.io;
+    const gpa = init.gpa;
+    // init also provides: .arena, .environ_map, .preopens, .minimal.args
+}
+```
+
+Workaround when `Io` is unavailable (like reaching for `page_allocator`):
+
+```zig
+const Io = std.Io;
+var threaded: Io.Threaded = .init_single_threaded;
+const io = threaded.io();
+```
+
+In tests:
+
+```zig
+const io = std.testing.io;
+```
+
+---
+
+## Buffered I/O
 
 The I/O paradigm is **"buffer in the interface"**: the caller provides the buffer, not the implementation.
 
 ### Writer Pattern
 
 ```zig
-var stdout_buffer: [4096]u8 = undefined;
-var stdout_writer = std.fs.File.stdout().writer(&stdout_buffer);
-const stdout: *std.Io.Writer = &stdout_writer.interface;
-try stdout.print("Hello {s}\n", .{"world"});
-try stdout.flush();
+var buffer: [4096]u8 = undefined;
+var file_writer = std.Io.File.stdout().writer(io, &buffer);
+const writer: *std.Io.Writer = &file_writer.interface;
+try writer.print("Hello {s}\n", .{"world"});
+try writer.flush();
+```
+
+For simple unbuffered output on stdout:
+
+```zig
+try std.Io.File.stdout().writeStreamingAll(io, "Hello, world!\n");
 ```
 
 ### Reader Pattern
@@ -30,6 +66,14 @@ const reader: *std.Io.Reader = &file_reader.interface;
 - The caller provides the buffer via the `reader()`/`writer()` call
 - Access the interface via the `.interface` field
 - Always call `.flush()` when done writing
+- Most I/O operations include `error.Canceled` in their error sets for cancelation support
+
+### Fixed-Buffer I/O
+
+```zig
+var reader: std.Io.Reader = .fixed(data);
+var writer: std.Io.Writer = .fixed(buffer);
+```
 
 ### Notable Types
 
@@ -117,12 +161,33 @@ const FmtDetailed = struct {
 
 - `std.ascii.hexEscape(bytes, case)`: Escape non-printable bytes as `\xNN`
 - `std.zig.fmtString(bytes)`: Escape bytes as Zig string literal content
+- `std.fmt.bufPrintSentinel`: Format into buffer with sentinel
 
 ---
 
 ## HTTP Client & Server
 
 HTTP client and server operate on I/O streams (`std.Io.Reader` / `std.Io.Writer`), not `std.net` directly.
+
+### Client Pattern
+
+```zig
+var http_client: std.http.Client = .{ .allocator = gpa, .io = io };
+defer http_client.deinit();
+
+var request = try http_client.request(.HEAD, .{
+    .scheme = "http",
+    .host = .{ .percent_encoded = host_name.bytes },
+    .port = 80,
+    .path = .{ .percent_encoded = "/" },
+}, .{});
+defer request.deinit();
+
+try request.sendBodiless();
+
+var redirect_buffer: [1024]u8 = undefined;
+const response = try request.receiveHead(&redirect_buffer);
+```
 
 ### Server Pattern
 
@@ -132,17 +197,6 @@ var send_buffer: [4000]u8 = undefined;
 var conn_reader = connection.stream.reader(&recv_buffer);
 var conn_writer = connection.stream.writer(&send_buffer);
 var server = std.http.Server.init(&conn_reader.interface, &conn_writer.interface);
-```
-
-### Client Pattern
-
-```zig
-var req = try client.request(.GET, uri, .{});
-try req.sendBodiless();
-var redirect_buffer: [4096]u8 = undefined;
-var response = try req.receiveHead(&redirect_buffer);
-var reader_buffer: [4096]u8 = undefined;
-const body_reader = response.reader(&reader_buffer);
 ```
 
 ### TLS Client

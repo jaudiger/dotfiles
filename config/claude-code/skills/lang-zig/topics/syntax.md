@@ -1,7 +1,6 @@
 # Syntax & Style Idioms
 
-> **Source**: [matklad: Zig's Lovely Syntax](https://matklad.github.io/2025/08/09/zigs-lovely-syntax.html),
-> [Zig 0.15.2 Language Reference](https://ziglang.org/documentation/0.15.2/)
+> **Source**: [matklad: Zig's Lovely Syntax](https://matklad.github.io/2025/08/09/zigs-lovely-syntax.html)
 
 ## Integer Literals
 
@@ -99,7 +98,10 @@ const mem = std.mem;
 @fieldParentPtr("field", ptr) // container from field pointer
 @FieldType(T, field_name)  // type of a field on T
 @typeInfo(T)               // type introspection
-@Type(description)         // type construction
+@Int(sign, bits)           // construct integer type
+@Tuple(&types)             // construct tuple type
+@Struct(layout, ...)       // construct struct type (see comptime topic)
+@Enum(TagInt, mode, ...)   // construct enum type (see comptime topic)
 @compileError("message")   // compile-time error
 @bitCast(value)            // reinterpret bits
 @ptrCast(ptr)              // pointer cast

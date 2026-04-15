@@ -1,7 +1,6 @@
 # Error Handling & Defer Patterns
 
-> **Source**: [Zig 0.15.2 Language Reference](https://ziglang.org/documentation/0.15.2/),
-> [matklad: Zig defer Patterns](https://matklad.github.io/2024/03/21/defer-patterns.html),
+> **Source**: [matklad: Zig defer Patterns](https://matklad.github.io/2024/03/21/defer-patterns.html),
 > [matklad: Error Codes for Control Flow](https://matklad.github.io/2025/11/06/error-codes-for-control-flow.html),
 > [matklad: Diagnostics Factory](https://matklad.github.io/2026/02/16/diagnostics-factory.html)
 
@@ -170,3 +169,9 @@ defer allocator.destroy(resource);
 try resource.init();
 errdefer resource.deinit();  // Only on error path
 ```
+
+---
+
+## `error.Canceled` in I/O
+
+Most I/O operations include `error.Canceled` in their error sets. When a cancelation request is acknowledged, I/O operations return this error. Handle it by propagating, rearming with `io.recancel()`, or making it unreachable with `io.swapCancelProtection()`.

@@ -2,8 +2,7 @@
 
 > **Source**: [matklad: Things Zig comptime Won't Do](https://matklad.github.io/2025/04/19/things-zig-comptime-wont-do.html),
 > [matklad: Comptime Zig ORM](https://matklad.github.io/2025/03/19/comptime-zig-orm.html),
-> [matklad: A Fun Zig Program](https://matklad.github.io/2025/04/21/fun-zig-program.html),
-> [Zig 0.15.2 Language Reference](https://ziglang.org/documentation/0.15.2/)
+> [matklad: A Fun Zig Program](https://matklad.github.io/2025/04/21/fun-zig-program.html)
 
 ## Basic Comptime Evaluation
 
@@ -55,10 +54,9 @@ inline for (struct_info.fields) |field| {
 }
 ```
 
-## Type Reflection with `@typeInfo` and `@Type`
+## Type Reflection with `@typeInfo`
 
 ```zig
-// Inspect a type
 const info = @typeInfo(MyStruct);
 switch (info) {
     .@"struct" => |s| {
@@ -68,15 +66,24 @@ switch (info) {
     },
     else => @compileError("expected struct"),
 }
-
-// Construct a type dynamically
-const NewType = @Type(.{ .@"struct" = .{
-    .layout = .auto,
-    .is_tuple = false,
-    .decls = &.{},
-    .fields = &fields,
-} });
 ```
+
+## Type Construction Builtins
+
+```zig
+@Int(.unsigned, 10)                                // integer type
+@Tuple(&.{ u32, [2]f64 })                         // tuple type
+@Pointer(.one, .{ .@"const" = true }, u32, null)   // pointer type
+@Struct(.auto, null, &names, &types, &field_attrs)  // struct type
+@Union(.auto, MyEnum, &names, &types, &@splat(.{})) // union type
+@Enum(u32, .exhaustive, &names, &values)            // enum type
+@Fn(&param_types, &@splat(.{}), ReturnType, .{})    // function type
+@EnumLiteral()                                      // enum literal type
+```
+
+Use `&@splat(.{})` for default attributes across all fields.
+
+For types without a dedicated builtin, use literal syntax: `opaque {}`, `?T`, `E!T`, `error{ ... }`, `[len]Elem`.
 
 ## `std.meta.FieldEnum` and `@FieldType` for Field-Level Dispatch
 

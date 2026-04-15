@@ -3,9 +3,7 @@
 > **Source**: [matklad: Types and the Zig Programming Language](https://matklad.github.io/2023/08/09/types-and-zig.html),
 > [matklad: Zig's Lovely Syntax](https://matklad.github.io/2025/08/09/zigs-lovely-syntax.html),
 > [matklad: Partially Matching Zig Enums](https://matklad.github.io/2025/08/08/partially-matching-zig-enums.html),
-> [matklad: Newtype Index Pattern In Zig](https://matklad.github.io/2025/12/23/zig-newtype-index-pattern.html),
-> [Zig 0.15.1 Release Notes](https://ziglang.org/download/0.15.1/release-notes.html),
-> [Zig 0.15.2 Language Reference](https://ziglang.org/documentation/0.15.2/)
+> [matklad: Newtype Index Pattern In Zig](https://matklad.github.io/2025/12/23/zig-newtype-index-pattern.html)
 
 ## Nominal Types Without Names
 
@@ -120,6 +118,35 @@ switch (result) {
         processGeneric(val);
     },
 }
+```
+
+---
+
+## Packed Types
+
+### Packed Unions
+
+Packed unions require an explicit backing integer. All fields must have the same `@bitSizeOf` as the backing integer:
+
+```zig
+const Split16 = packed union(u16) {
+    raw: MaybeSigned16,
+    split: packed struct { low: u8, high: u8 },
+};
+```
+
+Fields in `packed struct` and `packed union` cannot be pointers. Use `usize` with `@ptrFromInt`/`@intFromPtr` instead.
+
+### Extern Context
+
+Enums and packed types must specify explicit backing types when used in extern contexts:
+
+```zig
+const Enum = enum(u8) { a, b, c, d };
+export var some_enum: Enum = .a;
+
+const PackedStruct = packed struct(u8) { a: u4, b: u4 };
+export var some_packed: PackedStruct = .{ .a = 1, .b = 2 };
 ```
 
 ---

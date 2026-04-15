@@ -1,8 +1,6 @@
 # Memory Management, Allocators & Collections
 
-> **Source**: [Zig 0.15.2 Language Reference](https://ziglang.org/documentation/0.15.2/),
-> [Zig 0.15.1 Release Notes](https://ziglang.org/download/0.15.1/release-notes.html),
-> [matklad: Zig And Rust](https://matklad.github.io/2023/03/26/zig-and-rust.html)
+> **Source**: [matklad: Zig And Rust](https://matklad.github.io/2023/03/26/zig-and-rust.html)
 
 ## Allocator Pattern
 
@@ -12,6 +10,26 @@ Zig uses explicit allocator passing, with no global allocator and no hidden allo
 var gpa = std.heap.GeneralPurposeAllocator(.{}){};
 defer _ = gpa.deinit();
 const allocator = gpa.allocator();
+```
+
+In application `main`, use Juicy Main for a pre-initialized allocator:
+
+```zig
+pub fn main(init: std.process.Init) !void {
+    const gpa = init.gpa;
+    const arena = init.arena.allocator();
+    // ...
+}
+```
+
+## ArenaAllocator
+
+`heap.ArenaAllocator` is lock-free and thread-safe. No mutex wrapper needed:
+
+```zig
+var arena_allocator: std.heap.ArenaAllocator = .init(std.heap.page_allocator);
+defer arena_allocator.deinit();
+const arena = arena_allocator.allocator();
 ```
 
 ## Testing Allocator
@@ -81,3 +99,15 @@ var buffer: [8]i32 = undefined;
 var stack = std.ArrayList(i32).initBuffer(&buffer);
 try stack.appendSliceBounded(data);
 ```
+
+## HashMap
+
+Unmanaged variants (allocator passed at each call site):
+
+```zig
+var map: std.array_hash_map.Auto([]const u8, u32) = .{};
+defer map.deinit(allocator);
+try map.put(allocator, "key", 42);
+```
+
+`array_hash_map.Auto`, `array_hash_map.String`, and `array_hash_map.Custom` are the standard hash map types.

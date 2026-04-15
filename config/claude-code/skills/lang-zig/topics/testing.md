@@ -1,7 +1,5 @@
 # Testing Patterns
 
-> **Source**: [Zig 0.15.2 Language Reference](https://ziglang.org/documentation/0.15.2/)
-
 ## Basic Test
 
 ```zig
@@ -57,5 +55,32 @@ test "CoreV1Pod has resource_meta" {
     const meta = CoreV1Pod.resource_meta;
     try std.testing.expectEqualStrings("pods", meta.resource);
     try std.testing.expect(meta.namespaced);
+}
+```
+
+## Testing I/O
+
+Use `std.testing.io` for I/O-dependent test code (like `std.testing.allocator` for allocations):
+
+```zig
+test "http request" {
+    const io = std.testing.io;
+    var http_client: std.http.Client = .{ .allocator = std.testing.allocator, .io = io };
+    defer http_client.deinit();
+    // ...
+}
+```
+
+## Fuzz Testing with Smith
+
+Fuzz test functions receive a `*std.testing.Smith` for generating values:
+
+```zig
+fn fuzzTest(_: void, smith: *std.testing.Smith) !void {
+    var sum: u64 = 0;
+    while (!smith.eosWeightedSimple(7, 1)) {
+        sum += smith.value(u8);
+    }
+    try std.testing.expect(sum != 1234);
 }
 ```

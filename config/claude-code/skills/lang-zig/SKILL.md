@@ -1,7 +1,7 @@
 ---
 name: lang-zig
 description: >
-  Zig 0.15+ idiomatic best practices and patterns reference. Provides
+  Zig 0.16+ idiomatic best practices and patterns reference. Provides
   guidance on I/O, JSON, memory management, error handling, comptime,
   types, testing, build system, and syntax idioms. Run /lang-zig to see
   available topics.
@@ -9,9 +9,9 @@ argument-hint: "[topic...]"
 allowed-tools: Read, Grep, Glob
 ---
 
-# Zig 0.15+ Best Practices Reference
+# Zig Best Practices Reference
 
-**Target version**: Zig 0.15.0+ (tested against 0.15.1 / 0.15.2)
+**Target version**: Zig 0.16.0+
 
 ## Interactive mode (no arguments)
 
@@ -98,7 +98,7 @@ handling may require both `json` and `errors` topics.
 
 ## Rules
 
-- Always present code examples using Zig 0.15+ syntax.
+- Always present code examples using Zig 0.16+ syntax.
 - Do NOT invent patterns not covered by the reference content. If unsure,
   state that the topic is not covered.
 - When the user is actively coding, prefer showing concrete code examples over
