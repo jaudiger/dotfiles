@@ -13,3 +13,7 @@ updates:
     schedule:
       interval: "weekly"
       day: "sunday"
+    groups:
+      nix-flake:
+        patterns:
+          - "*"
