@@ -1,5 +1,7 @@
 # C: Language-Specific Patterns
 
+Target version: C23.
+
 ## Valid concerns
 
 leaks, uaf, deadlocks, races, oom, lifecycle, overflow, error-handling, ub, injection
@@ -47,7 +49,6 @@ leaks, uaf, deadlocks, races, oom, lifecycle, overflow, error-handling, ub, inje
 - Shift by >= bit width: UB. Shift of negative signed: UB.
 - Strict aliasing: accessing memory through a pointer of incompatible type is UB (except via `char *`).
 - Sequence points: `i++ + i++` is UB. Multiple modifications without intervening sequence point.
-- Union type punning: technically UB in C89, defined in C99/C11 (but check compiler).
 - `restrict` qualifier: if two restrict pointers alias, UB.
 
 ## Injection patterns

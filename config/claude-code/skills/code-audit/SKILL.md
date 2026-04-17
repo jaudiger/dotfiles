@@ -12,7 +12,7 @@ allowed-tools: Bash, Read, Grep, Glob
 
 ## Interactive mode (no arguments or partial arguments)
 
-If the user did not provide all three pieces of information (language, concern, targets), print a single prompt that lists every missing piece and ask the user to reply with their choices. Do NOT use the AskUserQuestion tool; it truncates options. Instead, output the choices as formatted text directly in the conversation.
+If the user did not provide all three pieces of information (language, concern, targets), print a single prompt that lists every missing piece and ask the user to reply with their choices. The AskUserQuestion tool is reserved for prompts with at most 3 short enumerated options; for open-ended choice lists (languages, targets), output the choices as formatted text directly in the conversation.
 
 For each missing piece, print a numbered section:
 
@@ -29,11 +29,11 @@ All targets use a prefix to indicate the type of input:
 | Prefix | Format | Description |
 |--------|--------|-------------|
 | `file:` | `file:PATH` or `file:PATH#L1-L2` | Single file, optional line range |
-| `folder:` | `folder:PATH` | All source files for the language within the dir (recursive) |
+| `folder:` | `folder:PATH` | All source files within the dir (recursive) |
 | `symbol:` | `symbol:PATH:LINE` or `symbol:PATH:LINE#L1-L2` | Function/struct/class/method at LINE, optional focus range |
 | `diff:` | `diff:local`, `diff:branch[:REF]`, `diff:pr:NUMBER_OR_URL`, `diff:commit:SHA` | Changes from a diff source |
 
-Bare paths (no prefix) are treated as `file:PATH` for backward compatibility.
+Bare paths (no prefix) are shorthand for `file:PATH`.
 
 ### Resolution rules
 
@@ -41,7 +41,7 @@ Bare paths (no prefix) are treated as `file:PATH` for backward compatibility.
 
 **`folder:PATH`**; Glob for files matching the language's typical extensions within PATH. Treat each discovered file as a `file:` target.
 
-**`symbol:PATH:LINE[#L1-L2]`**; Read the file at PATH. Identify the innermost function, method, struct, class, enum, or trait definition containing LINE. Analyze that symbol boundary (from signature to closing delimiter). If `#L1-L2` is appended, focus on that range within the symbol. When invoked standalone (not by deep-review), do NOT chase callers/implementations outside the file.
+**`symbol:PATH:LINE[#L1-L2]`**; Read the file at PATH. Identify the innermost function, method, struct, class, enum, or trait definition containing LINE. Analyze that symbol boundary (from signature to closing delimiter). If `#L1-L2` is appended, focus on that range within the symbol. When invoked standalone (not by deep-review), do NOT chase callers/implementations outside the file. When run under deep-review, callers, callees, and type definitions will already be supplied in the `## Gathered Context` section of the Task prompt, so rely on those rather than re-gathering.
 
 **`diff:SOURCE`**; Resolve the diff:
 
@@ -60,8 +60,7 @@ After resolving the diff, extract changed files and changed line regions (hunks)
 - `symbol:` LINE on blank/comment/import to scan up/down ~20 lines for nearest symbol; error if none found.
 - Nested symbols (closures, inner functions) to resolve to innermost enclosing.
 - `#L1-L2` where L2 > file length to clamp to file length; L1 > file length to error.
-- `folder:` with no matching files to report "No `<lang>` files found."
-- Mixed languages in folder to the language argument filters which files to include.
+- `folder:` with no matching files to report "No source files found."
 - Empty diff to report "No changes found" and stop.
 
 ## Audit steps

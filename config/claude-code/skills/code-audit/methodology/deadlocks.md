@@ -1,7 +1,5 @@
 # Deadlock Detection Methodology
 
-## Scope
-
 Deadlocks, lock ordering violations, self-deadlocks on non-recursive mutexes, starvation from blocking calls under locks, and condition variable misuse.
 
 ## Systematic Procedure

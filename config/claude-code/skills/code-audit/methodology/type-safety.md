@@ -1,7 +1,5 @@
 # Type Safety Methodology
 
-## Scope
-
 Type assertions that hide runtime errors, nullability escape hatches, type-check suppression, type erasure and untyped escapes, incomplete type narrowing, unvalidated external data, and structural/nominal typing pitfalls.
 
 ## Systematic Procedure

@@ -1,7 +1,5 @@
 # Integer Overflow/Underflow Detection Methodology
 
-## Scope
-
 Signed and unsigned integer overflow, underflow, truncation, and widening conversion bugs that lead to incorrect logic, buffer overflows, or undefined behavior.
 
 ## Systematic Procedure

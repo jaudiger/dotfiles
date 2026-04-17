@@ -1,7 +1,5 @@
 # Secure Defaults & Configuration
 
-## Scope
-
 Debug mode in production, verbose error exposure, default-deny configurations, rate limiting on authentication endpoints, error response information leakage, admin/debug endpoint exposure, dependency pinning, and feature flags for security-relevant features.
 
 ## Systematic Procedure

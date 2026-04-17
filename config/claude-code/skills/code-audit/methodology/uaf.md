@@ -1,7 +1,5 @@
 # Use-After-Free Detection Methodology
 
-## Scope
-
 Use of pointers, slices, references, or iterators that refer to memory that has been freed, reallocated, or invalidated. Includes double-free.
 
 ## Systematic Procedure

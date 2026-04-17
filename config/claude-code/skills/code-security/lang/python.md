@@ -1,16 +1,18 @@
 # Python: Security Patterns
 
+Target version: Python 3.13+.
+
 ## Valid domains
 
 authn, authz, crypto, input-validation, transport, logging, config
 
-## Cryptography and secure random (Python 3.13+)
+## Cryptography and secure random
 
 - **CSPRNG**: `secrets` module (`secrets.token_bytes()`, `secrets.token_hex()`, `secrets.token_urlsafe()`, `secrets.choice()`). Reject: `random` module for any security purpose (predictable PRNG).
-- **Password hashing**: `bcrypt` package (`bcrypt.hashpw`, `bcrypt.checkpw`), `argon2-cffi` (`argon2.PasswordHasher`). Reject: `hashlib.sha256(password)` alone, `crypt` module (removed in Python 3.13).
+- **Password hashing**: `bcrypt` package (`bcrypt.hashpw`, `bcrypt.checkpw`), `argon2-cffi` (`argon2.PasswordHasher`). Reject: `hashlib.sha256(password)` alone, `crypt` module (removed from stdlib).
 - **Constant-time comparison**: `hmac.compare_digest()`. Reject: `==` on secrets, tokens, MACs, hashes.
-- **hashlib**: uses HACL* verified implementations since Python 3.12 for SHA1/SHA2/SHA3/MD5. Still reject MD5/SHA1 for security purposes (algorithm weakness, not implementation).
-- **Cryptography package**: third-party `cryptography` library. Removed CAST5/SEED/IDEA/Blowfish ciphers. Added Argon2id support (requires OpenSSL 3.2+). Use `Fernet` for symmetric encryption (AES-CBC + HMAC, high-level), or `AESGCM`/`ChaCha20Poly1305` for AEAD.
+- **hashlib**: uses HACL* verified implementations for SHA1/SHA2/SHA3/MD5. Still reject MD5/SHA1 for security purposes (algorithm weakness, not implementation).
+- **Cryptography package**: third-party `cryptography` library. No CAST5/SEED/IDEA/Blowfish ciphers. Supports Argon2id. Use `Fernet` for symmetric encryption (AES-CBC + HMAC, high-level), or `AESGCM`/`ChaCha20Poly1305` for AEAD.
 - **Key/secret zeroing**: Python does not make this easy (immutable strings, GC). Avoid storing secrets in `str`: use `bytes`/`bytearray` and zero manually. Consider `SecretStr` from pydantic for API boundaries.
 
 ## Authentication and session management

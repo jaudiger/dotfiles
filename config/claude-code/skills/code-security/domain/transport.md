@@ -1,7 +1,5 @@
 # Secure Communication & HTTP Security Headers
 
-## Scope
-
 TLS configuration, certificate validation, HTTP security headers (HSTS, CSP, X-Frame-Options, X-Content-Type-Options), CORS policy, cookie security flags, sensitive data in URLs, and SSRF prevention.
 
 ## Systematic Procedure

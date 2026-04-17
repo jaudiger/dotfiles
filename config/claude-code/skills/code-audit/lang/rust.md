@@ -1,5 +1,7 @@
 # Rust: Language-Specific Patterns
 
+Target version: Rust 1.95+.
+
 ## Valid concerns
 
 leaks, uaf, deadlocks, races, oom, lifecycle, overflow, error-handling, async-bugs, ub, injection, type-safety

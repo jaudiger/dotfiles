@@ -1,7 +1,5 @@
 # Error Handling Methodology
 
-## Scope
-
 Silently swallowed errors, incorrect error propagation, missing error paths, and error handling that leaves state inconsistent.
 
 ## Systematic Procedure

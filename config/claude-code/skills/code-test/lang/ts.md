@@ -1,12 +1,13 @@
 # TypeScript: Testing Patterns
 
+Target version: TypeScript 5+ on Node.js 24 LTS.
+
 ## Valid practices
 
 branch-coverage, edge-cases, assertions, isolation, negative-testing, mutation-resistance
 
-## Version and framework detection
+## Test frameworks
 
-- **Language version**: read `tsconfig.json` for `target` and `lib` settings. Read `package.json` for `typescript` version in `devDependencies`.
 - **Test framework**: check `package.json` dependencies and config files:
   - `jest`: look for `jest.config.*`, `"jest"` key in `package.json`.
   - `vitest`: look for `vitest.config.*`, `vite.config.*` with test section.
@@ -22,7 +23,6 @@ branch-coverage, edge-cases, assertions, isolation, negative-testing, mutation-r
   - `msw`: API mocking via service workers.
   - `nock`: HTTP request interception.
   - `fast-check`: property-based testing.
-- **Version-sensitive features**: test framework APIs evolve across major versions. Read the actual test imports and matcher usage rather than assuming a specific API shape.
 
 ## Test file conventions
 

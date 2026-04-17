@@ -1,7 +1,5 @@
 # Authorization & Access Control
 
-## Scope
-
 Server-side authorization enforcement, insecure direct object references (IDOR), privilege escalation (horizontal and vertical), default-deny patterns, role/permission enforcement, path-based bypass, and mass assignment / overposting.
 
 ## Systematic Procedure

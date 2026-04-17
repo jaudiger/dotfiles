@@ -1,5 +1,7 @@
 # TypeScript: Language-Specific Patterns
 
+Target version: TypeScript 5+ on Node.js 24 LTS.
+
 ## Valid concerns
 
 leaks, lifecycle, error-handling, async-bugs, type-safety, injection
@@ -23,7 +25,7 @@ leaks, lifecycle, error-handling, async-bugs, type-safety, injection
 - `Promise` constructor with `reject` never called: error path missing.
 - `try/catch` around async: verify the catch is around the `await`, not just the function call.
 - Empty catch: `catch (e) {}`: silently swallows. Flag always.
-- `catch (e)` with `e` typed as `unknown` (TS 4.4+): verify narrowing before use. With `any`: loses type info.
+- `catch (e)` with `e` typed as `unknown`: verify narrowing before use. With `any`: loses type info.
 - `for await...of` on stream without try/catch: unhandled error crashes the loop.
 - `process.on('unhandledRejection')`: global fallback, not a substitute for proper error handling.
 

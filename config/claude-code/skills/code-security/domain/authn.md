@@ -1,7 +1,5 @@
 # Authentication & Session Management
 
-## Scope
-
 Password hashing, credential storage, token validation, session lifecycle, session storage, session fixation prevention, and multi-factor authentication flow integrity.
 
 ## Systematic Procedure

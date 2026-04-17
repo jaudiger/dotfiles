@@ -1,13 +1,14 @@
 # Rust: Testing Patterns
 
+Target version: Rust 1.95+.
+
 ## Valid practices
 
 branch-coverage, edge-cases, assertions, isolation, negative-testing, mutation-resistance
 
-## Version and framework detection
+## Test frameworks
 
-- **Language version**: read `Cargo.toml` for `rust-version` (MSRV) and `edition` fields. Check `rust-toolchain.toml` for the pinned toolchain.
-- **Test framework**: Rust uses the built-in `#[test]` attribute by default. Check `Cargo.toml` `[dev-dependencies]` for:
+- Rust uses the built-in `#[test]` attribute by default. Check `Cargo.toml` `[dev-dependencies]` for:
   - `rstest`: parameterized and fixture-based tests.
   - `proptest` or `quickcheck`: property-based testing.
   - `mockall`: mock generation.
@@ -17,11 +18,6 @@ branch-coverage, edge-cases, assertions, isolation, negative-testing, mutation-r
   - `test-case`: parameterized test macros.
   - `insta`: snapshot testing.
   - `pretty_assertions`: diff-friendly assertion output.
-- **Version-sensitive features**: verify availability before recommending:
-  - `assert_matches!` macro; check if stabilized in the detected edition.
-  - `#[should_panic(expected = "...")]`: available in all editions but check usage patterns.
-  - Async test support depends on the runtime crate version.
-  Read actual `use` statements to confirm what is imported.
 
 ## Test file conventions
 

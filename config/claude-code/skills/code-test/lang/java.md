@@ -1,12 +1,13 @@
 # Java: Testing Patterns
 
+Target version: Java 25 LTS.
+
 ## Valid practices
 
 branch-coverage, edge-cases, assertions, isolation, negative-testing, mutation-resistance
 
-## Version and framework detection
+## Test frameworks
 
-- **Language version**: read `pom.xml` (`<java.version>`, `<maven.compiler.source>`, `<maven.compiler.release>`), `build.gradle` / `build.gradle.kts` (`sourceCompatibility`, `targetCompatibility`, `jvmToolchain`), or `.java-version`.
 - **Test framework**: check build file dependencies:
   - JUnit 5 (`org.junit.jupiter`); look for `@Test` from `org.junit.jupiter.api.Test`.
   - JUnit 4 (`junit:junit`); look for `@Test` from `org.junit.Test`.
@@ -15,7 +16,7 @@ branch-coverage, edge-cases, assertions, isolation, negative-testing, mutation-r
 - **Assertion and mock libraries**: check imports and dependencies for:
   - `org.assertj`: fluent assertions.
   - `org.hamcrest`: matcher-based assertions.
-  - `org.mockito`: mocking framework (check major version for API differences).
+  - `org.mockito`: mocking framework.
   - `io.mockk`: Kotlin mocking (in mixed projects).
   - `org.wiremock`: HTTP stubbing.
   - `net.jqwik`: property-based testing.

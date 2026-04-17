@@ -1,9 +1,5 @@
 # Branch Coverage
 
-Systematic analysis of whether all code branches are exercised by tests.
-
-## Scope
-
 Untested conditional branches, match/switch arms, early returns, loop boundaries, short-circuit evaluations, and ternary expressions.
 
 ## Checklist

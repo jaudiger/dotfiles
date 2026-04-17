@@ -1,7 +1,5 @@
 # Undefined Behavior Detection Methodology
 
-## Scope
-
 Operations whose behavior is not defined by the language specification, leading to unpredictable results, silent corruption, or security vulnerabilities. Applies primarily to Zig, C, and Rust (unsafe blocks).
 
 ## Systematic Procedure

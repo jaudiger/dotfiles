@@ -1,7 +1,5 @@
 # Cryptography & Secret Management
 
-## Scope
-
 Algorithm selection, key management, secure random number generation, hardcoded secrets, key/secret zeroing, IV/nonce handling, hash function usage, constant-time comparison, and environment variable / secret manager integration.
 
 ## Systematic Procedure

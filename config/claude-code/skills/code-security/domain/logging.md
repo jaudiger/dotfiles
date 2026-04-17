@@ -1,7 +1,5 @@
 # Security Logging & Audit Trails
 
-## Scope
-
 Sensitive data in logs, PII redaction/masking, security event logging, log injection prevention, structured logging for security events, and log level appropriateness.
 
 ## Systematic Procedure

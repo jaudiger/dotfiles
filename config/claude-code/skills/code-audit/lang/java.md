@@ -1,5 +1,7 @@
 # Java: Language-Specific Patterns
 
+Target version: Java 25 LTS.
+
 ## Valid concerns
 
 leaks, deadlocks, races, lifecycle, overflow, error-handling, injection, type-safety

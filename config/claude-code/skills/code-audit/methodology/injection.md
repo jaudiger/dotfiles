@@ -1,7 +1,5 @@
 # Injection Detection Methodology
 
-## Scope
-
 SQL injection, command injection, path traversal, template injection, header injection, log injection, and any pattern where untrusted input is interpolated into a structured context without sanitization.
 
 ## Systematic Procedure

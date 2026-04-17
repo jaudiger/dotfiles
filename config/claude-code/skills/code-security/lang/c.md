@@ -1,5 +1,7 @@
 # C: Security Patterns
 
+Target version: C23.
+
 ## Valid domains
 
 authn, authz, crypto, input-validation, transport, logging, config
@@ -7,7 +9,7 @@ authn, authz, crypto, input-validation, transport, logging, config
 ## Cryptography and secure random
 
 - **CSPRNG**: `arc4random()`, `arc4random_buf()`, `getrandom()` (Linux), `getentropy()`. Reject: `rand()`, `srand()`, `random()`, `srandom()` for any security purpose.
-- **Secure zeroing**: C23 `memset_explicit()` is the preferred portable approach. Fallbacks by platform: `explicit_bzero()` (POSIX), `OPENSSL_cleanse()` (OpenSSL), `SecureZeroMemory()` (Windows). For pre-C23 without platform APIs, the volatile function pointer pattern (`*(volatile memset_t)memset`). Reject: plain `memset()`: the compiler may optimize it away when the buffer is not subsequently read.
+- **Secure zeroing**: `memset_explicit()` is the preferred portable approach. Platform alternatives: `explicit_bzero()` (POSIX), `OPENSSL_cleanse()` (OpenSSL), `SecureZeroMemory()` (Windows). Reject: plain `memset()`: the compiler may optimize it away when the buffer is not subsequently read.
 - **Constant-time comparison**: `CRYPTO_memcmp()` (OpenSSL), `sodium_memcmp()` (libsodium). Reject: `memcmp()`, `strcmp()`: timing side channels on secret data.
 - **Symmetric encryption**: OpenSSL 3.x EVP API (`EVP_EncryptInit_ex2`, `EVP_AEAD`), libsodium `crypto_aead_*` (XChaCha20-Poly1305, AES-GCM). Reject: DES, RC4, Blowfish, raw ECB mode.
 - **Random bytes**: `RAND_bytes()` (OpenSSL), `randombytes_buf()` (libsodium). Reject: `RAND_pseudo_bytes()` (deprecated).

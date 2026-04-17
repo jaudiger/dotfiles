@@ -1,13 +1,14 @@
 # C: Testing Patterns
 
+Target version: C23.
+
 ## Valid practices
 
 branch-coverage, edge-cases, assertions, isolation, negative-testing, mutation-resistance
 
-## Version and framework detection
+## Test frameworks
 
-- **Language version**: read `CMakeLists.txt` (`CMAKE_C_STANDARD`, `set(CMAKE_C_STANDARD xx)`), `Makefile` (look for `-std=cxx` flags), or `compile_commands.json`.
-- **Test framework**: C has no built-in test framework. Check build files and includes for:
+- C has no built-in test framework. Check build files and includes for:
   - Google Test / Google Mock (`gtest`, `gmock`); C++ test framework often used for C code via `extern "C"`.
   - CMocka (`cmocka.h`); pure C mocking and testing.
   - Unity (`unity.h`); lightweight embedded-friendly test framework.
@@ -16,7 +17,6 @@ branch-coverage, edge-cases, assertions, isolation, negative-testing, mutation-r
   - Criterion (`criterion/criterion.h`); modern C/C++ testing.
   - munit (`munit.h`); minimal unit testing.
   - Custom `assert`-based test harness; look for `main()` functions in test files using `assert()`.
-- **Build system**: identify whether tests are compiled and run via `cmake`, `make test`, `ctest`, `meson test`, or custom scripts.
 - **Sanitizers**: check for `-fsanitize=address,undefined,leak` in compiler flags; these augment test effectiveness.
 
 ## Test file conventions

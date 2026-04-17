@@ -1,16 +1,18 @@
 # TypeScript: Security Patterns
 
+Target version: TypeScript 5+ on Node.js 24 LTS.
+
 ## Valid domains
 
 authn, authz, crypto, input-validation, transport, logging, config
 
-## Cryptography and secure random (Node.js 22+ LTS)
+## Cryptography and secure random
 
 - **CSPRNG**: `crypto.randomBytes()`, `crypto.randomUUID()`, `crypto.randomInt()`. Web Crypto API: `crypto.getRandomValues()`. Reject: `Math.random()` for any security purpose.
 - **Constant-time comparison**: `crypto.timingSafeEqual()`. Reject: `===`, `==`, `Buffer.compare()` on secrets/MACs.
 - **Password hashing**: `bcrypt` package (`bcrypt.hash` with saltRounds >= 10), `argon2` package. Web Crypto API supports Argon2 algorithms. Reject: plain SHA256/MD5 of password.
 - **Symmetric encryption**: `crypto.createCipheriv('aes-256-gcm', ...)` with AEAD. Reject: `aes-256-cbc` without separate MAC, `des`, `rc4`, `createCipher()` (deprecated, derives key from password with MD5).
-- **Node.js 24 LTS**: uses OpenSSL 3.5, security level 2; RSA < 2048 and RC4 prohibited.
+- **Runtime security**: security level 2; RSA < 2048 and RC4 prohibited.
 - **Key/secret handling**: avoid storing secrets in `string` (immutable, not zeroable). Use `Buffer` and fill with zero after use (`buf.fill(0)`). Consider `sodium-native` for secure memory.
 
 ## Authentication and session management

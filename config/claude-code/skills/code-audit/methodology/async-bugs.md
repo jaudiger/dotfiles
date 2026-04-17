@@ -1,7 +1,5 @@
 # Async Bugs Methodology
 
-## Scope
-
 Floating promises, unhandled async errors, shared mutable state across await points, concurrent task lifecycle issues, and callback/event-driven bugs.
 
 ## Systematic Procedure

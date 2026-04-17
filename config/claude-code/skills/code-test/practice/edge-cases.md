@@ -1,9 +1,5 @@
 # Edge Cases
 
-Systematic identification of boundary and corner-case inputs that should be tested, derived from the function interface rather than the implementation.
-
-## Scope
-
 Missing tests for boundary values, degenerate inputs, type limits, encoding edge cases, and domain-specific corner cases.
 
 ## Checklist

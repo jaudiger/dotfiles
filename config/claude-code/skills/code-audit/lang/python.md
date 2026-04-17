@@ -1,5 +1,7 @@
 # Python: Language-Specific Patterns
 
+Target version: Python 3.13+.
+
 ## Valid concerns
 
 leaks, deadlocks, races, lifecycle, overflow, error-handling, async-bugs, injection, type-safety

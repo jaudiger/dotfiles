@@ -1,7 +1,5 @@
 # Data Race and Concurrency Bug Detection Methodology
 
-## Scope
-
 Data races (concurrent unsynchronized access where at least one is a write), logical races (TOCTOU, check-then-act), and atomicity violations.
 
 ## Systematic Procedure

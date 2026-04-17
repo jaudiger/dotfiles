@@ -13,7 +13,7 @@ allowed-tools: Bash, Read, Grep, Glob
 
 ## Interactive mode (no arguments or partial arguments)
 
-If the user did not provide all three pieces of information (language, practice, targets), print a single prompt that lists every missing piece and ask the user to reply with their choices. Do NOT use the AskUserQuestion tool; it truncates options. Instead, output the choices as formatted text directly in the conversation.
+If the user did not provide all three pieces of information (language, practice, targets), print a single prompt that lists every missing piece and ask the user to reply with their choices. The AskUserQuestion tool is reserved for prompts with at most 3 short enumerated options; for open-ended choice lists (languages, targets), output the choices as formatted text directly in the conversation.
 
 For each missing piece, print a numbered section:
 
@@ -30,11 +30,11 @@ All targets use a prefix to indicate the type of input:
 | Prefix | Format | Description |
 |--------|--------|-------------|
 | `file:` | `file:PATH` or `file:PATH#L1-L2` | Single file, optional line range |
-| `folder:` | `folder:PATH` | All source files for the language within the dir (recursive) |
+| `folder:` | `folder:PATH` | All source files within the dir (recursive) |
 | `symbol:` | `symbol:PATH:LINE` or `symbol:PATH:LINE#L1-L2` | Function/struct/class/method at LINE, optional focus range |
 | `diff:` | `diff:local`, `diff:branch[:REF]`, `diff:pr:NUMBER_OR_URL`, `diff:commit:SHA` | Changes from a diff source |
 
-Bare paths (no prefix) are treated as `file:PATH` for backward compatibility.
+Bare paths (no prefix) are shorthand for `file:PATH`.
 
 ### Resolution rules
 
@@ -42,7 +42,7 @@ Bare paths (no prefix) are treated as `file:PATH` for backward compatibility.
 
 **`folder:PATH`**; Glob for files matching the language's typical extensions within PATH. Treat each discovered file as a `file:` target.
 
-**`symbol:PATH:LINE[#L1-L2]`**; Read the file at PATH. Identify the innermost function, method, struct, class, enum, or trait definition containing LINE. Analyze that symbol boundary (from signature to closing delimiter). If `#L1-L2` is appended, focus on that range within the symbol. When invoked standalone (not by deep-review), do NOT chase callers/implementations outside the file. After resolving the symbol, also locate the corresponding test file using project test conventions. The symbol gives the source region; test-file discovery gives the test region to evaluate against it.
+**`symbol:PATH:LINE[#L1-L2]`**; Read the file at PATH. Identify the innermost function, method, struct, class, enum, or trait definition containing LINE. Analyze that symbol boundary (from signature to closing delimiter). If `#L1-L2` is appended, focus on that range within the symbol. When invoked standalone (not by deep-review), do NOT chase callers/implementations outside the file. When run under deep-review, callers, callees, type definitions, and related tests will already be supplied in the `## Gathered Context` section of the Task prompt, so rely on those rather than re-gathering. After resolving the symbol, also locate the corresponding test file using project test conventions. The symbol gives the source region; test-file discovery gives the test region to evaluate against it.
 
 **`diff:SOURCE`**; Resolve the diff:
 
@@ -61,8 +61,7 @@ After resolving the diff, extract changed files and changed line regions (hunks)
 - `symbol:` LINE on blank/comment/import to scan up/down ~20 lines for nearest symbol; error if none found.
 - Nested symbols (closures, inner functions) to resolve to innermost enclosing.
 - `#L1-L2` where L2 > file length to clamp to file length; L1 > file length to error.
-- `folder:` with no matching files to report "No `<lang>` files found."
-- Mixed languages in folder to the language argument filters which files to include.
+- `folder:` with no matching files to report "No source files found."
 - Empty diff to report "No changes found" and stop.
 
 ## Audit steps
@@ -74,14 +73,9 @@ After resolving the diff, extract changed files and changed line regions (hunks)
 1. Read [`lang/$0.md`](lang/$0.md) to confirm the practice is valid for this language and load language-specific testing patterns.
 2. Read [`practice/$1.md`](practice/$1.md) to load the testing practice methodology and checklist.
 3. Resolve all targets into concrete code regions using the target resolution rules.
-4. **Detect language version and test framework**; inspect project files (`go.mod`, `Cargo.toml`, `package.json`, `tsconfig.json`, `pom.xml`, `build.gradle`, `build.gradle.kts`, `pyproject.toml`, `requirements.txt`, `setup.cfg`, `CMakeLists.txt`, `Makefile`, `build.zig.zon`, etc.) to identify:
-   - The language version in use.
-   - The test framework and its version.
-   - Any test utility libraries (assertion libraries, mocking frameworks, property-based testing tools).
-   Adapt all subsequent recommendations to the actual versions detected. Read the actual test code imports to verify API usage matches the detected version rather than assuming a specific API shape. Do NOT recommend APIs, annotations, helpers, or patterns that do not exist in the detected version.
-5. **Locate test files**; for each target source file (or resolved source region), find the corresponding test file(s) using the project's test conventions (co-located `_test.go`, `mod_test.rs`, `*.test.ts`, `*Test.java`, `test_*.py`, etc.). Read each test file in full. If no test file exists, report it as a critical finding.
-6. **Read source files**; read every target source file in full. Build a model of: all functions/methods, their parameters (types and domains), return types, branching structure, error paths, and side effects.
-7. Apply the loaded practice checklist against the source-test pair.
+4. **Locate test files**; for each target source file (or resolved source region), find the corresponding test file(s) using the project's test conventions (co-located `_test.go`, `mod_test.rs`, `*.test.ts`, `*Test.java`, `test_*.py`, etc.). Read each test file in full. If no test file exists, report it as a critical finding.
+5. **Read source files**; read every target source file in full. Build a model of: all functions/methods, their parameters (types and domains), return types, branching structure, error paths, and side effects.
+6. Apply the loaded practice checklist against the source-test pair.
 
 ## Rules
 

@@ -21,11 +21,15 @@ allowed-tools: Bash, Read, Grep, Glob, Task, WebFetch
 Use these resolved paths when reading sub-skill files in Phase 5.
 All `Read` calls for skill files MUST use the absolute paths listed above.
 
+If the output above is empty or missing any of the four expected directories,
+stop and report which skills could not be resolved; do not proceed to Phase 5.
+
 ## Interactive mode (no arguments)
 
 If the user did not provide any targets, print the usage guide below and wait
-for their reply. Do NOT use the AskUserQuestion tool; output the guide as
-formatted text directly in the conversation.
+for their reply. The AskUserQuestion tool is reserved for prompts with at most
+3 short enumerated options; for this open-ended guide, output it as formatted
+text directly in the conversation.
 
 ### Usage
 
@@ -35,6 +39,8 @@ formatted text directly in the conversation.
 
 ### Target syntax
 
+All targets use a prefix to indicate the type of input:
+
 | Prefix | Format | Description |
 |--------|--------|-------------|
 | `file:` | `file:PATH` or `file:PATH#L1-L2` | Single file, optional line range |
@@ -42,7 +48,7 @@ formatted text directly in the conversation.
 | `symbol:` | `symbol:PATH:LINE` or `symbol:PATH:LINE#L1-L2` | Function/struct/class/method at LINE, optional focus range |
 | `diff:` | `diff:local`, `diff:branch[:REF]`, `diff:pr:NUMBER_OR_URL`, `diff:commit:SHA` | Changes from a diff source |
 
-Bare paths (no prefix) are treated as `file:PATH` for backward compatibility.
+Bare paths (no prefix) are shorthand for `file:PATH`.
 
 ### Examples
 
@@ -60,7 +66,7 @@ Bare paths (no prefix) are treated as `file:PATH` for backward compatibility.
 
 ## Progress tracking
 
-Create all phase tasks upfront with TaskCreate, then track each with `in_progress` / `completed` as work proceeds.
+Create all phase tasks upfront with the available task-tracking tool, then track each with `in_progress` / `completed` as work proceeds.
 
 | Task subject | activeForm |
 |--------------|------------|
@@ -115,7 +121,7 @@ Context depth varies by input type:
 
 | Input type | Depth | What to gather |
 |------------|-------|----------------|
-| `symbol:` | DEEP | Full symbol definition + implementations of called methods + type definitions for params/returns + trait/interface definitions + related tests + up to 5 callers. Use Grep/Read, optionally Task(Explore) for complex call graphs |
+| `symbol:` | DEEP | Full symbol definition + implementations of called methods + type definitions for params/returns + trait/interface definitions + related tests + up to 5 callers. Use Grep/Read, optionally the Task tool with `subagent_type: Explore` for complex call graphs |
 | `file:` | SHALLOW | Read the file (or line range). Project config only |
 | `folder:` | SHALLOW | Glob + read discovered files. Project config only |
 | `diff:` | MODERATE | Resolve diff, read changed files in full. For each function containing changed lines: find implementations of called functions in changed lines, type definitions, test files |
@@ -143,7 +149,7 @@ For each `symbol:` target:
 6. For parameter types and return types: find their definitions (struct/class/enum/trait/interface).
 7. Find related tests: look for test files using project conventions, search for tests that reference the symbol name.
 8. Find up to 5 callers of this symbol using Grep.
-9. For complex call graphs, use Task(Explore) to assist.
+9. For complex call graphs, invoke the Task tool with `subagent_type: Explore` to assist.
 
 ## Phase 4: Select skills and concerns
 
@@ -195,14 +201,31 @@ so context must be injected explicitly. Task agents also allow parallel executio
 
 #### Preparing each Task prompt
 
+Each skill stores its checklist files under a different sub-folder, and
+code-review does not ship language patterns:
+
+| Skill | Checklist folder | Language patterns |
+|-------|------------------|-------------------|
+| code-audit | `methodology/$CONCERN.md` | `lang/$LANG.md` |
+| code-security | `domain/$DOMAIN.md` | `lang/$LANG.md` |
+| code-test | `practice/$PRACTICE.md` | `lang/$LANG.md` |
+| code-review | `aspects/$ASPECT.md` | (none; skip the lang step) |
+
 For each skill invocation, use the absolute paths from the "Skills directory"
 section above:
 
-1. Read `<skill-path>/SKILL.md` (e.g., `~/.claude/skills/code-audit/SKILL.md`).
-2. Read `<skill-path>/lang/$LANG.md` for the detected language (e.g., `~/.claude/skills/code-audit/lang/rust.md`).
-3. Read `<skill-path>/methodology/$CONCERN.md`, `<skill-path>/domain/$DOMAIN.md`, or `<skill-path>/practice/$PRACTICE.md` for the selected concerns.
-4. Construct a Task prompt (`subagent_type: general-purpose`) that includes all
-   of the above plus the gathered context.
+1. Read `<skill-path>/SKILL.md`. When injecting it into the Task prompt, strip
+   the `## Interactive mode` section (and its sub-sections, up to but not
+   including the next `##` heading). That block instructs a fresh agent to
+   re-ask the user for arguments and must not leak into sub-agent dispatch.
+2. For code-audit, code-security, and code-test: read
+   `<skill-path>/lang/$LANG.md` for the detected language. code-review has no
+   `lang/` directory; omit this step and the "Language Patterns" section of
+   the injected prompt entirely.
+3. Read the checklist file indicated in the "Checklist folder" column above
+   for each selected concern, domain, practice, or aspect.
+4. Construct a Task prompt (Task tool with `subagent_type: general-purpose`)
+   that includes all of the above plus the gathered context.
 
 #### Context injection format
 
@@ -232,13 +255,14 @@ Framework: <framework> <version>
   <test body>
 
 ## Skill Instructions
-[contents of SKILL.md]
+[contents of SKILL.md, with the `## Interactive mode` section removed]
 
 ## Language Patterns
-[contents of lang/$LANG.md]
+[contents of lang/$LANG.md; omit this whole section for code-review]
 
 ## Methodology
-[contents of methodology/concern.md or domain/domain.md or practice/practice.md]
+[contents of the checklist file: methodology/concern.md, domain/domain.md,
+practice/practice.md, or aspects/aspect.md]
 
 ## Task
 Analyze the following targets using the skill instructions and methodology above.
@@ -296,7 +320,7 @@ Combine all skill results into a unified report:
 ## Medium Findings
 <deduplicated medium-severity findings>
 
-## Low Findings and Nits
+## Low Findings
 <deduplicated low-severity findings>
 
 ## Cross-Cutting Observations

@@ -1,7 +1,5 @@
 # Lifecycle (Init/Deinit/Shutdown) Methodology
 
-## Scope
-
 Initialization and teardown correctness, partial initialization cleanup, shutdown ordering, and idempotency.
 
 ## Systematic Procedure

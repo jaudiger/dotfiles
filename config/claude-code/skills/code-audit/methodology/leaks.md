@@ -1,7 +1,5 @@
 # Leak Detection Methodology
 
-## Scope
-
 Memory leaks, resource leaks (file descriptors, sockets, database connections, handles), and logical leaks (goroutine leaks, subscription leaks, listener leaks).
 
 ## Systematic Procedure

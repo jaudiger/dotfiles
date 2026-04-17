@@ -14,8 +14,9 @@ allowed-tools: Bash, Read, Grep, Glob, Edit, Write
 
 If the user did not provide targets, use Glob to find `*.zig` and `build.zig`
 files in the workspace and list them as suggestions. Ask the user which files
-to upgrade. Do NOT use the AskUserQuestion tool; output the list as formatted
-text directly in the conversation.
+to upgrade. The AskUserQuestion tool is reserved for prompts with at most 3
+short enumerated options; for this open-ended file list, output it as
+formatted text directly in the conversation.
 
 ## Procedure
 

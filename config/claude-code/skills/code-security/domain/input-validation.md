@@ -1,7 +1,5 @@
 # Input Validation & Safe Deserialization
 
-## Scope
-
 Allowlist vs denylist validation, schema validation at system boundaries, context-aware output encoding, unsafe deserialization, content-type validation, file upload safety, XML/JSON/YAML parsing safety, and regex denial of service (ReDoS).
 
 ## Systematic Procedure

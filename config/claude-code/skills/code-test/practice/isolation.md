@@ -1,9 +1,5 @@
 # Isolation
 
-Analysis of test independence, side effect management, and determinism.
-
-## Scope
-
 Tests that depend on execution order, share mutable state, leak side effects, depend on wall-clock time, or interact with external systems without proper boundaries.
 
 ## Checklist

@@ -1,9 +1,5 @@
 # Assertions
 
-Evaluation of test structure, assertion quality, and adherence to the Arrange-Act-Assert (AAA) pattern.
-
-## Scope
-
 Tests that lack meaningful assertions, violate AAA structure, assert on implementation details instead of behavior, or use assertions that cannot detect faults.
 
 ## Checklist

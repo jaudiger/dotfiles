@@ -1,5 +1,7 @@
 # Rust: Security Patterns
 
+Target version: Rust 1.95+.
+
 ## Valid domains
 
 authn, authz, crypto, input-validation, transport, logging, config
@@ -37,7 +39,7 @@ authn, authz, crypto, input-validation, transport, logging, config
 
 ## Transport and TLS
 
-- **TLS**: `rustls` with `rustls-aws-lc-rs` or `rustls-ring` provider crates (separated since rustls 0.24). `rustls` disables TLS < 1.2 by default.
+- **TLS**: `rustls` with `rustls-aws-lc-rs` or `rustls-ring` provider crates. `rustls` disables TLS < 1.2 by default.
 - **Certificate verification**: `rustls` verifies certificates by default via `webpki`. Flag: custom `ServerCertVerifier` that accepts all certificates.
 - **HTTP client**: `reqwest` (built on `hyper` + `rustls`/`native-tls`). Verify: `danger_accept_invalid_certs(false)` (default), timeout configured.
 - **HTTP server**: `axum`/`actix-web`/`warp`. Configure timeouts and request size limits.

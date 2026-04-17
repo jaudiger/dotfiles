@@ -21,11 +21,15 @@ allowed-tools: AskUserQuestion, Bash, Read, Grep, Glob, Edit, Task, WebFetch
 Use these resolved paths when reading sub-skill files in Phase 5.
 All `Read` calls for skill files MUST use the absolute paths listed above.
 
+If the output above is empty or missing any of the four expected directories,
+stop and report which skills could not be resolved; do not proceed to Phase 5.
+
 ## Interactive mode (no arguments)
 
 If the user did not provide any source, print the usage guide below and wait
-for their reply. Do NOT use the AskUserQuestion tool; output the guide as
-formatted text directly in the conversation.
+for their reply. The AskUserQuestion tool is reserved for prompts with at most
+3 short enumerated options (used later in Phases 6 and 7); for this open-ended
+guide, output it as formatted text directly in the conversation.
 
 ### Usage
 
@@ -60,7 +64,7 @@ Multiple sources can be combined to provide additional context.
 
 ## Progress tracking
 
-Create all phase tasks upfront with TaskCreate, then track each with `in_progress` / `completed` as work proceeds.
+Create all phase tasks upfront with the available task-tracking tool, then track each with `in_progress` / `completed` as work proceeds.
 
 | Task subject | activeForm |
 |--------------|------------|
@@ -225,7 +229,7 @@ specialized methodology adds value beyond what Phases 3--4 already uncovered.
 
 ### Concern auto-selection
 
-Scan the affected code for patterns and select ALL matching concerns:
+Scan the affected code for patterns and select ALL matching concerns (no artificial cap):
 
 | Pattern observed | Skills + concerns |
 |------------------|-------------------|
@@ -257,14 +261,31 @@ Available languages table).
 
 ### Preparing each Task prompt
 
+Each skill stores its checklist files under a different sub-folder, and
+code-review does not ship language patterns:
+
+| Skill | Checklist folder | Language patterns |
+|-------|------------------|-------------------|
+| code-audit | `methodology/$CONCERN.md` | `lang/$LANG.md` |
+| code-security | `domain/$DOMAIN.md` | `lang/$LANG.md` |
+| code-test | `practice/$PRACTICE.md` | `lang/$LANG.md` |
+| code-review | `aspects/$ASPECT.md` | (none; skip the lang step) |
+
 For each skill invocation, use the absolute paths from the "Skills directory"
 section above:
 
-1. Read `<skill-path>/SKILL.md` (e.g., `~/.claude/skills/code-audit/SKILL.md`).
-2. Read `<skill-path>/lang/$LANG.md` for the detected language (e.g., `~/.claude/skills/code-audit/lang/rust.md`).
-3. Read `<skill-path>/methodology/$CONCERN.md`, `<skill-path>/domain/$DOMAIN.md`, or `<skill-path>/practice/$PRACTICE.md` for the selected concerns.
-4. Construct a Task prompt (`subagent_type: general-purpose`) that includes all
-   of the above plus the gathered context.
+1. Read `<skill-path>/SKILL.md`. When injecting it into the Task prompt, strip
+   the `## Interactive mode` section (and its sub-sections, up to but not
+   including the next `##` heading). That block instructs a fresh agent to
+   re-ask the user for arguments and must not leak into sub-agent dispatch.
+2. For code-audit, code-security, and code-test: read
+   `<skill-path>/lang/$LANG.md` for the detected language. code-review has no
+   `lang/` directory; omit this step and the "Language Patterns" section of
+   the injected prompt entirely.
+3. Read the checklist file indicated in the "Checklist folder" column above
+   for each selected concern, domain, practice, or aspect.
+4. Construct a Task prompt (Task tool with `subagent_type: general-purpose`)
+   that includes all of the above plus the gathered context.
 
 ### Context injection format
 
@@ -297,13 +318,14 @@ Framework: <framework> <version>
   <test body>
 
 ## Skill Instructions
-[contents of SKILL.md]
+[contents of SKILL.md, with the `## Interactive mode` section removed]
 
 ## Language Patterns
-[contents of lang/$LANG.md]
+[contents of lang/$LANG.md; omit this whole section for code-review]
 
 ## Methodology
-[contents of methodology/concern.md or domain/domain.md or practice/practice.md]
+[contents of the checklist file: methodology/concern.md, domain/domain.md,
+practice/practice.md, or aspects/aspect.md]
 
 ## Task
 Analyze the following code regions using the skill instructions and methodology
@@ -329,10 +351,12 @@ test gaps from Phase 4b, additional defect instances or edge cases found
 by Phase 5 sub-skills, and deeper security or design concerns raised by
 sub-skill findings.
 
-If there are related work items, present them to the user with
-AskUserQuestion (multiSelect: true). Each option should briefly describe
-the item and which file or area it affects. Let the user pick which items
-to include in the current resolution scope.
+If there are related work items, present them to the user and let them pick
+which items to include in the current resolution scope. Each option should
+briefly describe the item and which file or area it affects. Use
+AskUserQuestion (multiSelect: true) only when there are at most 3 items; for
+longer lists, output a numbered list as formatted text and ask the user to
+reply with the numbers they want included.
 
 Items the user selects become part of Phase 7 alongside the core fix.
 Items the user declines are excluded entirely from the resolution and
@@ -389,13 +413,25 @@ skill diverges from analysis-only tools; it modifies the codebase.
    reconsider the approach. Prefer structural fixes that make the defect class
    impossible by construction over behavioral patches that merely avoid the
    specific trigger.
-3. **Apply changes**; implement the correct design identified in Phase 4a.
+3. **Present the plan and request approval**; emit the plan from steps 1-2
+   as a visible message in the conversation before touching any files. The
+   plan summary must include, for each file to be changed: the path, the
+   intent of the edit, and whether the change is structural or behavioral.
+   Also note any new files, deletions, and test updates. Then use
+   AskUserQuestion (single choice) to gate the transition with options
+   `proceed`, `revise`, and `abort`:
+   - `proceed`; move to step 4.
+   - `revise`; capture the user's feedback, return to step 1, and re-present
+     the updated plan.
+   - `abort`; stop without editing any files and skip to Phase 8 noting that
+     the resolution was not applied.
+4. **Apply changes**; implement the correct design identified in Phase 4a.
    Prefer targeted edits over full file rewrites unless a full rewrite is
    genuinely cleaner.
-4. **Verify consistency**; after applying all changes, re-read the modified
+5. **Verify consistency**; after applying all changes, re-read the modified
    files to confirm correctness. Check that imports, type signatures, and
    cross-module references are consistent.
-5. **Run checks**; if the project has a build command, linter, or test suite,
+6. **Run checks**; if the project has a build command, linter, or test suite,
    run them. Fix any failures introduced by the changes.
 
 ## Phase 8: Summary

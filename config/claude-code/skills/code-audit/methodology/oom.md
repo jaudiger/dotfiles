@@ -1,7 +1,5 @@
 # Out-of-Memory Resilience Methodology
 
-## Scope
-
 Unchecked allocation failures, inconsistent state after partial OOM, and unbounded memory growth from external input.
 
 ## Systematic Procedure

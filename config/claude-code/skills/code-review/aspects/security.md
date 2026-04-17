@@ -1,8 +1,6 @@
 # Security
 
-Surface security concerns in the changeset. This is a broad review pass --
-flag issues and recommend `/code-security` or `/code-audit` follow-ups for
-findings that warrant deep analysis.
+Surface security concerns in the changeset. This is a broad review pass.
 
 ## Checklist
 

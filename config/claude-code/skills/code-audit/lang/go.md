@@ -1,5 +1,7 @@
 # Go: Language-Specific Patterns
 
+Target version: Go 1.24+.
+
 ## Valid concerns
 
 leaks, deadlocks, races, lifecycle, overflow, error-handling, async-bugs, injection, type-safety
@@ -20,7 +22,6 @@ leaks, deadlocks, races, lifecycle, overflow, error-handling, async-bugs, inject
 - `sync.WaitGroup`: `Add` must be called before `go func()`, not inside the goroutine. `Add` after `Wait` is a race.
 - `sync.Once`: verify the function passed to `Do` does not block on something that also calls `Do` (deadlock).
 - Map concurrent access: concurrent read + write on `map` causes runtime panic. Use `sync.Map` or protect with mutex.
-- Range variable capture pre-Go 1.22: `for _, v := range items { go func() { use(v) }() }`: `v` is shared. Use `go func(v T) { use(v) }(v)` or upgrade to Go 1.22+.
 - Channel close: only the sender should close. Closing a closed channel panics. Receiving from closed channel returns zero value.
 
 ## Error handling patterns

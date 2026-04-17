@@ -1,9 +1,5 @@
 # Mutation Resistance
 
-Analysis of whether tests would detect faults introduced by common code mutations, ensuring tests verify actual behavior rather than merely executing code.
-
-## Scope
-
 Tests that pass even when the source code is mutated; indicating they provide false confidence. A mutation-resistant test suite fails when any semantically meaningful change is made to the code it covers.
 
 ## Concept

@@ -1,12 +1,13 @@
 # Python: Testing Patterns
 
+Target version: Python 3.13+.
+
 ## Valid practices
 
 branch-coverage, edge-cases, assertions, isolation, negative-testing, mutation-resistance
 
-## Version and framework detection
+## Test frameworks
 
-- **Language version**: read `pyproject.toml` (`requires-python`), `setup.cfg` (`python_requires`), `.python-version`, `Pipfile`, or `runtime.txt`.
 - **Test framework**: check `pyproject.toml` `[tool.pytest]` / `[tool.pytest.ini_options]`, `setup.cfg` `[tool:pytest]`, `pytest.ini`, or `tox.ini`:
   - `pytest`: dominant framework, look for `conftest.py` files, `@pytest.mark.*` decorators.
   - `unittest`: stdlib, look for `class XxxTest(unittest.TestCase)`.
@@ -21,11 +22,6 @@ branch-coverage, edge-cases, assertions, isolation, negative-testing, mutation-r
   - `factory-boy` / `faker`: test data generation.
   - `pytest-django` / `pytest-flask` / `pytest-fastapi`: framework integration.
   - `coverage` / `pytest-cov`: coverage reporting.
-- **Version-sensitive features**: check Python version before recommending:
-  - `match`/`case` statements; check availability.
-  - `ExceptionGroup` and `except*`: check availability.
-  - Type annotation features (`TypeGuard`, `Self`, `override`); check availability.
-  Read actual imports in test files to confirm what is used.
 
 ## Test file conventions
 
@@ -77,6 +73,6 @@ branch-coverage, edge-cases, assertions, isolation, negative-testing, mutation-r
 - FastAPI: use `TestClient` (sync) or `AsyncClient` (httpx) with dependency overrides.
 
 ### Determinism
-- Tests should not depend on dictionary ordering (guaranteed in modern Python but relying on it for test assertions with older `dict` is fragile).
+- Tests should not depend on dictionary insertion order for assertions unless the contract requires it.
 - Tests should not depend on set iteration order.
 - Random seed control: verify `random.seed()` or `hypothesis` settings for reproducibility.

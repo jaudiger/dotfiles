@@ -4,7 +4,7 @@ description: >
   Review code quality from local modifications, branches, commits, pull
   requests (PRs), or direct file/symbol targets. Run /code-review to see
   available modes. All review aspects are applied by default; append aspect
-  names after; to narrow the focus.
+  names after a `--` separator to narrow the focus.
 argument-hint: "[targets...] [-- aspect...]"
 allowed-tools: Bash, Read, Grep, Glob
 ---
@@ -14,8 +14,9 @@ allowed-tools: Bash, Read, Grep, Glob
 ## Interactive mode (no arguments)
 
 If the user did not provide any targets, print the usage guide below and wait
-for their reply. Do NOT use the AskUserQuestion tool; output the guide as
-formatted text directly in the conversation.
+for their reply. The AskUserQuestion tool is reserved for prompts with at most
+3 short enumerated options; for this open-ended guide, output it as formatted
+text directly in the conversation.
 
 ### Usage
 
@@ -34,7 +35,7 @@ All targets use a prefix to indicate the type of input:
 | `symbol:` | `symbol:PATH:LINE` or `symbol:PATH:LINE#L1-L2` | Function/struct/class/method at LINE, optional focus range |
 | `diff:` | `diff:local`, `diff:branch[:REF]`, `diff:pr:NUMBER_OR_URL`, `diff:commit:SHA` | Changes from a diff source |
 
-Bare paths (no prefix) are treated as `file:PATH` for backward compatibility.
+Bare paths (no prefix) are shorthand for `file:PATH`.
 
 #### Resolution rules
 
@@ -49,9 +50,9 @@ Bare paths (no prefix) are treated as `file:PATH` for backward compatibility.
 | Source | Resolution |
 |--------|------------|
 | `diff:local` | `git diff HEAD` for tracked changes + `git ls-files --others --exclude-standard` for untracked |
-| `diff:branch` | Detect default branch (`git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@'`, falling back to `main`), then `git diff <default>...HEAD` and `git log --oneline <default>..HEAD` for commit context |
+| `diff:branch` | Detect default branch (`git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null \| sed 's@^refs/remotes/origin/@@'`, falling back to `main`), then `git diff <default>...HEAD` |
 | `diff:branch:REF` | `git diff REF...HEAD` |
-| `diff:pr:N` or `diff:pr:URL` | GitHub: `gh pr diff N [--repo owner/repo]` and `gh pr view N [--repo owner/repo]` for title, description, and labels. GitLab: `glab mr diff N` and `glab mr view N`. Parse owner/repo/number from URL if needed |
+| `diff:pr:N` or `diff:pr:URL` | GitHub: `gh pr diff N`, GitLab: `glab mr diff N`. Parse owner/repo/number from URL if needed |
 | `diff:commit:SHA` | `git show SHA --stat` for overview, then `git show SHA` for full diff. Read the commit message for intent context |
 
 #### Edge cases
@@ -73,10 +74,10 @@ Bare paths (no prefix) are treated as `file:PATH` for backward compatibility.
 /code-review diff:branch:main
 /code-review diff:pr:42
 /code-review diff:pr:https://github.com/org/repo/pull/42
-/code-review diff:pr:42; security performance
+/code-review diff:pr:42 -- security performance
 /code-review diff:commit:abc123
 /code-review file:src/auth.rs
-/code-review symbol:src/auth.rs:42; correctness design
+/code-review symbol:src/auth.rs:42 -- correctness design
 ```
 
 ## Review procedure
@@ -93,8 +94,10 @@ If there are no code regions to review (empty diff, no files found), report it a
 ### Step 2: Gather context
 
 1. For `diff:` targets: extract the list of changed files from the diff. Read each changed file in full using the Read tool. Skip deleted files. If a file exceeds 2 000 lines, read only the regions surrounding changed hunks (200 lines of context around each hunk).
-2. For `file:`/`folder:`/`symbol:` targets: read the target files/regions. For `symbol:` targets, read the full file to understand context around the symbol.
-3. Identify functions, methods, and types **called or referenced** in the
+2. For `diff:branch` targets: additionally run `git log --oneline <default>..HEAD` to capture commit context.
+3. For `diff:pr:` targets: additionally run `gh pr view N [--repo owner/repo]` (GitHub) or `glab mr view N` (GitLab) to fetch the PR title, description, and labels. Use these to understand the author's stated intent and evaluate the changes against that intent.
+4. For `file:`/`folder:`/`symbol:` targets: read the target files/regions. For `symbol:` targets, read the full file to understand context around the symbol.
+5. Identify functions, methods, and types **called or referenced** in the
    reviewed code but **defined outside it**. Use Grep and Read to locate
    and read their implementations. This is essential for understanding the
    intended workflow and judging whether the code uses those functions
@@ -106,8 +109,6 @@ If there are no code regions to review (empty diff, no files found), report it a
      polymorphic boundary.
    Stop expanding once you have enough context to evaluate correctness; do not
    chase the entire call graph.
-4. For PRs (`diff:pr:`), use the PR title and description to understand the
-   author's stated intent. Evaluate the changes against that intent.
 
 ### Step 3: Detect languages
 
@@ -134,9 +135,10 @@ For each finding, provide:
 - **File** and **line range** in the current version of the file.
 - **Aspect** (`correctness`, `design`, `security`, ...).
 - **Severity**:
-  - `blocker`: must fix before merge; functional bug, security issue, or data loss risk.
-  - `warning`: should fix; correctness risk, poor design, or maintainability concern.
-  - `nit`: optional; style, naming, minor simplification.
+  - `critical`: must fix before merge; functional bug, security issue, or data loss risk.
+  - `high`: should fix; correctness risk or significant design flaw that will bite in production.
+  - `medium`: should fix; maintainability concern, weaker design choice, or non-critical correctness gap.
+  - `low`: optional; style, naming, or minor simplification.
 - **Description**; what is wrong and why it matters.
 - **Suggestion**; a concrete fix, alternative approach, or question for the author.
 
@@ -157,7 +159,7 @@ For each finding, provide:
 - Respect the author's intent. Read the PR description or commit message. Do
   not suggest redesigns that contradict the stated goal unless the approach is
   fundamentally flawed.
-- Keep nits separate from blockers. Do not bury critical issues among style
-  suggestions.
+- Keep low-severity items separate from critical issues. Do not bury critical
+  issues among style suggestions.
 - For large changesets (50+ files), warn the user and suggest narrowing scope
   to specific directories or aspects rather than producing a shallow review.

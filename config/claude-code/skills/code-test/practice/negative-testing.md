@@ -1,9 +1,5 @@
 # Negative Testing
 
-Analysis of whether failure modes, error paths, and invalid inputs are adequately tested.
-
-## Scope
-
 Missing tests for error conditions, invalid inputs, resource failures, boundary violations, and graceful degradation under hostile or malformed data.
 
 ## Checklist

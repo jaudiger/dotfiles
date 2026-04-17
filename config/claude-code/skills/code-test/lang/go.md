@@ -1,23 +1,18 @@
 # Go: Testing Patterns
 
+Target version: Go 1.24+.
+
 ## Valid practices
 
 branch-coverage, edge-cases, assertions, isolation, negative-testing, mutation-resistance
 
-## Version and framework detection
+## Test frameworks
 
-- **Language version**: read `go.mod` for the `go` directive (e.g., `go 1.xx`). This determines available stdlib testing features.
-- **Test framework**: Go uses the `testing` stdlib package by default. Check imports for third-party frameworks:
+- Go uses the `testing` stdlib package by default. Check imports for third-party frameworks:
   - `github.com/stretchr/testify`: assertion and mock helpers.
   - `github.com/onsi/ginkgo` / `github.com/onsi/gomega`: BDD-style.
   - `github.com/google/go-cmp`: structural comparison.
   - `pgregory.net/rapid` or `github.com/leanovate/gopter`: property-based testing.
-- **Version-sensitive features**: check the `go` directive before recommending:
-  - `t.Cleanup()`: not available in all versions.
-  - `t.Setenv()`: added later.
-  - `testing/fstest`: check availability.
-  - `t.Parallel()`: available since early versions but interacts with closures in range loops differently depending on version (loop variable capture fix).
-  Read the actual test imports and usage to confirm what is available.
 
 ## Test file conventions
 
@@ -49,7 +44,7 @@ Go has no exceptions; errors are values. Check:
 - Check that interface assertions (`var _ Interface = (*Impl)(nil)`) exist where appropriate.
 
 ### Goroutine and concurrency
-- Tests using `t.Parallel()` must not close over loop variables captured by reference (unless the Go version fixes this).
+- Tests using `t.Parallel()` must not close over loop variables captured by reference.
 - Tests spawning goroutines should use `t.Cleanup()` or synchronization to avoid goroutine leaks.
 - Race conditions in tests can be detected with `-race` flag; but this is runtime, not structural. Check for shared state in parallel tests.
 
@@ -65,4 +60,4 @@ Go has no exceptions; errors are values. Check:
 ### Cleanup and temporary resources
 - Use `t.TempDir()` for temporary directories (auto-cleaned).
 - Use `t.Cleanup()` for deferred cleanup that runs even on test failure.
-- Use `t.Setenv()` for environment variable manipulation with automatic restoration (check version availability).
+- Use `t.Setenv()` for environment variable manipulation with automatic restoration.
