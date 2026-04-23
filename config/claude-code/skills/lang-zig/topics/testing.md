@@ -1,5 +1,7 @@
 # Testing Patterns
 
+> **Source**: [matklad: Test Case Minimization](https://matklad.github.io/2026/04/20/test-case-minimization.html)
+
 ## Basic Test
 
 ```zig
@@ -84,3 +86,12 @@ fn fuzzTest(_: void, smith: *std.testing.Smith) !void {
     try std.testing.expect(sum != 1234);
 }
 ```
+
+`Smith` is a finite-entropy RNG: each run draws from a bounded buffer, so a
+failure reproduces from a `(seed, entropy_size)` pair. The runner minimizes
+failing cases by binary-searching the smallest entropy that still triggers
+the failure, so shrinking is automatic and requires no logic in the test.
+
+`eosWeightedSimple(a, b)` biases the end-of-stream probability so loop length
+follows a geometric shape rather than terminating uniformly. Skewed weights
+keep generated sequences non-trivial while still permitting short cases.
