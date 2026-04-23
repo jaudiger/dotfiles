@@ -38,33 +38,34 @@ The I/O paradigm is **"buffer in the interface"**: the caller provides the buffe
 
 ### Writer Pattern
 
+For a buffered writer backed by an in-memory buffer:
+
 ```zig
 var buffer: [4096]u8 = undefined;
-var file_writer = std.Io.File.stdout().writer(io, &buffer);
-const writer: *std.Io.Writer = &file_writer.interface;
+var writer: std.Io.Writer = .fixed(&buffer);
 try writer.print("Hello {s}\n", .{"world"});
-try writer.flush();
+// writer.buffered() returns the written slice
 ```
 
-For simple unbuffered output on stdout:
+For direct output to stdout, call the File's streaming write (vectored):
 
 ```zig
-try std.Io.File.stdout().writeStreamingAll(io, "Hello, world!\n");
+_ = try std.Io.File.stdout().writeStreaming(io, &.{"Hello, world!\n"});
 ```
 
 ### Reader Pattern
 
 ```zig
 var recv_buffer: [4096]u8 = undefined;
-var file_reader = file.reader(&recv_buffer);
+var file_reader = file.reader(io, &recv_buffer);
 const reader: *std.Io.Reader = &file_reader.interface;
 ```
 
 ### Key Concepts
 
 - **`std.Io.Reader`** and **`std.Io.Writer`** are **non-generic concrete types**
-- The caller provides the buffer via the `reader()`/`writer()` call
-- Access the interface via the `.interface` field
+- The caller provides the buffer (passed to `.fixed(buf)` or to `file.reader(io, buf)`)
+- For wrappers over a file, access the interface via the `.interface` field
 - Always call `.flush()` when done writing
 - Most I/O operations include `error.Canceled` in their error sets for cancelation support
 

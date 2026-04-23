@@ -76,12 +76,14 @@ switch (result) {
 
 ### Non-Exhaustive Enum Switch
 
-Mixing explicit tags with `_` prong and combining `else` with `_`:
+For a non-exhaustive enum (declared with a trailing `_`), handle the explicit
+tags and use a standalone `_` prong for unnamed values:
 
 ```zig
 switch (enum_val) {
     .special_case_1 => foo(),
-    _, .special_case_2 => bar(),  // _ and explicit combined
+    .special_case_2 => bar(),
+    _ => unknown(),
 }
 ```
 

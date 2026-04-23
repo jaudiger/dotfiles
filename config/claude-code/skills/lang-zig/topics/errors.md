@@ -76,7 +76,7 @@ Documents that subsequent code cannot fail. Compile-time assertion:
 
 ```zig
 fn grow(self: *Self, allocator: Allocator, new_capacity: usize) Allocator.Error!void {
-    @setCold(true);
+    @branchHint(.cold);
     var map: Self = .{};
     try map.allocate(allocator, new_capacity);
     errdefer comptime unreachable;
@@ -174,4 +174,4 @@ errdefer resource.deinit();  // Only on error path
 
 ## `error.Canceled` in I/O
 
-Most I/O operations include `error.Canceled` in their error sets. When a cancelation request is acknowledged, I/O operations return this error. Handle it by propagating, rearming with `io.recancel()`, or making it unreachable with `io.swapCancelProtection()`.
+Most I/O operations include `error.Canceled` in their error sets. When a cancelation request is acknowledged, I/O operations return this error. Handle it by propagating up to a caller that can abort the operation.

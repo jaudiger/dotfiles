@@ -24,8 +24,6 @@ Or with dependencies:
 ```
 zig build              // Build default step
 zig build test         // Run tests
-zig build --webui      // Web UI for build progress
-zig build --time-report // Detailed timing per step
 ```
 
 ## `zig init`
@@ -86,12 +84,6 @@ Set defaults via `ZIG_BUILD_ERROR_STYLE` and `ZIG_BUILD_MULTILINE_ERRORS` enviro
 ---
 
 ## Compiler & Toolchain
-
-### CLI Commands
-
-- `zig test-obj`: Compile test object files for linking without creating executables
-- `zig build --webui`: Web interface for build progress
-- `zig build --time-report`: Detailed timing per compilation step
 
 ### Incremental Compilation
 

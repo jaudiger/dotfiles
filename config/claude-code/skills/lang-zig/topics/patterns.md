@@ -14,7 +14,7 @@ pub const HistoryOptions = struct {
     file: []const u8,
 
     pub fn from_environment(
-        environment: *const std.process.Environ.Map,
+        environment: *const std.process.EnvMap,
     ) HistoryOptions {
         // ...
     }
@@ -54,7 +54,7 @@ pub const HistoryOptions = struct {
 
     /// Shortcut: read options from environment variables
     pub fn from_environment(
-        environment: *const std.process.Environ.Map,
+        environment: *const std.process.EnvMap,
     ) HistoryOptions {
         // ...
     }
