@@ -88,6 +88,8 @@ In tests: `const io = std.testing.io;`
 | `std.fs.File.stdout()` | `std.Io.File.stdout()` |
 | `std.fs.File.Mode` | `std.Io.File.Permissions` |
 | `std.fs.path` | `std.Io.Dir.path` |
+| `std.fs.max_path_bytes` | `std.Io.Dir.max_path_bytes` |
+| `std.fs.max_name_bytes` | `std.Io.Dir.max_name_bytes` |
 
 Most file/dir methods now take an `io` parameter:
 
@@ -111,6 +113,10 @@ Key method renames:
 | `File.getEndPos` | `File.length` |
 | `File.read` | `File.readStreaming` |
 | `File.writeAll` | `File.writeStreamingAll` |
+| `Dir.chmod` / `File.chmod` | `Dir.setPermissions` / `File.setPermissions` |
+| `Dir.chown` / `File.chown` | `Dir.setOwner` / `File.setOwner` |
+| `fs.realpath` / `Dir.realpath` | `std.Io.Dir.realPathFile` family |
+| `fs.realpathAlloc` / `Dir.realpathAlloc` | `std.Io.Dir.realPathFileAlloc` family |
 
 ### Writer/Reader
 
@@ -137,6 +143,9 @@ var writer: std.Io.Writer = .fixed(buffer);
 ```
 
 `std.io` namespace is now `std.Io`.
+
+`std.Io.GenericReader` and `std.Io.AnyReader` are removed. Use the
+`std.Io.Reader` interface directly.
 
 ### `@Type` to individual builtins
 
@@ -280,6 +289,8 @@ var child = try std.process.spawn(io, .{
 
 `std.process.execv` is now `std.process.replace(io, .{ .argv = argv })`.
 
+`std.process.Child.run` is now `std.process.run`.
+
 Environment variables are no longer global. Access them via
 `init.environ_map` from Juicy Main, or accept `*const process.Environ.Map` as
 a parameter.
@@ -295,7 +306,11 @@ a parameter.
 | `std.Thread.Condition` | `std.Io.Condition` |
 | `std.Thread.Semaphore` | `std.Io.Semaphore` |
 | `std.Thread.RwLock` | `std.Io.RwLock` |
-| `std.Thread.Pool` | `std.Io.Group` (with `io.async`) |
+| `std.Thread.Pool` | removed; use `std.Io.async` or `std.Io.Group.async` |
+
+`std.once` is removed. `std.heap.ThreadSafeAllocator` is removed (it required
+a mutex, which now requires an `Io` instance). Wrap a non-thread-safe
+allocator with `std.Io.Mutex` at the call site instead.
 
 Lock-free primitives (`std.atomic`) do not need `Io`.
 
@@ -341,13 +356,20 @@ New: `std.mem.cut`, `cutPrefix`, `cutSuffix`, `cutScalar`, `cutLast`,
 
 ### BitSet / EnumSet initialization
 
+`initEmpty()` and `initFull()` are replaced with decl literals (`.empty`,
+`.full`).
+
 ```zig
 // 0.15
-var set = std.BitSet.initEmpty();
+var set = std.StaticBitSet(64).initEmpty();
+var full = std.StaticBitSet(64).initFull();
 
 // 0.16
-var set: std.BitSet = .{};
+var set: std.bit_set.StaticBitSet(64) = .empty;
+var full: std.bit_set.StaticBitSet(64) = .full;
 ```
+
+Same pattern applies to `std.EnumSet`.
 
 ### Miscellaneous
 
@@ -358,7 +380,17 @@ var set: std.BitSet = .{};
 | `std.fs.openSelfExe()` | `std.process.openExecutable()` |
 | `std.fs.selfExePathAlloc(a)` | `std.process.executablePathAlloc(a)` |
 | `std.fs.getAppDataDir(...)` | use third-party `known-folders` package |
+| `builtin.subsystem` / `Target.SubSystem` | `std.zig.Subsystem` (updated field names) |
 | `LLVM 20` | `LLVM 21` (Clang 21.1.8) |
+
+Error set renames:
+
+| 0.15 | 0.16 |
+|------|------|
+| `error.RenameAcrossMountPoints` | `error.CrossDevice` |
+| `error.NotSameFileSystem` | `error.CrossDevice` |
+| `error.SharingViolation` | `error.FileBusy` |
+| `error.EnvironmentVariableNotFound` | `error.EnvironmentVariableMissing` |
 
 ### Grep patterns for discovery
 
@@ -398,4 +430,18 @@ std\.process\.getCwd
 std\.process\.execv
 std\.os\.environ
 heap\.ThreadSafe
+std\.Io\.GenericReader
+std\.Io\.AnyReader
+std\.once\(
+builtin\.subsystem
+Target\.SubSystem
+\.chmod\(
+\.chown\(
+\.realpath\(
+\.realpathAlloc\(
+RenameAcrossMountPoints
+NotSameFileSystem
+SharingViolation
+EnvironmentVariableNotFound
+std\.process\.Child\.run
 ```
