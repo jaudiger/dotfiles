@@ -19,7 +19,7 @@
 
 buildPythonPackage rec {
   pname = "robotframework-robocop";
-  version = "8.2.0";
+  version = "8.2.7";
   pyproject = true;
 
   disabled = pythonOlder "3.10";
@@ -28,7 +28,7 @@ buildPythonPackage rec {
     owner = "MarketSquare";
     repo = "robotframework-robocop";
     rev = "v${version}";
-    hash = "sha256-3nyMLl8k+f5VgMy44/iVMdmJqRqRuUUQUm0g5UQYmMc=";
+    hash = "sha256-PNg5eqQrY0WLcP6fr0gmsZ30a8Izb0PSZM2wonf3j5M=";
   };
 
   nativeBuildInputs = [

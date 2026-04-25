@@ -2,22 +2,22 @@
   lib,
   stdenv,
   fetchFromGitHub,
-  zig,
+  zig_0_15,
 }:
 
 stdenv.mkDerivation rec {
   pname = "superhtml";
-  version = "8cb16babb0c66b6512d6aeb4cbc37ed90641d980";
+  version = "8b5bb272b269afdd38cdf641c4a707dd92fbe902";
 
   src = fetchFromGitHub {
     owner = "kristoff-it";
     repo = "superhtml";
     rev = version;
-    hash = "sha256-lLZqyqVEUCn9z++9lPnrK8R2uDvht5v+5Y8KOZDgPs0=";
+    hash = "sha256-9RizfSi+ouCcLUL2+gPc8GljNo9KCX57VElLSlha05A=";
   };
 
   nativeBuildInputs = [
-    zig.hook
+    zig_0_15.hook
   ];
 
   meta = with lib; {
