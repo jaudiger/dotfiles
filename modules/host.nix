@@ -89,6 +89,7 @@ in
         "node_modules"
         "output"
         "target"
+        "zig-pkg"
         "zig-out"
         "__pycache__"
       ];
