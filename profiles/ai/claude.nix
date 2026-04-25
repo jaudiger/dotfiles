@@ -45,12 +45,10 @@ in
             methodologies, or language-specific knowledge that were used but are
             NOT currently captured in:
 
-            **Global skills** (`${host.dotfilesDirectory}/config/claude-code/skills/`):
-            - `code-audit/`: bug hunting (methodology/ + lang/)
-            - `code-review/`: changeset review (aspects/)
-            - `code-security/`: vulnerability analysis (domain/ + lang/)
-            - `code-test/`: test quality audit (practice/ + lang/)
-            - `deep-review/`: orchestrated multi-skill analysis
+            **Global skills** live under `${host.dotfilesDirectory}/config/claude-code/skills/`.
+            Glob that directory to enumerate the currently installed skills,
+            then read each `SKILL.md` to understand its scope before
+            identifying gaps.
 
             **Project-level Claude files** (in the current working repository):
             - `CLAUDE.md` at the repo root
