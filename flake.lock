@@ -115,22 +115,6 @@
         "type": "github"
       }
     },
-    "nixpkgs-master": {
-      "locked": {
-        "lastModified": 1776361485,
-        "narHash": "sha256-0jX3Q2bI/wTFcz7HNouCLaNODz3LI6elBYdUaPuh4xA=",
-        "owner": "nixos",
-        "repo": "nixpkgs",
-        "rev": "c8f5b96f5a6222a573cb0c61b74d47ffd868d7b6",
-        "type": "github"
-      },
-      "original": {
-        "owner": "nixos",
-        "repo": "nixpkgs",
-        "rev": "c8f5b96f5a6222a573cb0c61b74d47ffd868d7b6",
-        "type": "github"
-      }
-    },
     "nixvim": {
       "inputs": {
         "flake-parts": "flake-parts",
@@ -159,7 +143,6 @@
         "home-manager": "home-manager",
         "nix-index-database": "nix-index-database",
         "nixpkgs": "nixpkgs",
-        "nixpkgs-master": "nixpkgs-master",
         "nixvim": "nixvim",
         "rust-overlay": "rust-overlay",
         "sops-nix": "sops-nix",
