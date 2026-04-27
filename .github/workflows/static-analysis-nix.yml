@@ -1,0 +1,66 @@
+name: Continuous Integration - Static Analysis (Nix)
+
+on:
+  push:
+    paths:
+      - ".github/workflows/static-analysis-nix.yml"
+      - "flake.lock"
+      - "**/*.nix"
+  pull_request:
+    paths:
+      - ".github/workflows/static-analysis-nix.yml"
+      - "flake.lock"
+      - "**/*.nix"
+  workflow_dispatch:
+
+concurrency:
+  group: static-analysis-nix-${{ github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  nix-format:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - system: aarch64-linux
+            runner: ubuntu-24.04-arm
+          - system: aarch64-darwin
+            runner: macos-latest
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6.0.2
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v31.10.5
+        with:
+          github_access_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Check formatting
+        run: nix build --no-link .#checks.${{ matrix.system }}.formatting
+
+  nix-lint:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - system: aarch64-linux
+            runner: ubuntu-24.04-arm
+          - system: aarch64-darwin
+            runner: macos-latest
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6.0.2
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v31.10.5
+        with:
+          github_access_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Run deadnix
+        run: nix build --no-link .#checks.${{ matrix.system }}.deadnix
+
+      - name: Run statix
+        run: nix build --no-link .#checks.${{ matrix.system }}.statix
