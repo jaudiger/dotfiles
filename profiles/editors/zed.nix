@@ -79,6 +79,7 @@ in
           };
         };
         edit_predictions = {
+          allow_data_collection = "no";
           mode = "subtle";
           provider = "zed";
         };
@@ -171,6 +172,7 @@ in
           git_status = true;
         };
         terminal = {
+          bell = "system";
           blinking = "on";
           copy_on_select = true;
           font_size = 11.5;
@@ -181,8 +183,10 @@ in
           mode = "system";
         };
         title_bar = {
-          show_branch_icon = true;
+          show_branch_status_icon = true;
           show_onboarding_banner = false;
+          show_user_menu = false;
+          show_user_picture = false;
         };
         ui_font_family = "JetBrainsMono Nerd Font";
         ui_font_size = 12.5;
