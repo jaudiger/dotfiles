@@ -20,7 +20,6 @@ in
       enable = true;
 
       package = lib.mkIf isDarwin null;
-      pname = lib.mkIf isDarwin "vscode";
 
       profiles.default.userSettings = {
         "accessibility.signals.taskCompleted" = {
