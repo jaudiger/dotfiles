@@ -110,6 +110,7 @@ in
           file_icons = true;
           tree_view = true;
         };
+        go_to_definition_scroll_strategy = "preserve";
         indent_guides = {
           active_line_width = 2;
           coloring = "fixed";
