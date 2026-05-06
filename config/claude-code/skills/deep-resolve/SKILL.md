@@ -7,7 +7,7 @@ description: >
   issue URL or shorthand, or a file containing a report); NOT source code
   targets. For read-only code analysis, use deep-review instead.
 argument-hint: "[source...]"
-allowed-tools: AskUserQuestion, Bash, Read, Grep, Glob, Edit, Task, WebFetch
+allowed-tools: AskUserQuestion, Bash, Read, Grep, Glob, Edit, Task, WebFetch, EnterPlanMode, ExitPlanMode
 ---
 
 # Deep Resolve
@@ -28,7 +28,7 @@ stop and report which skills could not be resolved; do not proceed to Phase 5.
 
 If the user did not provide any source, print the usage guide below and wait
 for their reply. The AskUserQuestion tool is reserved for prompts with at most
-3 short enumerated options (used later in Phases 6 and 7); for this open-ended
+3 short enumerated options (used later in Phase 6); for this open-ended
 guide, output it as formatted text directly in the conversation.
 
 ### Usage
@@ -68,6 +68,7 @@ Create all phase tasks upfront with the available task-tracking tool, then track
 
 | Task subject | activeForm |
 |--------------|------------|
+| Enter plan mode | Entering plan mode |
 | Ingest report | Ingesting report |
 | Validate report | Validating report |
 | Explore codebase | Exploring codebase |
@@ -78,6 +79,25 @@ Create all phase tasks upfront with the available task-tracking tool, then track
 | Write summary | Writing summary |
 
 This is mandatory. Never skip task creation or updates.
+
+## Phase 0: Enter plan mode
+
+Before any other work, put the session in plan mode. This separates the
+read-only exploration of Phases 1-6 from the edit work in Phase 7 and gives
+the user a single approval gate at the boundary, using the plan file as the
+review artifact.
+
+1. **Detect existing plan mode**; if a plan-mode system reminder is already
+   present in the conversation, the session is already in plan mode. Record
+   the plan file path it announces and proceed to Phase 1.
+2. **Enter plan mode**; otherwise, call `EnterPlanMode`. The harness shows
+   a consent prompt to the user. If consent is declined or the call fails,
+   stop and report that `deep-resolve` requires plan mode for its
+   exploration-then-edit workflow.
+3. **Record the plan file path**; after consent, the harness emits a
+   plan-mode system reminder containing the assigned plan file path. Parse
+   and record this path. Phase 7 step 3 writes the change plan there; no
+   other files may be edited until plan mode exits.
 
 ## Phase 1: Ingest report
 
@@ -413,18 +433,19 @@ skill diverges from analysis-only tools; it modifies the codebase.
    reconsider the approach. Prefer structural fixes that make the defect class
    impossible by construction over behavioral patches that merely avoid the
    specific trigger.
-3. **Present the plan and request approval**; emit the plan from steps 1-2
-   as a visible message in the conversation before touching any files. The
-   plan summary must include, for each file to be changed: the path, the
-   intent of the edit, and whether the change is structural or behavioral.
-   Also note any new files, deletions, and test updates. Then use
-   AskUserQuestion (single choice) to gate the transition with options
-   `proceed`, `revise`, and `abort`:
-   - `proceed`; move to step 4.
-   - `revise`; capture the user's feedback, return to step 1, and re-present
-     the updated plan.
-   - `abort`; stop without editing any files and skip to Phase 8 noting that
-     the resolution was not applied.
+3. **Write the plan file and request approval**; write the plan from steps
+   1-2 into the plan file recorded in Phase 0, overwriting any prior
+   contents. The plan must include, for each file to be changed: the path,
+   the intent of the edit, and whether the change is structural or
+   behavioral. Also note any new files, deletions, and test updates. Then
+   call `ExitPlanMode`. The harness shows the plan file to the user and
+   gates approval there.
+   - On approval; plan mode exits, move to step 4.
+   - On rejection; capture any feedback the user provided, return to step 1,
+     rewrite the plan file with the revised plan, and call `ExitPlanMode`
+     again. If the user closes the skill or otherwise abandons the gate,
+     stop without editing any files and skip to Phase 8 noting that the
+     resolution was not applied.
 4. **Apply changes**; implement the correct design identified in Phase 4a.
    Prefer targeted edits over full file rewrites unless a full rewrite is
    genuinely cleaner.
