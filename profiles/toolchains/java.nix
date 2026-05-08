@@ -40,40 +40,42 @@ in
 {
   modules = {
     home-manager = {
-      programs.java = {
-        enable = true;
-        package = pkgs.jdk21_headless;
-      };
-
       home.packages = with pkgs; [ maven ];
 
-      # Neovim configuration
-      programs.nixvim = {
-        plugins.lsp.servers = {
-          jdtls = {
-            enable = true;
-            settings = jdtlsConfig;
-          };
+      programs = {
+        java = {
+          enable = true;
+          package = pkgs.jdk21_headless;
         };
-      };
 
-      # Zed configuration
-      programs.zed-editor.userSettings = {
-        lsp = {
-          jdtls = {
-            initialization_options = {
+        # Neovim configuration
+        nixvim = {
+          plugins.lsp.servers = {
+            jdtls = {
+              enable = true;
               settings = jdtlsConfig;
             };
           };
         };
-      };
 
-      # Claude Code configuration
-      programs.claude-code.lspServers = {
-        jdtls = {
-          command = "jdtls";
-          extensionToLanguage = {
-            ".java" = "java";
+        # Zed configuration
+        zed-editor.userSettings = {
+          lsp = {
+            jdtls = {
+              initialization_options = {
+                settings = jdtlsConfig;
+              };
+            };
+          };
+        };
+
+        # Claude Code configuration
+        claude-code.lspServers = {
+          jdtls = {
+            command = "jdtls";
+            extensionToLanguage = {
+              ".java" = "java";
+            };
           };
         };
       };

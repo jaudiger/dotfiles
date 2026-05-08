@@ -35,82 +35,84 @@ in
         ];
       };
 
-      programs.poetry = {
-        # TODO: re-enable once upstream issue is resolved
-        # enable = true;
-        settings = {
-          virtualenvs = {
-            create = true;
-            in-project = true;
-          };
-        };
-      };
-
-      programs.ty = {
-        enable = true;
-      };
-
-      # Neovim configuration
-      programs.nixvim = {
-        plugins.lsp.servers = {
-          ruff = {
-            enable = true;
-            settings = ruffConfig;
+      programs = {
+        poetry = {
+          # TODO: re-enable once upstream issue is resolved
+          # enable = true;
+          settings = {
+            virtualenvs = {
+              create = true;
+              in-project = true;
+            };
           };
         };
 
-        extraConfigLua = ''
-          vim.lsp.config('ty', {
-            cmd = { 'ty', 'server' },
-            filetypes = { 'python' },
-            root_markers = { 'pyproject.toml', 'setup.py', 'setup.cfg', '.git' },
-          })
-          vim.lsp.enable('ty')
-        '';
-      };
-
-      # Claude Code configuration
-      programs.claude-code.lspServers = {
-        ruff = {
-          command = "ruff";
-          args = [ "server" ];
-          extensionToLanguage = {
-            ".py" = "python";
-            ".pyi" = "python";
-          };
-        };
         ty = {
-          command = "ty";
-          args = [ "server" ];
-          extensionToLanguage = {
-            ".py" = "python";
-            ".pyi" = "python";
-          };
+          enable = true;
         };
-      };
 
-      # Zed configuration
-      programs.zed-editor.userSettings = {
-        languages = {
-          Python = {
-            formatter = [
-              { code_action = "source.organizeImports.ruff"; }
-              {
-                language_server = {
-                  name = "ruff";
-                };
-              }
-            ];
-            language_servers = [
-              "ty"
-              "!basedpyright"
-              "..."
-            ];
+        # Neovim configuration
+        nixvim = {
+          plugins.lsp.servers = {
+            ruff = {
+              enable = true;
+              settings = ruffConfig;
+            };
+          };
+
+          extraConfigLua = ''
+            vim.lsp.config('ty', {
+              cmd = { 'ty', 'server' },
+              filetypes = { 'python' },
+              root_markers = { 'pyproject.toml', 'setup.py', 'setup.cfg', '.git' },
+            })
+            vim.lsp.enable('ty')
+          '';
+        };
+
+        # Claude Code configuration
+        claude-code.lspServers = {
+          ruff = {
+            command = "ruff";
+            args = [ "server" ];
+            extensionToLanguage = {
+              ".py" = "python";
+              ".pyi" = "python";
+            };
+          };
+          ty = {
+            command = "ty";
+            args = [ "server" ];
+            extensionToLanguage = {
+              ".py" = "python";
+              ".pyi" = "python";
+            };
           };
         };
-        lsp = {
-          ruff = {
-            initialization_options = ruffConfig;
+
+        # Zed configuration
+        zed-editor.userSettings = {
+          languages = {
+            Python = {
+              formatter = [
+                { code_action = "source.organizeImports.ruff"; }
+                {
+                  language_server = {
+                    name = "ruff";
+                  };
+                }
+              ];
+              language_servers = [
+                "ty"
+                "!basedpyright"
+                "..."
+              ];
+            };
+          };
+          lsp = {
+            ruff = {
+              initialization_options = ruffConfig;
+            };
           };
         };
       };

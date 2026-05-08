@@ -47,10 +47,6 @@ in
   };
 
   modules.home-manager = {
-    programs.go = {
-      enable = true;
-    };
-
     home = {
       packages = with pkgs; [
         delve
@@ -62,35 +58,41 @@ in
       ];
     };
 
-    # Neovim configuration
-    programs.nixvim = {
-      plugins.lsp.servers = {
-        gopls = {
-          enable = true;
-          settings = {
-            gopls = goplsConfig;
+    programs = {
+      go = {
+        enable = true;
+      };
+
+      # Neovim configuration
+      nixvim = {
+        plugins.lsp.servers = {
+          gopls = {
+            enable = true;
+            settings = {
+              gopls = goplsConfig;
+            };
           };
         };
       };
-    };
 
-    # Zed configuration
-    programs.zed-editor.userSettings = {
-      lsp = {
-        gopls = {
-          initialization_options = goplsConfig;
+      # Zed configuration
+      zed-editor.userSettings = {
+        lsp = {
+          gopls = {
+            initialization_options = goplsConfig;
+          };
         };
       };
-    };
 
-    # Claude Code configuration
-    programs.claude-code.lspServers = {
-      gopls = {
-        command = "gopls";
-        args = [ "serve" ];
-        extensionToLanguage = {
-          ".go" = "go";
-          ".mod" = "gomod";
+      # Claude Code configuration
+      claude-code.lspServers = {
+        gopls = {
+          command = "gopls";
+          args = [ "serve" ];
+          extensionToLanguage = {
+            ".go" = "go";
+            ".mod" = "gomod";
+          };
         };
       };
     };

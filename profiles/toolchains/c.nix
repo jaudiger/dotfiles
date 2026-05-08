@@ -11,49 +11,51 @@ let
 in
 {
   modules = {
-    home-manager.home = {
-      packages =
-        with pkgs;
-        [
-          autoconf
-          pkg-config
-          gnumake
-          cmake
-          clang-tools
-          ninja
-          cppcheck
-          gcovr
-          jemalloc
-        ]
-        ++ lib.optionals isLinux [
-          gcc
-          gdb
-          valgrind-light
-        ]
-        ++ lib.optionals isDarwin [ clang ];
-    };
-
     home-manager = {
-      # Neovim configuration
-      programs.nixvim = {
-        plugins.lsp.servers = {
-          clangd = {
-            enable = true;
-          };
-        };
+      home = {
+        packages =
+          with pkgs;
+          [
+            autoconf
+            pkg-config
+            gnumake
+            cmake
+            clang-tools
+            ninja
+            cppcheck
+            gcovr
+            jemalloc
+          ]
+          ++ lib.optionals isLinux [
+            gcc
+            gdb
+            valgrind-light
+          ]
+          ++ lib.optionals isDarwin [ clang ];
       };
 
-      # Claude Code configuration
-      programs.claude-code.lspServers = {
-        clangd = {
-          command = "clangd";
-          extensionToLanguage = {
-            ".c" = "c";
-            ".h" = "c";
-            ".cpp" = "cpp";
-            ".cc" = "cpp";
-            ".cxx" = "cpp";
-            ".hpp" = "cpp";
+      programs = {
+        # Neovim configuration
+        nixvim = {
+          plugins.lsp.servers = {
+            clangd = {
+              enable = true;
+            };
+          };
+        };
+
+        # Claude Code configuration
+        claude-code.lspServers = {
+          clangd = {
+            command = "clangd";
+            extensionToLanguage = {
+              ".c" = "c";
+              ".h" = "c";
+              ".cpp" = "cpp";
+              ".cc" = "cpp";
+              ".cxx" = "cpp";
+              ".hpp" = "cpp";
+            };
           };
         };
       };

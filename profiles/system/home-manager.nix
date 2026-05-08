@@ -6,7 +6,7 @@ in
 {
   modules.home-manager = {
     home = {
-      username = host.username;
+      inherit (host) username;
 
       shellAliases = host.shell.aliases;
       sessionVariables = host.shell.sessionVariables;

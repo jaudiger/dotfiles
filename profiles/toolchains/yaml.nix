@@ -31,33 +31,35 @@ in
         ];
       };
 
-      # Neovim configuration
-      programs.nixvim = {
-        plugins.lsp.servers = {
-          yamlls = {
-            enable = true;
-            settings = yamlConfig;
+      programs = {
+        # Neovim configuration
+        nixvim = {
+          plugins.lsp.servers = {
+            yamlls = {
+              enable = true;
+              settings = yamlConfig;
+            };
           };
         };
-      };
 
-      # Zed configuration
-      programs.zed-editor.userSettings = {
-        lsp = {
-          "yaml-language-server" = {
-            settings = yamlConfig;
+        # Zed configuration
+        zed-editor.userSettings = {
+          lsp = {
+            "yaml-language-server" = {
+              settings = yamlConfig;
+            };
           };
         };
-      };
 
-      # Claude Code configuration
-      programs.claude-code.lspServers = {
-        yaml-language-server = {
-          command = "yaml-language-server";
-          args = [ "--stdio" ];
-          extensionToLanguage = {
-            ".yaml" = "yaml";
-            ".yml" = "yaml";
+        # Claude Code configuration
+        claude-code.lspServers = {
+          yaml-language-server = {
+            command = "yaml-language-server";
+            args = [ "--stdio" ];
+            extensionToLanguage = {
+              ".yaml" = "yaml";
+              ".yml" = "yaml";
+            };
           };
         };
       };

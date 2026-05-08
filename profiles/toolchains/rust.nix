@@ -189,19 +189,6 @@ in
   nixpkgs.overlays = [ inputs.rust-overlay.overlays.default ];
 
   modules.home-manager = {
-    programs.cargo = {
-      enable = true;
-
-      # It will be provided by the overlay.
-      package = null;
-
-      settings = {
-        cache = {
-          auto-clean-frequency = "7 days";
-        };
-      };
-    };
-
     home = {
       packages = with pkgs; [
         (rust-bin.stable.latest.minimal.override {
@@ -240,33 +227,48 @@ in
         ];
     };
 
-    # Neovim configuration
-    programs.nixvim = {
-      plugins.lsp.servers = {
-        rust_analyzer = {
-          enable = true;
-          installCargo = false;
-          installRustc = false;
-          settings = rustAnalyzerConfig;
+    programs = {
+      cargo = {
+        enable = true;
+
+        # It will be provided by the overlay.
+        package = null;
+
+        settings = {
+          cache = {
+            auto-clean-frequency = "7 days";
+          };
         };
       };
-    };
 
-    # Zed configuration
-    programs.zed-editor.userSettings = {
-      lsp = {
-        "rust-analyzer" = {
-          initialization_options = rustAnalyzerConfig;
+      # Neovim configuration
+      nixvim = {
+        plugins.lsp.servers = {
+          rust_analyzer = {
+            enable = true;
+            installCargo = false;
+            installRustc = false;
+            settings = rustAnalyzerConfig;
+          };
         };
       };
-    };
 
-    # Claude Code configuration
-    programs.claude-code.lspServers = {
-      rust-analyzer = {
-        command = "rust-analyzer";
-        extensionToLanguage = {
-          ".rs" = "rust";
+      # Zed configuration
+      zed-editor.userSettings = {
+        lsp = {
+          "rust-analyzer" = {
+            initialization_options = rustAnalyzerConfig;
+          };
+        };
+      };
+
+      # Claude Code configuration
+      claude-code.lspServers = {
+        rust-analyzer = {
+          command = "rust-analyzer";
+          extensionToLanguage = {
+            ".rs" = "rust";
+          };
         };
       };
     };

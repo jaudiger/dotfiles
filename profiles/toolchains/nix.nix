@@ -20,48 +20,50 @@ in
       ];
     };
 
-    # Neovim configuration
-    programs.nixvim = {
-      plugins.lsp.servers = {
-        nixd = {
-          enable = true;
-          settings = {
-            nixpkgs.expr = "import <nixpkgs> {}";
-            options =
-              if isDarwin then
-                {
-                  darwin.expr = ''(builtins.getFlake "${host.dotfilesDirectory}").darwinConfigurations.darwin-aarch64.options'';
-                  home-manager.expr = ''(builtins.getFlake "${host.dotfilesDirectory}").darwinConfigurations.darwin-aarch64.options.home-manager'';
-                }
-              else
-                {
-                  nixos.expr = ''(builtins.getFlake "${host.dotfilesDirectory}").nixosConfigurations.nixos-aarch64.options'';
-                  home-manager.expr = ''(builtins.getFlake "${host.dotfilesDirectory}").nixosConfigurations.nixos-aarch64.options.home-manager'';
-                };
+    programs = {
+      # Neovim configuration
+      nixvim = {
+        plugins.lsp.servers = {
+          nixd = {
+            enable = true;
+            settings = {
+              nixpkgs.expr = "import <nixpkgs> {}";
+              options =
+                if isDarwin then
+                  {
+                    darwin.expr = ''(builtins.getFlake "${host.dotfilesDirectory}").darwinConfigurations.darwin-aarch64.options'';
+                    home-manager.expr = ''(builtins.getFlake "${host.dotfilesDirectory}").darwinConfigurations.darwin-aarch64.options.home-manager'';
+                  }
+                else
+                  {
+                    nixos.expr = ''(builtins.getFlake "${host.dotfilesDirectory}").nixosConfigurations.nixos-aarch64.options'';
+                    home-manager.expr = ''(builtins.getFlake "${host.dotfilesDirectory}").nixosConfigurations.nixos-aarch64.options.home-manager'';
+                  };
+            };
           };
         };
       };
-    };
 
-    # Zed configuration
-    programs.zed-editor.userSettings = {
-      languages = {
-        Nix = {
-          language_servers = [
-            "nixd"
-            "!nil"
-            "..."
-          ];
+      # Zed configuration
+      zed-editor.userSettings = {
+        languages = {
+          Nix = {
+            language_servers = [
+              "nixd"
+              "!nil"
+              "..."
+            ];
+          };
         };
       };
-    };
 
-    # Claude Code configuration
-    programs.claude-code.lspServers = {
-      nixd = {
-        command = "nixd";
-        extensionToLanguage = {
-          ".nix" = "nix";
+      # Claude Code configuration
+      claude-code.lspServers = {
+        nixd = {
+          command = "nixd";
+          extensionToLanguage = {
+            ".nix" = "nix";
+          };
         };
       };
     };

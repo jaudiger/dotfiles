@@ -14,13 +14,15 @@ in
     casks = [ "intellij-idea-ce" ];
   };
 
-  modules.host.unfreePackages = lib.optionals isLinux [ "idea" ];
-
-  modules.home-manager.home.packages = lib.optionals isLinux [
-    pkgs.jetbrains.idea
-  ];
-
-  modules.host.shell.nonPortableAliases = lib.mkIf isDarwin {
-    intellij = "open -na 'IntelliJ IDEA CE'";
+  modules = {
+    host = {
+      unfreePackages = lib.optionals isLinux [ "idea" ];
+      shell.nonPortableAliases = lib.mkIf isDarwin {
+        intellij = "open -na 'IntelliJ IDEA CE'";
+      };
+    };
+    home-manager.home.packages = lib.optionals isLinux [
+      pkgs.jetbrains.idea
+    ];
   };
 }

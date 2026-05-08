@@ -10,23 +10,25 @@
       bash-language-server
     ];
 
-    # Neovim configuration
-    programs.nixvim = {
-      plugins.lsp.servers = {
-        bashls = {
-          enable = true;
+    programs = {
+      # Neovim configuration
+      nixvim = {
+        plugins.lsp.servers = {
+          bashls = {
+            enable = true;
+          };
         };
       };
-    };
 
-    # Claude Code configuration
-    programs.claude-code.lspServers = {
-      bash-language-server = {
-        command = "bash-language-server";
-        args = [ "start" ];
-        extensionToLanguage = {
-          ".sh" = "bash";
-          ".bash" = "bash";
+      # Claude Code configuration
+      claude-code.lspServers = {
+        bash-language-server = {
+          command = "bash-language-server";
+          args = [ "start" ];
+          extensionToLanguage = {
+            ".sh" = "bash";
+            ".bash" = "bash";
+          };
         };
       };
     };
