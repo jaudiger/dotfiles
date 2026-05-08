@@ -37,8 +37,8 @@ in
 
       programs = {
         poetry = {
-          # TODO: re-enable once upstream issue is resolved
-          # enable = true;
+          enable = true;
+
           settings = {
             virtualenvs = {
               create = true;
