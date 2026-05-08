@@ -1,4 +1,4 @@
-{ ... }:
+_:
 
 {
   modules.home-manager = {

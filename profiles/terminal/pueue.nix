@@ -1,6 +1,6 @@
 # https://github.com/Nukesor/pueue
 # Pueue is a command-line task management tool for sequential and parallel execution of long-running tasks.
-{ ... }:
+_:
 
 {
   modules.home-manager = {
