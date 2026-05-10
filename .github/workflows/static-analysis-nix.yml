@@ -33,7 +33,7 @@ jobs:
         uses: actions/checkout@v6.0.2
 
       - name: Install Nix
-        uses: cachix/install-nix-action@v31.10.5
+        uses: cachix/install-nix-action@v31.10.6
         with:
           github_access_token: ${{ secrets.GITHUB_TOKEN }}
 
@@ -55,7 +55,7 @@ jobs:
         uses: actions/checkout@v6.0.2
 
       - name: Install Nix
-        uses: cachix/install-nix-action@v31.10.5
+        uses: cachix/install-nix-action@v31.10.6
         with:
           github_access_token: ${{ secrets.GITHUB_TOKEN }}
 
