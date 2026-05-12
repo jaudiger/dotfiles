@@ -2,8 +2,7 @@
 name: lang-zig-upgrade-0.16
 description: >
   Upgrade Zig 0.15 code to 0.16. Applies API migrations for I/O, build system,
-  type construction, packed types, containers, and more. Provide file or directory
-  targets. Run /zig-upgrade-0.16 for usage.
+  type construction, packed types, containers, and more.
 argument-hint: "[targets...]"
 allowed-tools: Bash, Read, Grep, Glob, Edit, Write
 ---

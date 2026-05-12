@@ -1,10 +1,7 @@
 ---
 name: code-security
 description: >
-  Audit source files for security vulnerabilities and weaknesses. Run
-  /code-security to see available languages and security domains. Each domain
-  applies a targeted checklist to the given targets and produces a structured
-  report.
+  Audit source files for security vulnerabilities and weaknesses.
 argument-hint: "[lang] [domain] [targets...]"
 allowed-tools: Bash, Read, Grep, Glob
 ---

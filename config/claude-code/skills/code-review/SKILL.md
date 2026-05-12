@@ -2,9 +2,8 @@
 name: code-review
 description: >
   Review code quality from local modifications, branches, commits, pull
-  requests (PRs), or direct file/symbol targets. Run /code-review to see
-  available modes. All review aspects are applied by default; append aspect
-  names after a `--` separator to narrow the focus.
+  requests (PRs), or direct file/symbol targets. All review aspects are applied
+  by default; append aspect names after a `--` separator to narrow the focus.
 argument-hint: "[targets...] [-- aspect...]"
 allowed-tools: Bash, Read, Grep, Glob
 ---
