@@ -71,6 +71,7 @@ in
         };
         colorize_brackets = true;
         completion_menu_scrollbar = "auto";
+        completion_menu_item_kind = "symbol";
         confirm_quit = true;
         current_line_highlight = "line";
         diagnostics = {
