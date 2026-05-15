@@ -200,6 +200,7 @@ in
           env = {
             CLAUDE_CODE_DISABLE_FEEDBACK_SURVEY = 1;
             CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC = 1;
+            CLAUDE_CODE_ENABLE_AWAY_SUMMARY = 0;
             CLAUDE_CODE_HIDE_ACCOUNT_INFO = 1;
             FORCE_AUTOUPDATE_PLUGINS = 1;
           };
