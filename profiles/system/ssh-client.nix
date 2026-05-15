@@ -48,12 +48,12 @@ in
           controlMaster = "auto";
           controlPersist = "10m";
           addKeysToAgent = "yes";
+          identitiesOnly = true;
 
           # Use the keychain to store the passphrase on macOS, and make sure this key is ignored on Linux
           extraOptions = {
             "ForwardAgent" = "no";
             "HashKnownHosts" = "yes";
-            "IdentitiesOnly" = "yes";
             "UserKnownHostsFile" = "${host.homeDirectory}/.ssh/known_hosts";
             "ControlPath" = "${host.homeDirectory}/.ssh/master-%r@%n:%p";
             "IgnoreUnknown" = "UseKeychain";
