@@ -118,6 +118,19 @@ pub fn format(self: @This(), writer: *std.Io.Writer) std.Io.Writer.Error!void {
 
 Use `{f}` to invoke it: `try writer.print("{f}", .{my_value});`
 
+Code written for Zig 0.15 and earlier uses a different signature:
+
+```zig
+pub fn format(
+    self: @This(),
+    comptime fmt: []const u8,
+    options: std.fmt.FormatOptions,
+    writer: anytype,
+) !void { ... }
+```
+
+When porting such code to 0.16+, change `writer: anytype` to `writer: *std.Io.Writer`, drop the `fmt` and `options` parameters, narrow the return type to `std.Io.Writer.Error!void`, and switch call sites from `{}` to `{f}`.
+
 ### Alternatives for Multiple Format Modes
 
 Since the format signature does not accept format strings, use one of:

@@ -1,25 +1,40 @@
 # JSON Parsing & Serialization
 
-## Parsing with `std.json.parseFromSlice`
+## Parsing
+
+The owned form returns a `Parsed(T)` that owns its allocations and must be released:
 
 ```zig
 const parsed = try std.json.parseFromSlice(
     MyStruct,
     allocator,
     json_bytes,
-    .{
-        .ignore_unknown_fields = true,
-        .allocate = .alloc_always,  // or .alloc_if_needed
-    },
+    .{ .ignore_unknown_fields = true },
 );
 defer parsed.deinit();
 const value = parsed.value;
 ```
 
-## Key Parse Options
+The leaky form skips that bookkeeping and lets a caller-supplied arena reclaim everything in bulk:
 
-- **`ignore_unknown_fields`**: Set to `true` when parsing responses that may contain unknown fields (e.g. Kubernetes API responses)
-- **`allocate`**: Controls when the parser allocates. `.alloc_always` copies all strings; `.alloc_if_needed` only allocates when necessary
+```zig
+var arena: std.heap.ArenaAllocator = .init(gpa);
+defer arena.deinit();
+
+const value = try std.json.parseFromSliceLeaky(
+    MyStruct,
+    arena.allocator(),
+    json_bytes,
+    .{ .ignore_unknown_fields = true },
+);
+```
+
+Prefer the leaky form when the result has a short, well-bounded lifetime tied to an arena that already exists, such as a request handler, a CLI command, or a test case. Prefer the owned form when the parsed value escapes that lifetime and you want explicit per-call cleanup.
+
+## Parse options
+
+- **`ignore_unknown_fields`**: When `true`, the parser drops fields not present in the target type instead of failing. Set this whenever the JSON is produced by something outside your control and may grow new fields.
+- **`allocate`**: Use `.alloc_always` when the parsed value must outlive the input buffer, since strings are copied. Use `.alloc_if_needed` to keep parsed strings as zero-copy slices into the input buffer when its lifetime is at least as long as the parsed value.
 
 ## Serialization
 
@@ -53,3 +68,28 @@ pub const PodSpec = struct {
 ```
 
 This aligns with JSON deserialization where missing fields default to `null`.
+
+To make the round-trip symmetric on output, set `emit_null_optional_fields = false` so unset optionals are omitted rather than serialized as explicit `null`:
+
+```zig
+try writer.print("{f}", .{std.json.fmt(value, .{
+    .emit_null_optional_fields = false,
+})});
+```
+
+## Testing parsed values
+
+Parse into an arena and compare against a directly-constructed expected value with `std.testing.expectEqualDeep`. The arena scopes every allocation to the test case:
+
+```zig
+var arena: std.heap.ArenaAllocator = .init(std.testing.allocator);
+defer arena.deinit();
+
+const parsed = try std.json.parseFromSliceLeaky(
+    Message,
+    arena.allocator(),
+    json_text,
+    .{},
+);
+try std.testing.expectEqualDeep(expected, parsed);
+```

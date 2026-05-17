@@ -66,7 +66,7 @@ pub const HistoryOptions = struct {
 ## Named/Default Arguments via Anonymous Structs
 
 ```zig
-fn request(
+pub inline fn request(
     method: std.http.Method,
     uri: std.Uri,
     options: struct {
@@ -80,6 +80,8 @@ fn request(
 // Call with named fields:
 try request(.GET, uri, .{ .timeout_ms = 5_000 });
 ```
+
+When the function only unpacks the options struct into a target type or forwards the fields to a callee, mark it `pub inline fn`. The options struct then collapses at the call site and adds no runtime cost over passing the fields positionally.
 
 ---
 
@@ -104,6 +106,61 @@ pub const Foo = struct {
 
 // Usage: foo.counter.increment()
 ```
+
+---
+
+## Multi-Phase Resource Lifecycle
+
+When a resource's safe-operation envelope changes over its lifetime, model the lifetime as an explicit state enum. Move between states through dedicated transition functions, and assert the expected state at the entry of every public method. This turns "called at the wrong time" from a silent bug into a loud crash at the boundary where the misuse actually happens.
+
+```zig
+const Phase = enum { init, running, deinit };
+
+const Resource = struct {
+    parent: Allocator,
+    phase: Phase,
+
+    pub fn init(parent: Allocator) Resource {
+        return .{ .parent = parent, .phase = .init };
+    }
+
+    pub fn transitionToRunning(self: *Resource) void {
+        assert(self.phase == .init);
+        self.phase = .running;
+    }
+
+    pub fn transitionToDeinit(self: *Resource) void {
+        assert(self.phase == .running);
+        self.phase = .deinit;
+    }
+
+    pub fn work(self: *Resource, request: Request) !void {
+        assert(self.phase == .running);
+        // ...
+    }
+};
+```
+
+### Phases with Per-State Payload
+
+When each phase carries data the other phases do not need, replace the enum with a tagged union. The active field name is the phase, and the payload becomes addressable only after the corresponding state assert:
+
+```zig
+const State = union(enum) {
+    idle,
+    writing: struct { unflushed: u32 },
+    checkpoint: struct { fsync_completion: Completion },
+};
+
+fn append(self: *Log, slot: Slot) void {
+    assert(self.state == .writing);
+    assert(self.state.writing.unflushed < slots_max);
+    self.state.writing.unflushed += 1;
+    // ...
+}
+```
+
+The pattern avoids the alternative of carrying every phase's data as nullable fields and remembering to null them out on transition. Wrong-phase access becomes a compile-time field-not-found error rather than a forgotten reset.
 
 ---
 
@@ -196,13 +253,13 @@ for (items) |item| {
 
 ## Asserting Post-Conditions (Contract Programming)
 
-Use `defer` with `assert` to verify that a block of code upholds its contract:
+Pair a pre-condition `assert` with a `defer assert` of the post-condition at the top of a block. The pre-condition documents what the block requires, the deferred post-condition documents what it promises, and both run regardless of how the block exits. The contract is then visible in two lines at the top of the code that has to satisfy it.
 
 ```zig
 {
-    assert(!grid.free_set.opened);
-    defer assert(grid.free_set.opened);
-    // ... code that should open the free set
+    assert(!resource.opened);
+    defer assert(resource.opened);
+    // ... code that should open the resource
 }
 ```
 
@@ -224,9 +281,9 @@ pub fn acquire(self: *ScanBufferPool) Error!*const ScanBuffer {
 
 ---
 
-## Guard-Based Clamping (Strictly Monotonic Time)
+## Guard-Based Clamping
 
-Defensive pattern to enforce invariants using in-process guards and `@max`:
+When a value comes from a source that promises an invariant (monotonicity, a lower bound, a minimum granularity) but cannot be fully trusted to deliver it, remember the last accepted value in a process-local guard field and clamp every fresh reading against it with `@max`. The guard turns a possibly-violated external invariant into a locally-enforced one without branching on the failure case.
 
 ```zig
 fn now(clock: *Clock) Instant {
@@ -239,19 +296,14 @@ fn now(clock: *Clock) Instant {
 }
 ```
 
-### Strict Monotonicity (Unique Timestamps)
+The monotonic-clock case is the canonical instance because hardware and kernel bugs do occasionally regress monotonic time, but the same shape applies to any externally-supplied value that must never decrease over the lifetime of the process.
 
-Strengthen to ensure strictly increasing values:
+### Strict Monotonicity
+
+When consecutive readings must also be distinct (so values can serve as unique identifiers, not just as a non-decreasing sequence), clamp against `guard + 1` instead of `guard`. Prefer strict monotonicity whenever uniqueness is required, since the weak form will produce duplicates whenever the underlying source stalls.
 
 ```zig
 const t = @max(t_raw, clock.guard + 1);
 assert(t > clock.guard);
 clock.guard = t;
 ```
-
-### Key Principles
-
-- OS guarantees may fail empirically -- add in-process guards as defense
-- Use `@max()` for safe clamping without branches
-- Use `assert()` to document and enforce invariants at runtime
-- Prefer strict monotonicity (`>`) over weak (`>=`) when timestamps must be unique

@@ -15,20 +15,6 @@ fn max(comptime T: type, a: T, b: T) T {
 const result = comptime max(i32, 5, 10);
 ```
 
-## Type Constructors (Generic Types)
-
-```zig
-fn Api(comptime T: type) type {
-    return struct {
-        const Self = @This();
-        // Use T.resource_meta at comptime to construct URLs
-        pub fn list(self: *Self) !T.resource_meta.list_kind {
-            // ...
-        }
-    };
-}
-```
-
 ## Comptime Block Expressions
 
 ```zig
@@ -40,6 +26,23 @@ const lookup_table = comptime blk: {
     break :blk table;
 };
 ```
+
+## `@setEvalBranchQuota`
+
+Comptime evaluation has a default branch budget. Nontrivial work hits the
+limit and the compiler aborts: deep recursion, accumulating slices across
+many fields, or iterating over a large generated table. Raise the quota at
+the top of the function or block that needs it.
+
+```zig
+fn TableType(comptime Schema: type) type {
+    @setEvalBranchQuota(32_000);
+    // comptime field iteration, slice accumulation, type reification
+}
+```
+
+The number is empirical: bump it until the build passes. Keep the call
+narrowly scoped rather than raising it globally.
 
 ## `inline for` vs `comptime for`
 
@@ -68,6 +71,20 @@ switch (info) {
 }
 ```
 
+The `.@"fn"` case exposes a callable's signature, which lets a generic
+helper validate a user-supplied callback at comptime.
+
+```zig
+fn registerCallback(comptime callback: anytype) void {
+    const info = @typeInfo(@TypeOf(callback)).@"fn";
+    if (info.params.len != 1) @compileError("callback must take one argument");
+    const param = info.params[0];
+    if (param.is_generic) @compileError("callback parameter must be concrete");
+    if (info.return_type == null) @compileError("callback must have a return type");
+    // info.params[i].type, info.return_type, info.calling_convention available
+}
+```
+
 ## Type Construction Builtins
 
 ```zig
@@ -85,6 +102,40 @@ Use `&@splat(.{})` for default attributes across all fields.
 
 For types without a dedicated builtin, use literal syntax: `opaque {}`, `?T`, `E!T`, `error{ ... }`, `[len]Elem`.
 
+When the bit count is itself a comptime expression, prefer the
+standard-library helper `std.meta.Int(sign, bits)` over `@Int`. The bit
+count is typically `@bitSizeOf(SomeType)` or arithmetic over several
+`@bitSizeOf` values.
+
+```zig
+const Word = u64;
+const Index = std.meta.Int(.unsigned, @bitSizeOf(Word) - 1);
+```
+
+## Field-Driven Struct Generation
+
+A common comptime task is to derive one struct type from another: walk the
+input type's fields, accumulate parallel name and type slices, and reify
+the result with `@Struct`. The accumulators start empty and grow with `++`.
+
+```zig
+fn IndexesType(comptime Object: type) type {
+    @setEvalBranchQuota(8_000);
+    comptime var names: []const [:0]const u8 = &.{};
+    comptime var types: []const type = &.{};
+    inline for (std.meta.fields(Object)) |field| {
+        if (std.mem.eql(u8, field.name, "id")) continue;
+        names = names ++ &[_][:0]const u8{field.name};
+        types = types ++ &[_]type{IndexTreeType(field.type)};
+    }
+    return @Struct(.auto, null, names, types, &@splat(.{}));
+}
+```
+
+`&@splat(.{})` applies default attributes uniformly. When a field needs a
+specific `alignment`, `default_value_ptr`, or `is_comptime`, build the
+attribute slice explicitly instead of splatting.
+
 ## `std.meta.FieldEnum` and `@FieldType` for Field-Level Dispatch
 
 ```zig
@@ -98,6 +149,43 @@ fn IndexTableType(
 ```
 
 `@FieldType(T, field_name)` returns the type of the named field on type `T`.
+
+## Comptime Layout Assertions
+
+Wire-format types, FFI structs, and packed bitfields depend on a specific
+memory layout. Pin that contract with a `comptime { ... }` block inside the
+struct that asserts `@sizeOf`, `@alignOf`, `@bitSizeOf`, and `@offsetOf`
+against expected values. An accidental field reorder, padding change, or
+type swap then fails the build instead of corrupting data at runtime.
+
+```zig
+const Header = extern struct {
+    magic: u32,
+    version: u16,
+    flags: u16,
+    payload_len: u64,
+
+    comptime {
+        assert(@sizeOf(Header) == 16);
+        assert(@alignOf(Header) == 8);
+        assert(@offsetOf(Header, "payload_len") == 8);
+    }
+};
+
+const Flags = packed struct(u16) {
+    a: bool,
+    b: bool,
+    rest: u14,
+
+    comptime {
+        assert(@bitSizeOf(Flags) == 16);
+        assert(@sizeOf(Flags) == 2);
+    }
+};
+```
+
+See the `types` topic for related discipline on `extern` and `packed`
+structs.
 
 ## Comptime Limitations (By Design)
 

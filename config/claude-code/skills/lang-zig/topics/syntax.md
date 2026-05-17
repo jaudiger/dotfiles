@@ -88,6 +88,31 @@ const json = std.json;
 const mem = std.mem;
 ```
 
+## Bare Comptime Blocks
+
+A `comptime { ... }` placed at file or struct scope has no value and runs purely for compile-time side effects. Three recurring uses are build-time assertions over scope-level constants, target-shape checks via `@compileError`, and transitive-module aggregation:
+
+```zig
+comptime {
+    assert(MiB == 1024 * KiB);
+}
+
+comptime {
+    if (builtin.target.cpu.arch.endian() != .little) {
+        @compileError("big-endian targets are unsupported");
+    }
+}
+
+comptime {
+    _ = @import("bit_set.zig");
+    _ = @import("ring_buffer.zig");
+}
+```
+
+Contrast with the value-returning form `const x = comptime blk: { ... }` documented under labeled blocks: the bare form is a declaration, not an expression.
+
+Used at struct scope, the same shape pins binary layout. See `types.md` ("Binary Layout: extern and packed") and `comptime.md` ("Comptime Layout Assertions").
+
 ## Builtin Functions Use `@` Prefix
 
 ```zig

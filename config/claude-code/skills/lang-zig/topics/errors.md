@@ -40,6 +40,22 @@ _ = can_fail();           // ERROR: error union is discarded
 can_fail() catch {};      // OK: explicit error discard
 ```
 
+## `catch unreachable`: Contract Assertion
+
+Use `catch unreachable` only when a prior invariant makes failure impossible at this call site. It is a static claim that the error path cannot be taken, not a way to silence an unhandled error. If the precondition does not actually rule out failure, use `catch |err| ...` or propagate with `try`.
+
+```zig
+const ts = posix.clock_gettime(posix.CLOCK.REALTIME) catch unreachable;
+```
+
+When the unreachable claim depends on validation performed elsewhere, leave a short note at the call site so it can be audited:
+
+```zig
+const decoder = MultiBatchDecoder.init(body, .{
+    .element_size = operation.event_size(),
+}) catch unreachable; // Already validated upstream.
+```
+
 ## Error Set Merging
 
 ```zig
@@ -69,6 +85,27 @@ fn readPort(process: *Process) !u16 {
     return try std.fmt.parseInt(u16, buf[0 .. len -| 1], 10);
 }
 ```
+
+## `errdefer` for Partial Initialization Rollback
+
+When initializing a collection element by element, pair a per-iteration `errdefer` that tears down the already-initialized prefix with an outer `errdefer` that takes over once the loop completes:
+
+```zig
+fn init_all(allocator: Allocator, count: usize) ![]Node {
+    const nodes = try allocator.alloc(Node, count);
+    errdefer allocator.free(nodes);
+
+    for (nodes, 0..) |*node, i| {
+        errdefer for (nodes[0..i]) |*n| n.deinit(allocator);
+        node.* = try Node.init(allocator);
+    }
+    errdefer for (nodes) |*n| n.deinit(allocator);
+
+    return nodes;
+}
+```
+
+The inner `errdefer` only sees the items constructed so far; it falls out of scope at the end of each iteration and is replaced on the next one. The outer `errdefer` only becomes relevant after the loop exits successfully. Without the inner form, a failure mid-loop would leak every prior element.
 
 ## `errdefer comptime unreachable`: Prove No Errors
 
@@ -140,38 +177,22 @@ const Diagnostics = struct {
 
 ---
 
-## Defer Patterns
+## Errors vs Invariant Violations
 
-### 1. Statically Enforcing Error-Free Code
+Three mechanisms cover three situations. Recoverable failures propagate up the stack as error unions, and the caller decides what to do. Contract-level invariants that only a bug would violate are enforced inline with `assert` and `catch unreachable`. Conditions where continuing would risk corruption or break a documented invariant terminate the process via `@panic`. The deciding question is whether the caller has a meaningful response. If not, a returned error only delays the crash and obscures the cause. See the `patterns` topic for post-condition asserts using `defer assert`.
 
-```zig
-errdefer comptime unreachable;
-// All subsequent code is guaranteed not to return an error
-// Compilation fails if it does
-```
+## `@panic` for Unrecoverable Conditions
 
-### 2. Logging Errors at Origin
+Reserve `@panic` for conditions where the only safe action is to stop. The message should describe the invariant that was violated so it survives into the crash report:
 
 ```zig
-const port = port: {
-    errdefer |err| log.err("failed to read port: {}", .{err});
-    var buf: [6]u8 = undefined;
-    const len = try process.stdout.?.readAll(&buf);
-    break :port try std.fmt.parseInt(u16, buf[0 .. len -| 1], 10);
-};
+if (now < self.monotonic_guard) @panic("monotonic clock regressed");
 ```
 
-### 3. Resource Cleanup (RAII-like)
+Bridge a failed call into a panic when its failure means the system has reached a state from which it cannot continue safely:
 
 ```zig
-const resource = try allocator.create(Resource);
-defer allocator.destroy(resource);
-try resource.init();
-errdefer resource.deinit();  // Only on error path
+_ = log_fsync(prepare) catch @panic("write-ahead log fsync failed");
 ```
 
----
-
-## `error.Canceled` in I/O
-
-Most I/O operations include `error.Canceled` in their error sets. When a cancelation request is acknowledged, I/O operations return this error. Handle it by propagating up to a caller that can abort the operation.
+A returned error invites the caller to recover. A panic refuses that option deliberately.
