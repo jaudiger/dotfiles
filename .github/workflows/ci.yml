@@ -31,6 +31,7 @@ jobs:
             nix:
               - '**/*.nix'
               - 'flake.lock'
+              - '.github/workflows/ci.yml'
             workflows:
               - '.github/workflows/**'
 
