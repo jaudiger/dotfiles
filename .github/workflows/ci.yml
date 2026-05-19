@@ -1,0 +1,106 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref_name }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      nix: ${{ steps.filter.outputs.nix }}
+      workflows: ${{ steps.filter.outputs.workflows }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Detect changed paths
+        uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
+        id: filter
+        with:
+          filters: |
+            nix:
+              - '**/*.nix'
+              - 'flake.lock'
+            workflows:
+              - '.github/workflows/**'
+
+  lint-nix-format:
+    needs: changes
+    if: needs.changes.outputs.nix == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - system: aarch64-linux
+            runner: ubuntu-24.04-arm
+          - system: aarch64-darwin
+            runner: macos-latest
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@8aa03977d8d733052d78f4e008a241fd1dbf36b3 # v31.10.6
+        with:
+          github_access_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Check formatting
+        run: nix build --no-link .#checks.${{ matrix.system }}.formatting
+
+  lint-nix-lint:
+    needs: changes
+    if: needs.changes.outputs.nix == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - system: aarch64-linux
+            runner: ubuntu-24.04-arm
+          - system: aarch64-darwin
+            runner: macos-latest
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@8aa03977d8d733052d78f4e008a241fd1dbf36b3 # v31.10.6
+        with:
+          github_access_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Run deadnix
+        run: nix build --no-link .#checks.${{ matrix.system }}.deadnix
+
+      - name: Run statix
+        run: nix build --no-link .#checks.${{ matrix.system }}.statix
+
+  lint-actions:
+    needs: changes
+    if: needs.changes.outputs.workflows == 'true'
+    uses: jaudiger/reusable-workflows/.github/workflows/static-analysis-github-actions.yml@af70992c9dcbb3bf0a833629b18cb661b7c616fe
+
+  ci:
+    if: always()
+    needs: [lint-nix-format, lint-nix-lint, lint-actions]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify all required checks passed
+        env:
+          RESULTS: ${{ toJson(needs.*.result) }}
+        run: |
+          echo "Job results: $RESULTS"
+          if echo "$RESULTS" | grep -qE '"(failure|cancelled)"'; then
+            echo "One or more required checks failed"
+            exit 1
+          fi
