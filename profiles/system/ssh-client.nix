@@ -9,56 +9,44 @@ in
       enable = true;
       enableDefaultConfig = false;
 
-      matchBlocks = {
+      settings = {
         "github.com" = {
-          hostname = "ssh.github.com";
-          port = 443;
-          identityFile = "${host.homeDirectory}/.ssh/id_ed25519";
-
-          extraOptions = {
-            "UpdateHostKeys" = "yes";
-          };
+          HostName = "ssh.github.com";
+          Port = 443;
+          IdentityFile = "${host.homeDirectory}/.ssh/id_ed25519";
+          UpdateHostKeys = "yes";
         };
 
         "gitlab.com" = {
-          hostname = "altssh.gitlab.com";
-          port = 443;
-          identityFile = "${host.homeDirectory}/.ssh/id_ed25519";
-
-          extraOptions = {
-            "UpdateHostKeys" = "yes";
-          };
+          HostName = "altssh.gitlab.com";
+          Port = 443;
+          IdentityFile = "${host.homeDirectory}/.ssh/id_ed25519";
+          UpdateHostKeys = "yes";
         };
 
         # Trasna GitLab instance
         "gitlab.trasna.services" = {
-          hostname = "gitlab.trasna.services";
-          port = 31444;
-          identityFile = "${host.homeDirectory}/.ssh/id_ed25519";
-
-          extraOptions = {
-            "UpdateHostKeys" = "yes";
-          };
+          HostName = "gitlab.trasna.services";
+          Port = 31444;
+          IdentityFile = "${host.homeDirectory}/.ssh/id_ed25519";
+          UpdateHostKeys = "yes";
         };
 
+        # Use the keychain to store the passphrase on macOS, and make sure this key is ignored on Linux
         "*" = {
-          compression = true;
-          serverAliveInterval = 20;
-          serverAliveCountMax = 3;
-          controlMaster = "auto";
-          controlPersist = "10m";
-          addKeysToAgent = "yes";
-          identitiesOnly = true;
-
-          # Use the keychain to store the passphrase on macOS, and make sure this key is ignored on Linux
-          extraOptions = {
-            "ForwardAgent" = "no";
-            "HashKnownHosts" = "yes";
-            "UserKnownHostsFile" = "${host.homeDirectory}/.ssh/known_hosts";
-            "ControlPath" = "${host.homeDirectory}/.ssh/master-%r@%n:%p";
-            "IgnoreUnknown" = "UseKeychain";
-            "UseKeychain" = "yes";
-          };
+          Compression = true;
+          ServerAliveInterval = 20;
+          ServerAliveCountMax = 3;
+          ControlMaster = "auto";
+          ControlPersist = "10m";
+          AddKeysToAgent = "yes";
+          IdentitiesOnly = true;
+          ForwardAgent = "no";
+          HashKnownHosts = "yes";
+          UserKnownHostsFile = "${host.homeDirectory}/.ssh/known_hosts";
+          ControlPath = "${host.homeDirectory}/.ssh/master-%r@%n:%p";
+          IgnoreUnknown = "UseKeychain";
+          UseKeychain = "yes";
         };
       };
     };
