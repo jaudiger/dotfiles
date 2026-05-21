@@ -14,9 +14,9 @@ in
     casks = [ "claude" ];
   };
 
-  modules = {
-    host.unfreePackages = [ "claude-code" ];
+  nixpkgs.config.allowUnfreePackages = [ "claude-code" ];
 
+  modules = {
     home-manager = {
       programs.claude-code = {
         enable = true;

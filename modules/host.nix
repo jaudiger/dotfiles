@@ -12,14 +12,6 @@ let
 in
 {
   options.modules.host = {
-    unfreePackages = mkOption {
-      type = types.listOf types.str;
-      default = [ ];
-      description = ''
-        List of unfree package names to allow.
-      '';
-    };
-
     username = mkOption {
       type = types.str;
       description = ''
@@ -115,9 +107,5 @@ in
         '';
       };
     };
-  };
-
-  config = {
-    nixpkgs.config.allowUnfreePredicate = pkg: builtins.elem (getName pkg) host.unfreePackages;
   };
 }

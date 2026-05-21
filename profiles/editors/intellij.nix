@@ -14,12 +14,11 @@ in
     casks = [ "intellij-idea-ce" ];
   };
 
+  nixpkgs.config.allowUnfreePackages = lib.optionals isLinux [ "idea" ];
+
   modules = {
-    host = {
-      unfreePackages = lib.optionals isLinux [ "idea" ];
-      shell.nonPortableAliases = lib.mkIf isDarwin {
-        intellij = "open -na 'IntelliJ IDEA CE'";
-      };
+    host.shell.nonPortableAliases = lib.mkIf isDarwin {
+      intellij = "open -na 'IntelliJ IDEA CE'";
     };
     home-manager.home.packages = lib.optionals isLinux [
       pkgs.jetbrains.idea

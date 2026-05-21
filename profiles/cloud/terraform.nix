@@ -1,9 +1,9 @@
 { pkgs, ... }:
 
 {
-  modules = {
-    host.unfreePackages = [ "terraform" ];
+  nixpkgs.config.allowUnfreePackages = [ "terraform" ];
 
+  modules = {
     home-manager = {
       home = {
         packages = with pkgs; [

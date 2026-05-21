@@ -13,9 +13,9 @@ in
     casks = [ "visual-studio-code" ];
   };
 
-  modules = {
-    host.unfreePackages = lib.optionals isLinux [ "vscode" ];
+  nixpkgs.config.allowUnfreePackages = lib.optionals isLinux [ "vscode" ];
 
+  modules = {
     home-manager.programs.vscode = {
       enable = true;
 
