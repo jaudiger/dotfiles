@@ -318,6 +318,7 @@ in
               "Write(.env*)"
             ];
           };
+          preferredNotifChannel = "terminal_bell";
           showTurnDuration = false;
           spinnerTipsEnabled = false;
           statusLine = {
