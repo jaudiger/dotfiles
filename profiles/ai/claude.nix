@@ -204,6 +204,19 @@ in
             CLAUDE_CODE_HIDE_ACCOUNT_INFO = 1;
             FORCE_AUTOUPDATE_PLUGINS = 1;
           };
+          hooks = {
+            PreToolUse = [
+              {
+                matcher = "Bash";
+                hooks = [
+                  {
+                    type = "command";
+                    command = "nu --stdin ${host.homeDirectory}/.claude/hooks/auto-approve-readonly/mod.nu";
+                  }
+                ];
+              }
+            ];
+          };
           permissions = {
             allow = [
               "Bash(cargo bench:*)"
@@ -353,6 +366,10 @@ in
       };
 
       home = {
+        file."claudeCodeHooks" = {
+          source = ../../config/claude-code/hooks;
+          target = ".claude/hooks";
+        };
         file."claudeCodeStatusLine" = {
           source = ../../config/claude-code/status-line;
           target = ".claude/scripts/status-line";
