@@ -55,12 +55,17 @@ in
         };
 
         diff = {
+          algorithm = "histogram";
           colormoved = "default";
           colormovedws = "allow-indentation-change";
         };
 
         fetch = {
           prune = true;
+        };
+
+        http = {
+          maxRetries = 3;
         };
 
         init = {
