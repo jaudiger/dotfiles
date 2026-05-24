@@ -8,6 +8,8 @@ _:
         enable = true;
         defaultEditor = true;
 
+        nixpkgs.source = pkgs.path;
+
         extraPackages = with pkgs; [
           fd
           ripgrep
