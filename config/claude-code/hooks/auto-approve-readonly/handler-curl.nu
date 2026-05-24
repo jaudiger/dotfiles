@@ -4,10 +4,9 @@
 #
 
 const SCRIPT_DIR = path self | path dirname
-use ($SCRIPT_DIR | path join "lib.nu") *
+use ($SCRIPT_DIR | path join "lib.nu") [allow defer argv-has-mutation-method DECISION_ALLOW DECISION_DEFER]
 
-export def classify [argv: list<string>]: nothing -> record<decision: string, reason: string> {
-    if (($argv | get 0?) != "curl") { return (defer) }
+export def handler [argv: list<string>]: nothing -> record<decision: string, reason: string> {
     if (argv-has-mutation-method $argv) { return (defer) }
     if (has-body-or-upload $argv) { return (defer) }
     if (has-file-write $argv) { return (defer) }
@@ -42,7 +41,7 @@ export def main []: nothing -> nothing { }
 export def "main test" []: nothing -> nothing {
     use std/assert
 
-    print "# rule-curl: classify"
+    print "# handler-curl"
     for case in [
         [argv, expected];
         [["curl", "URL"], $DECISION_ALLOW],
@@ -51,7 +50,6 @@ export def "main test" []: nothing -> nothing {
         [["curl", "-sSL", "URL"], $DECISION_ALLOW],
         [["curl", "--silent", "URL"], $DECISION_ALLOW],
         [["curl", "-X", "POST", "URL"], $DECISION_DEFER],
-        [["curl", "-sX", "POST", "URL"], $DECISION_DEFER],
         [["curl", "-d", "body", "URL"], $DECISION_DEFER],
         [["curl", "--data", "foo", "URL"], $DECISION_DEFER],
         [["curl", "--data-binary", "@file", "URL"], $DECISION_DEFER],
@@ -61,10 +59,9 @@ export def "main test" []: nothing -> nothing {
         [["curl", "--output", "/tmp/file", "URL"], $DECISION_DEFER],
         [["curl", "-o", "/dev/null", "URL"], $DECISION_ALLOW],
         [["curl", "--output=/tmp/file", "URL"], $DECISION_DEFER],
-        [["wget", "URL"], $DECISION_DEFER],
     ] {
-        assert equal (classify $case.argv).decision $case.expected $"rule-curl: ($case.argv | str join ' ')"
+        assert equal (handler $case.argv).decision $case.expected $"handler-curl: ($case.argv | str join ' ')"
     }
 
-    print "rule-curl tests passed"
+    print "handler-curl tests passed"
 }

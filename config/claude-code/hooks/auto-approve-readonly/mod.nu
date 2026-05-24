@@ -5,18 +5,9 @@
 #
 
 const SCRIPT_DIR = path self | path dirname
-use ($SCRIPT_DIR | path join "lib.nu") *
-use ($SCRIPT_DIR | path join "parse.nu") *
-use ($SCRIPT_DIR | path join "rule-curl.nu")
-use ($SCRIPT_DIR | path join "rule-gh-api.nu")
-
-export def classify-leaf [argv: list<string>]: nothing -> record<decision: string, reason: string> {
-    let r = (rule-curl classify $argv)
-    if $r.decision != $DECISION_DEFER { return $r }
-    let r = (rule-gh-api classify $argv)
-    if $r.decision != $DECISION_DEFER { return $r }
-    defer
-}
+use ($SCRIPT_DIR | path join "lib.nu") [allow defer emit-allow emit-deny emit-defer DECISION_ALLOW DECISION_DENY DECISION_DEFER]
+use ($SCRIPT_DIR | path join "parse.nu") parse-shell
+use ($SCRIPT_DIR | path join "dispatch.nu")
 
 export def decide [command: string]: nothing -> record<decision: string, reason: string> {
     let parsed = (parse-shell $command)
@@ -25,7 +16,7 @@ export def decide [command: string]: nothing -> record<decision: string, reason:
     if ($parsed.side_effects | is-not-empty) { return (defer "side effects") }
     if ($parsed.leaves | is-empty) { return (defer "no leaves") }
 
-    let decisions = ($parsed.leaves | each { |leaf| classify-leaf $leaf.argv })
+    let decisions = ($parsed.leaves | each { |leaf| dispatch dispatcher $leaf.argv })
 
     let deny_result = ($decisions | where decision == $DECISION_DENY | get 0?)
     if $deny_result != null { return $deny_result }
@@ -43,7 +34,7 @@ def main []: any -> nothing {
     let command = ($payload.tool_input?.command? | default "")
 
     if $tool_name != "Bash" or ($command | is-empty) {
-        emit-defer
+        emit-defer "not a Bash command"
     }
 
     let result = (decide $command)
@@ -52,15 +43,15 @@ def main []: any -> nothing {
     } else if $result.decision == $DECISION_ALLOW {
         emit-allow $result.reason
     } else {
-        emit-defer
+        emit-defer $result.reason
     }
 }
 
 def "main test" []: nothing -> nothing {
     ^nu ($SCRIPT_DIR | path join "parse.nu") test
     ^nu ($SCRIPT_DIR | path join "lib.nu") test
-    ^nu ($SCRIPT_DIR | path join "rule-curl.nu") test
-    ^nu ($SCRIPT_DIR | path join "rule-gh-api.nu") test
+    for f in (glob ($SCRIPT_DIR | path join "handler-*.nu")) { ^nu $f test }
+    ^nu ($SCRIPT_DIR | path join "dispatch.nu") test
     main integration-test
 }
 
@@ -71,15 +62,27 @@ def "main integration-test" []: nothing -> nothing {
     for case in [
         [command, expected];
         ["curl -s https://example.com", $DECISION_ALLOW],
-        ["curl https://example.com", $DECISION_ALLOW],
-        ["curl -s https://example.com | jq .", $DECISION_DEFER],
+        ["curl -s https://example.com | jq .", $DECISION_ALLOW],
         ["curl -s URL | bash", $DECISION_DEFER],
         ["gh api repos/foo/bar", $DECISION_ALLOW],
         ["gh api repos/foo --method POST", $DECISION_DEFER],
+        ["gh pr view 42", $DECISION_ALLOW],
         ["curl -s URL > /tmp/out", $DECISION_DEFER],
         ["curl -s URL 2>&1", $DECISION_ALLOW],
         ["curl -s URL; rm /tmp/file", $DECISION_DEFER],
         ["curl -s URL && gh api foo", $DECISION_ALLOW],
+        ["cat README.md", $DECISION_ALLOW],
+        ["git diff --cached", $DECISION_ALLOW],
+        ["git diff | cat", $DECISION_ALLOW],
+        ["git log | grep TODO", $DECISION_ALLOW],
+        ["find . -name '*.nu' | wc -l", $DECISION_ALLOW],
+        ["cargo build && cargo test", $DECISION_ALLOW],
+        ["git reset --hard", $DECISION_DENY],
+        ["git push --force origin main", $DECISION_DENY],
+        ["git stash clear", $DECISION_DENY],
+        ["rm -rf /", $DECISION_DENY],
+        ["rm file.txt", $DECISION_DEFER],
+        ["unknown-cmd", $DECISION_DEFER],
     ] {
         assert equal (decide $case.command).decision $case.expected $"decide: ($case.command)"
     }

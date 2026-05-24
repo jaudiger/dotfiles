@@ -41,8 +41,25 @@ export def emit-deny [reason: string]: nothing -> nothing {
     exit 0
 }
 
-export def emit-defer []: nothing -> nothing {
+export def emit-defer [reason: string = ""]: nothing -> nothing {
+    {
+        hookSpecificOutput: {
+            hookEventName: "PreToolUse"
+            permissionDecision: "defer"
+            permissionDecisionReason: $reason
+        }
+    } | to json | print
     exit 0
+}
+
+export def argv-has-prefix [argv: list<string>, prefix: list<string>]: nothing -> bool {
+    let n = ($prefix | length)
+    if $n > ($argv | length) { return false }
+    ($argv | take $n) == $prefix
+}
+
+export def argv-matches-any [argv: list<string>, prefixes: list<list<string>>]: nothing -> bool {
+    $prefixes | any { |p| argv-has-prefix $argv $p }
 }
 
 export def argv-has-mutation-method [argv: list<string>]: nothing -> bool {
@@ -72,6 +89,37 @@ export def main []: nothing -> nothing { }
 
 export def "main test" []: nothing -> nothing {
     use std/assert
+
+    print "# argv-has-prefix"
+    for case in [
+        [argv, prefix, expected];
+        [["cat"], ["cat"], true],
+        [["cat", "foo.txt"], ["cat"], true],
+        [["catx"], ["cat"], false],
+        [["git", "diff"], ["git", "diff"], true],
+        [["git", "diff", "--cached"], ["git", "diff"], true],
+        [["git"], ["git", "diff"], false],
+        [["git", "log"], ["git", "diff"], false],
+        [[], ["cat"], false],
+        [["cat"], [], true],
+    ] {
+        assert equal (argv-has-prefix $case.argv $case.prefix) $case.expected $"argv-has-prefix ($case.argv | str join ' ') | ($case.prefix | str join ' ')"
+    }
+
+    print "# argv-matches-any"
+    for case in [
+        [argv, prefixes, expected];
+        [["cat", "foo"], [["cat"], ["ls"]], true],
+        [["ls", "-la"], [["cat"], ["ls"]], true],
+        [["rm", "-rf"], [["cat"], ["ls"]], false],
+        [["git", "log", "--oneline"], [["git", "diff"], ["git", "log"]], true],
+        [["gh", "pr", "view", "42"], [["gh", "pr", "view"], ["gh", "issue", "view"]], true],
+        [["gh", "pr", "create"], [["gh", "pr", "view"], ["gh", "issue", "view"]], false],
+        [[], [["cat"]], false],
+        [["cat"], [], false],
+    ] {
+        assert equal (argv-matches-any $case.argv $case.prefixes) $case.expected $"argv-matches-any ($case.argv | str join ' ')"
+    }
 
     print "# argv-has-mutation-method"
     for case in [
