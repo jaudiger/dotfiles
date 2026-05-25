@@ -10,9 +10,9 @@ const PNPM_SUBS: list<string> = ["build", "info", "lint", "list", "outdated", "t
 
 export def handler [argv: list<string>]: nothing -> record<decision: string, reason: string> {
     let sub = ($argv | get 1?)
-    if $sub == null { return (defer) }
+    if $sub == null { return (defer "pnpm: subcommand required") }
     if $sub in $PNPM_SUBS { return (allow $"pnpm ($sub)") }
-    defer
+    defer $"pnpm ($sub) not auto-approved; allowed: ($PNPM_SUBS | str join ', ')"
 }
 
 export def main []: nothing -> nothing { }

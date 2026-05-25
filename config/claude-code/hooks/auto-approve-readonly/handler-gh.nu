@@ -28,16 +28,16 @@ const GH_SUB_PREFIXES: list<list<string>> = [
 
 export def handler [argv: list<string>]: nothing -> record<decision: string, reason: string> {
     let sub = ($argv | get 1?)
-    if $sub == null { return (defer) }
+    if $sub == null { return (defer "gh: subcommand required") }
     if $sub == "api" { return (handler-api $argv) }
     let tail = ($argv | skip 1)
     if (argv-matches-any $tail $GH_SUB_PREFIXES) { return (allow $"gh ($sub)") }
-    defer
+    defer $"gh ($tail | str join ' ') not auto-approved; allowed: ($GH_SUB_PREFIXES | each { |p| $p | str join ' ' } | str join ', '), api"
 }
 
 def handler-api [argv: list<string>]: nothing -> record<decision: string, reason: string> {
-    if (argv-has-mutation-method $argv) { return (defer) }
-    if (has-field-flag $argv) { return (defer) }
+    if (argv-has-mutation-method $argv) { return (defer "gh api: mutation method (POST/PUT/DELETE/PATCH) requires confirmation. Use GET or omit --method.") }
+    if (has-field-flag $argv) { return (defer "gh api: -f/-F/--field/--raw-field/--input sends a request body, requires confirmation") }
     allow "gh api read"
 }
 

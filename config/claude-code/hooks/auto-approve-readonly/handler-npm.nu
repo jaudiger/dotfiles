@@ -10,9 +10,9 @@ const NPM_SUBS: list<string> = ["info", "ls", "outdated", "update", "view"]
 
 export def handler [argv: list<string>]: nothing -> record<decision: string, reason: string> {
     let sub = ($argv | get 1?)
-    if $sub == null { return (defer) }
+    if $sub == null { return (defer "npm: subcommand required") }
     if $sub in $NPM_SUBS { return (allow $"npm ($sub)") }
-    defer
+    defer $"npm ($sub) not auto-approved; allowed: ($NPM_SUBS | str join ', ')"
 }
 
 export def main []: nothing -> nothing { }

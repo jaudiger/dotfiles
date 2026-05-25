@@ -10,9 +10,9 @@ const HELM_SUBS: list<string> = ["show", "template"]
 
 export def handler [argv: list<string>]: nothing -> record<decision: string, reason: string> {
     let sub = ($argv | get 1?)
-    if $sub == null { return (defer) }
+    if $sub == null { return (defer "helm: subcommand required") }
     if $sub in $HELM_SUBS { return (allow $"helm ($sub)") }
-    defer
+    defer $"helm ($sub) not auto-approved; allowed: ($HELM_SUBS | str join ', ')"
 }
 
 export def main []: nothing -> nothing { }

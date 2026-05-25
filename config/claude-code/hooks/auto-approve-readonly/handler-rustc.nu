@@ -10,9 +10,9 @@ const RUSTC_SUBS: list<string> = ["check"]
 
 export def handler [argv: list<string>]: nothing -> record<decision: string, reason: string> {
     let sub = ($argv | get 1?)
-    if $sub == null { return (defer) }
+    if $sub == null { return (defer "rustc: subcommand required") }
     if $sub in $RUSTC_SUBS { return (allow $"rustc ($sub)") }
-    defer
+    defer $"rustc ($sub) not auto-approved; allowed: ($RUSTC_SUBS | str join ', ')"
 }
 
 export def main []: nothing -> nothing { }

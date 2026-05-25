@@ -10,9 +10,9 @@ const ZIG_SUBS: list<string> = ["build", "build-exe", "build-lib", "env", "fmt",
 
 export def handler [argv: list<string>]: nothing -> record<decision: string, reason: string> {
     let sub = ($argv | get 1?)
-    if $sub == null { return (defer) }
+    if $sub == null { return (defer "zig: subcommand required") }
     if $sub in $ZIG_SUBS { return (allow $"zig ($sub)") }
-    defer
+    defer $"zig ($sub) not auto-approved; allowed: ($ZIG_SUBS | str join ', ')"
 }
 
 export def main []: nothing -> nothing { }

@@ -10,9 +10,9 @@ const TERRAFORM_SUBS: list<string> = ["fmt", "init", "plan", "test", "validate"]
 
 export def handler [argv: list<string>]: nothing -> record<decision: string, reason: string> {
     let sub = ($argv | get 1?)
-    if $sub == null { return (defer) }
+    if $sub == null { return (defer "terraform: subcommand required") }
     if $sub in $TERRAFORM_SUBS { return (allow $"terraform ($sub)") }
-    defer
+    defer $"terraform ($sub) not auto-approved; allowed: ($TERRAFORM_SUBS | str join ', ')"
 }
 
 export def main []: nothing -> nothing { }

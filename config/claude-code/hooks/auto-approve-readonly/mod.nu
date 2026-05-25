@@ -12,9 +12,9 @@ use ($SCRIPT_DIR | path join "dispatch.nu")
 export def decide [command: string]: nothing -> record<decision: string, reason: string> {
     let parsed = (parse-shell $command)
 
-    if ($parsed.errors | is-not-empty) { return (defer "parse error") }
-    if ($parsed.side_effects | is-not-empty) { return (defer "side effects") }
-    if ($parsed.leaves | is-empty) { return (defer "no leaves") }
+    if ($parsed.errors | is-not-empty) { return (defer $"shell parse error: ($parsed.errors | str join '; ')") }
+    if ($parsed.side_effects | is-not-empty) { return (defer $"shell side effects require confirmation: ($parsed.side_effects | each { |s| $s.kind } | uniq | str join ', ')") }
+    if ($parsed.leaves | is-empty) { return (defer "no commands parsed from input") }
 
     let decisions = ($parsed.leaves | each { |leaf| dispatch dispatcher $leaf.argv })
 

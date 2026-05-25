@@ -10,9 +10,9 @@ const ROBOCOP_SUBS: list<string> = ["check", "docs", "format"]
 
 export def handler [argv: list<string>]: nothing -> record<decision: string, reason: string> {
     let sub = ($argv | get 1?)
-    if $sub == null { return (defer) }
+    if $sub == null { return (defer "robocop: subcommand required") }
     if $sub in $ROBOCOP_SUBS { return (allow $"robocop ($sub)") }
-    defer
+    defer $"robocop ($sub) not auto-approved; allowed: ($ROBOCOP_SUBS | str join ', ')"
 }
 
 export def main []: nothing -> nothing { }

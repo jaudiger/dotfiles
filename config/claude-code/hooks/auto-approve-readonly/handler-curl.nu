@@ -7,9 +7,9 @@ const SCRIPT_DIR = path self | path dirname
 use ($SCRIPT_DIR | path join "lib.nu") [allow defer argv-has-mutation-method DECISION_ALLOW DECISION_DEFER]
 
 export def handler [argv: list<string>]: nothing -> record<decision: string, reason: string> {
-    if (argv-has-mutation-method $argv) { return (defer) }
-    if (has-body-or-upload $argv) { return (defer) }
-    if (has-file-write $argv) { return (defer) }
+    if (argv-has-mutation-method $argv) { return (defer "curl: mutation method (POST/PUT/DELETE/PATCH) requires confirmation") }
+    if (has-body-or-upload $argv) { return (defer "curl: -d/--data/-T/--upload-file/-F/--form sends a request body, requires confirmation") }
+    if (has-file-write $argv) { return (defer "curl: -o/--output writes to disk, requires confirmation (use /dev/null to discard)") }
     allow "curl read-only fetch"
 }
 

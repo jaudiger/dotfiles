@@ -23,10 +23,10 @@ const GLAB_SUB_PREFIXES: list<list<string>> = [
 
 export def handler [argv: list<string>]: nothing -> record<decision: string, reason: string> {
     let sub = ($argv | get 1?)
-    if $sub == null { return (defer) }
+    if $sub == null { return (defer "glab: subcommand required") }
     let tail = ($argv | skip 1)
     if (argv-matches-any $tail $GLAB_SUB_PREFIXES) { return (allow $"glab ($sub)") }
-    defer
+    defer $"glab ($tail | str join ' ') not auto-approved; allowed: ($GLAB_SUB_PREFIXES | each { |p| $p | str join ' ' } | str join ', ')"
 }
 
 export def main []: nothing -> nothing { }

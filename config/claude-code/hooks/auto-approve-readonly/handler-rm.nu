@@ -7,7 +7,9 @@ const SCRIPT_DIR = path self | path dirname
 use ($SCRIPT_DIR | path join "lib.nu") [deny defer DECISION_DENY DECISION_DEFER]
 
 export def handler [argv: list<string>]: nothing -> record<decision: string, reason: string> {
-    if (targets-root-recursively $argv) { return (deny "rm targeting root forbidden") }
+    if (targets-root-recursively $argv) {
+        return (deny "rm -r + -f + absolute path is forbidden. Drop -f or use a relative path.")
+    }
     defer
 }
 

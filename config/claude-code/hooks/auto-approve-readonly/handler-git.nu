@@ -24,19 +24,19 @@ const GIT_STASH_DENY: list<string> = ["clear", "drop"]
 
 export def handler [argv: list<string>]: nothing -> record<decision: string, reason: string> {
     let sub = ($argv | get 1?)
-    if $sub == null { return (defer) }
-    if $sub == "reset" { return (deny "git reset forbidden") }
+    if $sub == null { return (defer "git: subcommand required") }
+    if $sub == "reset" { return (deny "git reset forbidden: can lose local commits or rewrite history") }
     if $sub == "push" {
-        if "--force" in ($argv | skip 2) { return (deny "git push --force forbidden") }
-        return (defer)
+        if "--force" in ($argv | skip 2) { return (deny "git push --force forbidden: overwrites remote history. Push without --force to defer to user.") }
+        return (defer "git push: writes to remote, requires confirmation")
     }
     if $sub == "stash" {
         let arg = ($argv | get 2?)
-        if $arg in $GIT_STASH_DENY { return (deny $"git stash ($arg) forbidden") }
+        if $arg in $GIT_STASH_DENY { return (deny $"git stash ($arg) forbidden: discards stash entries") }
         return (allow "git stash")
     }
     if $sub in $GIT_SUBS { return (allow $"git ($sub)") }
-    defer
+    defer $"git ($sub) not auto-approved; allowed: ($GIT_SUBS | str join ', '), stash, push without --force"
 }
 
 export def main []: nothing -> nothing { }

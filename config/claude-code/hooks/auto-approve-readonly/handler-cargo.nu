@@ -10,9 +10,9 @@ const CARGO_SUBS: list<string> = ["bench", "build", "check", "clean", "clippy", 
 
 export def handler [argv: list<string>]: nothing -> record<decision: string, reason: string> {
     let sub = ($argv | get 1?)
-    if $sub == null { return (defer) }
+    if $sub == null { return (defer "cargo: subcommand required") }
     if $sub in $CARGO_SUBS { return (allow $"cargo ($sub)") }
-    defer
+    defer $"cargo ($sub) not auto-approved; allowed: ($CARGO_SUBS | str join ', ')"
 }
 
 export def main []: nothing -> nothing { }

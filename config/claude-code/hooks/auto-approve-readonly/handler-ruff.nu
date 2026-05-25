@@ -10,9 +10,9 @@ const RUFF_SUBS: list<string> = ["check", "format"]
 
 export def handler [argv: list<string>]: nothing -> record<decision: string, reason: string> {
     let sub = ($argv | get 1?)
-    if $sub == null { return (defer) }
+    if $sub == null { return (defer "ruff: subcommand required") }
     if $sub in $RUFF_SUBS { return (allow $"ruff ($sub)") }
-    defer
+    defer $"ruff ($sub) not auto-approved; allowed: ($RUFF_SUBS | str join ', ')"
 }
 
 export def main []: nothing -> nothing { }
