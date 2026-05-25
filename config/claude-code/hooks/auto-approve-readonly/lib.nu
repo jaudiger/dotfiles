@@ -7,6 +7,16 @@ export const DECISION_ALLOW: string = "allow"
 export const DECISION_DENY: string = "deny"
 export const DECISION_DEFER: string = "defer"
 
+export const SAFE_PATH: list<string> = [
+    "/dev/null",
+    "/dev/stderr",
+    "/dev/stdout",
+    "/private/tmp/",
+    "/private/var/folders/",
+    "/tmp/",
+    "/var/folders/",
+]
+
 export def allow [reason: string]: nothing -> record<decision: string, reason: string> {
     { decision: $DECISION_ALLOW, reason: $reason }
 }
@@ -60,6 +70,16 @@ export def argv-has-prefix [argv: list<string>, prefix: list<string>]: nothing -
 
 export def argv-matches-any [argv: list<string>, prefixes: list<list<string>>]: nothing -> bool {
     $prefixes | any { |p| argv-has-prefix $argv $p }
+}
+
+export def is-safe-path [path: string]: nothing -> bool {
+    if ($path | is-empty) { return false }
+    if ($path | str contains "$") or ($path | str contains "`") { return false }
+    let expanded = ($path | path expand --no-symlink)
+    if ($SAFE_PATH | any { |p|
+        if ($p | str ends-with "/") { $expanded | str starts-with $p } else { $expanded == $p }
+    }) { return true }
+    $"($expanded)/" | str starts-with $"((pwd))/"
 }
 
 export def argv-has-mutation-method [argv: list<string>]: nothing -> bool {
@@ -119,6 +139,37 @@ export def "main test" []: nothing -> nothing {
         [["cat"], [], false],
     ] {
         assert equal (argv-matches-any $case.argv $case.prefixes) $case.expected $"argv-matches-any ($case.argv | str join ' ')"
+    }
+
+    print "# is-safe-path"
+    for case in [
+        [path, expected];
+        ["", false],
+        [".", true],
+        ["foo", true],
+        ["foo/bar", true],
+        ["./foo", true],
+        ["foo/../bar", true],
+        ["../foo", false],
+        ["foo/../../bar", false],
+        ["/foo", false],
+        ["/etc/passwd", false],
+        ["/tmp/foo", true],
+        ["/private/tmp/foo", true],
+        ["/tmp/../etc/passwd", false],
+        ["/var/folders/abc/xyz", true],
+        ["/private/var/folders/abc/xyz", true],
+        ["/dev/null", true],
+        ["/dev/stdout", true],
+        ["/dev/stderr", true],
+        ["/dev/sda", false],
+        ["~/foo", false],
+        ["~", false],
+        ["$HOME/foo", false],
+        ["${HOME}/foo", false],
+        ["`pwd`/foo", false],
+    ] {
+        assert equal (is-safe-path $case.path) $case.expected $"is-safe-path ($case.path)"
     }
 
     print "# argv-has-mutation-method"
