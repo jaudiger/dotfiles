@@ -25,7 +25,7 @@ export def decide [command: string]: nothing -> record<decision: string, reason:
         return (allow "all segments classified safe")
     }
 
-    defer
+    defer ($decisions | where decision == $DECISION_DEFER | get reason | compact --empty | str join '; ')
 }
 
 def main []: any -> nothing {

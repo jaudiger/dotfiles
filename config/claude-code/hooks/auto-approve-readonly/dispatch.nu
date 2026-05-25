@@ -51,9 +51,7 @@ use ($SCRIPT_DIR | path join "handler-xxd.nu")
 use ($SCRIPT_DIR | path join "handler-zig.nu")
 
 export def dispatcher [argv: list<string>]: nothing -> record<decision: string, reason: string> {
-    let cmd = ($argv | get 0?)
-    if $cmd == null { return (defer) }
-    match $cmd {
+    match ($argv | get 0?) {
         "cargo" => (handler-cargo handler $argv),
         "cat" => (handler-cat handler $argv),
         "cd" => (handler-cd handler $argv),
