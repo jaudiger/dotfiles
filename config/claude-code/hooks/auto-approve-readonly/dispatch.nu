@@ -5,6 +5,7 @@
 
 const SCRIPT_DIR = path self | path dirname
 use ($SCRIPT_DIR | path join "lib.nu") [defer DECISION_ALLOW DECISION_DENY DECISION_DEFER]
+use ($SCRIPT_DIR | path join "handler-base64.nu")
 use ($SCRIPT_DIR | path join "handler-cargo.nu")
 use ($SCRIPT_DIR | path join "handler-cat.nu")
 use ($SCRIPT_DIR | path join "handler-cd.nu")
@@ -52,6 +53,7 @@ use ($SCRIPT_DIR | path join "handler-zig.nu")
 
 export def dispatcher [argv: list<string>]: nothing -> record<decision: string, reason: string> {
     match ($argv | get 0?) {
+        "base64" => (handler-base64 handler $argv),
         "cargo" => (handler-cargo handler $argv),
         "cat" => (handler-cat handler $argv),
         "cd" => (handler-cd handler $argv),
