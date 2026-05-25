@@ -4,15 +4,10 @@
 #
 
 const SCRIPT_DIR = path self | path dirname
-use ($SCRIPT_DIR | path join "lib.nu") [allow defer DECISION_ALLOW DECISION_DEFER]
-
-const RUSTC_SUBS: list<string> = ["check"]
+use ($SCRIPT_DIR | path join "lib.nu") [allow DECISION_ALLOW]
 
 export def handler [argv: list<string>]: nothing -> record<decision: string, reason: string> {
-    let sub = ($argv | get 1?)
-    if $sub == null { return (defer "rustc: subcommand required") }
-    if $sub in $RUSTC_SUBS { return (allow $"rustc ($sub)") }
-    defer $"rustc ($sub) not auto-approved; allowed: ($RUSTC_SUBS | str join ', ')"
+    allow "rustc"
 }
 
 export def main []: nothing -> nothing { }
@@ -23,9 +18,9 @@ export def "main test" []: nothing -> nothing {
     print "# handler-rustc"
     for case in [
         [argv, expected];
-        [["rustc", "check"], $DECISION_ALLOW],
-        [["rustc", "unknown-sub"], $DECISION_DEFER],
-        [["rustc"], $DECISION_DEFER],
+        [["rustc"], $DECISION_ALLOW],
+        [["rustc", "src/main.rs"], $DECISION_ALLOW],
+        [["rustc", "--version"], $DECISION_ALLOW],
     ] {
         assert equal (handler $case.argv).decision $case.expected $"handler-rustc: ($case.argv | str join ' ')"
     }
