@@ -141,7 +141,7 @@ def parse-fragment [cmd: string]: nothing -> record<leaves: list<record<argv: li
 
         if $c == ' ' or $c == "\t" {
             if $in_token {
-                if $pending_redir != "" {
+                if ($pending_redir | is-not-empty) {
                     if not (is-null-redir-target $token) {
                         $side_effects = $side_effects | append { kind: "file_redirect", detail: ($pending_redir + " " + $token) }
                     }
@@ -158,7 +158,7 @@ def parse-fragment [cmd: string]: nothing -> record<leaves: list<record<argv: li
 
         if $c == '|' {
             if $in_token {
-                if $pending_redir != "" {
+                if ($pending_redir | is-not-empty) {
                     if not (is-null-redir-target $token) {
                         $side_effects = $side_effects | append { kind: "file_redirect", detail: ($pending_redir + " " + $token) }
                     }
@@ -169,7 +169,7 @@ def parse-fragment [cmd: string]: nothing -> record<leaves: list<record<argv: li
                 $token = ""
                 $in_token = false
             }
-            if not ($argv | is-empty) {
+            if ($argv | is-not-empty) {
                 $leaves = $leaves | append { argv: $argv }
                 $argv = []
             }
@@ -182,7 +182,7 @@ def parse-fragment [cmd: string]: nothing -> record<leaves: list<record<argv: li
         }
 
         if $c == '&' {
-            if $pending_redir != "" {
+            if ($pending_redir | is-not-empty) {
                 $token = $token + $c
                 $in_token = true
                 $i = $i + 1
@@ -190,7 +190,7 @@ def parse-fragment [cmd: string]: nothing -> record<leaves: list<record<argv: li
             }
             if ($i + 1) < $n and (($chars | get ($i + 1)) == '&') {
                 if $in_token {
-                    if $pending_redir != "" {
+                    if ($pending_redir | is-not-empty) {
                         if not (is-null-redir-target $token) {
                             $side_effects = $side_effects | append { kind: "file_redirect", detail: ($pending_redir + " " + $token) }
                         }
@@ -201,7 +201,7 @@ def parse-fragment [cmd: string]: nothing -> record<leaves: list<record<argv: li
                     $token = ""
                     $in_token = false
                 }
-                if not ($argv | is-empty) {
+                if ($argv | is-not-empty) {
                     $leaves = $leaves | append { argv: $argv }
                     $argv = []
                 }
@@ -225,7 +225,7 @@ def parse-fragment [cmd: string]: nothing -> record<leaves: list<record<argv: li
 
         if $c == ';' or $c == "\n" {
             if $in_token {
-                if $pending_redir != "" {
+                if ($pending_redir | is-not-empty) {
                     if not (is-null-redir-target $token) {
                         $side_effects = $side_effects | append { kind: "file_redirect", detail: ($pending_redir + " " + $token) }
                     }
@@ -236,7 +236,7 @@ def parse-fragment [cmd: string]: nothing -> record<leaves: list<record<argv: li
                 $token = ""
                 $in_token = false
             }
-            if not ($argv | is-empty) {
+            if ($argv | is-not-empty) {
                 $leaves = $leaves | append { argv: $argv }
                 $argv = []
             }
@@ -284,11 +284,11 @@ def parse-fragment [cmd: string]: nothing -> record<leaves: list<record<argv: li
         $i = $i + 1
     }
 
-    if $quote != "" {
+    if ($quote | is-not-empty) {
         $errors = $errors | append "unclosed quote"
     }
     if $in_token {
-        if $pending_redir != "" {
+        if ($pending_redir | is-not-empty) {
             if not (is-null-redir-target $token) {
                 $side_effects = $side_effects | append { kind: "file_redirect", detail: ($pending_redir + " " + $token) }
             }
@@ -297,10 +297,10 @@ def parse-fragment [cmd: string]: nothing -> record<leaves: list<record<argv: li
             $argv = $argv | append $token
         }
     }
-    if $pending_redir != "" {
+    if ($pending_redir | is-not-empty) {
         $errors = $errors | append "redirect without target"
     }
-    if not ($argv | is-empty) {
+    if ($argv | is-not-empty) {
         $leaves = $leaves | append { argv: $argv }
     }
 
