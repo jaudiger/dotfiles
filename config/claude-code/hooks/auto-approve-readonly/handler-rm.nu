@@ -4,23 +4,26 @@
 #
 
 const SCRIPT_DIR = path self | path dirname
-use ($SCRIPT_DIR | path join "lib.nu") [deny defer DECISION_DENY DECISION_DEFER]
+use ($SCRIPT_DIR | path join "lib.nu") [deny defer is-safe-path DECISION_DENY DECISION_DEFER]
 
 export def handler [argv: list<string>]: nothing -> record<decision: string, reason: string> {
-    if (targets-root-recursively $argv) {
-        return (deny "rm -r + -f + absolute path is forbidden. Drop -f or use a relative path.")
+    if not (has-recursive-force $argv) { return (defer) }
+    let unsafe = (targets $argv | where { |p| not (is-safe-path $p) } | get 0?)
+    if $unsafe != null {
+        return (deny $"rm -r + -f on unsafe target '($unsafe)' is forbidden. Drop -f, use a relative or temp path.")
     }
     defer
 }
 
-def targets-root-recursively [argv: list<string>]: nothing -> bool {
+def has-recursive-force [argv: list<string>]: nothing -> bool {
     let shorts = ($argv | where { |t| ($t | str starts-with "-") and (not ($t | str starts-with "--")) })
     let has_r = ($shorts | any { |t| ($t | str contains "r") or ($t | str contains "R") }) or ("--recursive" in $argv)
     let has_f = ($shorts | any { |t| $t | str contains "f" }) or ("--force" in $argv)
-    let has_root = ($argv | skip 1 | any { |t|
-        (not ($t | str starts-with "-")) and (($t == "/") or ($t | str starts-with "/"))
-    })
-    $has_r and $has_f and $has_root
+    $has_r and $has_f
+}
+
+def targets [argv: list<string>]: nothing -> list<string> {
+    $argv | skip 1 | where { |t| not ($t | str starts-with "-") }
 }
 
 export def main []: nothing -> nothing { }
@@ -36,6 +39,8 @@ export def "main test" []: nothing -> nothing {
         [["rm", "-fr", "/usr/local"], $DECISION_DENY],
         [["rm", "-r", "-f", "/"], $DECISION_DENY],
         [["rm", "--recursive", "--force", "/"], $DECISION_DENY],
+        [["rm", "-rf", "/tmp/build"], $DECISION_DEFER],
+        [["rm", "-rf", "/var/folders/x/y/z"], $DECISION_DEFER],
         [["rm", "/tmp/file"], $DECISION_DEFER],
         [["rm", "-r", "/tmp/dir"], $DECISION_DEFER],
         [["rm", "-rf", "build"], $DECISION_DEFER],
