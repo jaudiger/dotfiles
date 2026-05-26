@@ -51,7 +51,19 @@ use ($SCRIPT_DIR | path join "handler-which.nu")
 use ($SCRIPT_DIR | path join "handler-xxd.nu")
 use ($SCRIPT_DIR | path join "handler-zig.nu")
 
+# Unwrap a bare `xargs <cmd> ...` so the wrapped command reaches the match.
+# Any xargs invocation that carries its own flags is left alone and falls
+# through to defer.
+def unwrap-xargs [argv: list<string>]: nothing -> list<string> {
+    if ($argv | get 0?) != "xargs" { return $argv }
+    let rest = ($argv | skip 1)
+    if ($rest | is-empty) { return $argv }
+    if (($rest | get 0) | str starts-with "-") { return $argv }
+    unwrap-xargs $rest
+}
+
 export def dispatcher [argv: list<string>]: nothing -> record<decision: string, reason: string> {
+    let argv = (unwrap-xargs $argv)
     match ($argv | get 0?) {
         "base64" => (handler-base64 handler $argv),
         "cargo" => (handler-cargo handler $argv),
@@ -114,6 +126,8 @@ export def "main test" []: nothing -> nothing {
         [["curl", "-s", "URL"], $DECISION_ALLOW],
         [["cargo", "build"], $DECISION_ALLOW],
         [["git", "reset"], $DECISION_DENY],
+        [["xargs", "curl", "-fsSL"], $DECISION_ALLOW],
+        [["xargs", "-n", "1", "curl"], $DECISION_DEFER],
         [["unknown-cmd"], $DECISION_DEFER],
         [[], $DECISION_DEFER],
     ] {

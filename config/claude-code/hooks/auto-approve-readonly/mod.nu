@@ -77,6 +77,7 @@ def "main integration-test" []: nothing -> nothing {
         ["git log | grep TODO", $DECISION_ALLOW],
         ["find . -name '*.nu' | wc -l", $DECISION_ALLOW],
         ["cargo build && cargo test", $DECISION_ALLOW],
+        ["gh api repos/foo/bar/contents/baz --jq '.download_url' | xargs curl -fsSL 2>&1", $DECISION_ALLOW],
         ["git reset --hard", $DECISION_DENY],
         ["git push --force origin main", $DECISION_DENY],
         ["git stash clear", $DECISION_DENY],
