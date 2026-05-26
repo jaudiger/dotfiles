@@ -237,7 +237,7 @@ in
       };
 
       # Used for backwards compatibility, please read the changelog (https://github.com/nix-darwin/nix-darwin/blob/master/CHANGELOG) before changing.
-      stateVersion = 6;
+      stateVersion = 7;
     };
   };
 
