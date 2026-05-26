@@ -9,6 +9,7 @@ _:
         defaultEditor = true;
 
         nixpkgs.source = pkgs.path;
+        version.enableNixpkgsReleaseCheck = false;
 
         extraPackages = with pkgs; [
           fd

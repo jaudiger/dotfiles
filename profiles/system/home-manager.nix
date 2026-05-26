@@ -17,6 +17,7 @@ in
         jq
       ];
 
+      enableNixpkgsReleaseCheck = false;
       stateVersion = "26.05";
     };
 
