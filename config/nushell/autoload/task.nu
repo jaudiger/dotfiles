@@ -326,9 +326,9 @@ export def task-log [
     )
 
     if $detailed {
-      $full
+      $full | move --last status
     } else {
-      $full | select id label group Done? status? start? end?
+      $full | select id label group status
     }
   }
 
