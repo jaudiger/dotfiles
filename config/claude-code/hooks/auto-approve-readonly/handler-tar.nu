@@ -25,10 +25,10 @@ def path-args [argv: list<string>]: nothing -> list<record<flag: string, value: 
         } else if ($t =~ '^-[a-zA-Z]*f$') and ($it.index + 1) < $n {
             { flag: "-f", value: ($argv | get ($it.index + 1)) }
         } else {
-            $TAR_PATH_FLAGS
-            | where { |f| ($f | str starts-with "--") and ($t | str starts-with ($f + "=")) }
-            | each { |f| let eq = ($t | str index-of "="); { flag: $f, value: ($t | str substring ($eq + 1)..) } }
-            | get 0?
+            let matched = ($TAR_PATH_FLAGS | where { |f| ($f | str starts-with "--") and ($t | str starts-with ($f + "=")) } | get 0?)
+            if $matched != null {
+                { flag: $matched, value: ($t | str substring (($t | str index-of "=") + 1)..) }
+            }
         }
     } | compact
 }

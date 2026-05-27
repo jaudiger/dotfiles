@@ -29,15 +29,15 @@ export def handler [argv: list<string>]: nothing -> record<decision: string, rea
         return (defer $"git ($unsafe.flag) target '($unsafe.value)' is outside cwd and not in ($SAFE_PATH | str join ', ')")
     }
     let sub_index = (find-subcommand-index $argv)
-    let sub = if $sub_index >= 0 { $argv | get $sub_index } else { null }
-    if $sub == null { return (defer "git: subcommand required") }
+    if $sub_index < 0 { return (defer "git: subcommand required") }
+    let sub = ($argv | get $sub_index)
     if $sub == "reset" { return (deny "git reset forbidden: can lose local commits or rewrite history") }
     if $sub == "push" {
         if "--force" in ($argv | skip ($sub_index + 1)) { return (deny "git push --force forbidden: overwrites remote history. Push without --force to defer to user.") }
         return (defer "git push: writes to remote, requires confirmation")
     }
     if $sub == "stash" {
-        let arg = if ($sub_index + 1) < ($argv | length) { $argv | get ($sub_index + 1) } else { null }
+        let arg = ($argv | get ($sub_index + 1) -o)
         if $arg in $GIT_STASH_DENY { return (deny $"git stash ($arg) forbidden: discards stash entries") }
         return (allow "git stash")
     }
@@ -52,10 +52,10 @@ def path-args [argv: list<string>]: nothing -> list<record<flag: string, value: 
         if ($t in $GIT_PATH_FLAGS) and ($it.index + 1) < $n {
             { flag: $t, value: ($argv | get ($it.index + 1)) }
         } else {
-            $GIT_PATH_FLAGS
-            | where { |f| ($f | str starts-with "--") and ($t | str starts-with ($f + "=")) }
-            | each { |f| let eq = ($t | str index-of "="); { flag: $f, value: ($t | str substring ($eq + 1)..) } }
-            | get 0?
+            let matched = ($GIT_PATH_FLAGS | where { |f| ($f | str starts-with "--") and ($t | str starts-with ($f + "=")) } | get 0?)
+            if $matched != null {
+                { flag: $matched, value: ($t | str substring (($t | str index-of "=") + 1)..) }
+            }
         }
     } | compact
 }

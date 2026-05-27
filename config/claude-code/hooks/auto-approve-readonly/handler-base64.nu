@@ -22,11 +22,8 @@ def output-targets [argv: list<string>]: nothing -> list<string> {
         let t = $it.item
         if ($t in $OUTPUT_FLAGS) and ($it.index + 1) < $n {
             $argv | get ($it.index + 1)
-        } else {
-            $OUTPUT_FLAGS
-            | where { |f| ($f | str starts-with "--") and ($t | str starts-with ($f + "=")) }
-            | each { |_| let eq = ($t | str index-of "="); $t | str substring ($eq + 1).. }
-            | get 0?
+        } else if ($OUTPUT_FLAGS | any { |f| ($f | str starts-with "--") and ($t | str starts-with ($f + "=")) }) {
+            $t | str substring (($t | str index-of "=") + 1)..
         }
     } | compact
 }
