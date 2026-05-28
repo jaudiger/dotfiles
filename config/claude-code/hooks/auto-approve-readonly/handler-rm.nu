@@ -7,12 +7,12 @@ const SCRIPT_DIR = path self | path dirname
 use ($SCRIPT_DIR | path join "lib.nu") [deny defer is-safe-path DECISION_DENY DECISION_DEFER]
 
 export def handler [argv: list<string>]: nothing -> record<decision: string, reason: string> {
-    if not (has-recursive-force $argv) { return (defer) }
+    if not (has-recursive-force $argv) { return (defer "rm deletes files irreversibly") }
     let unsafe = (targets $argv | where { |p| not (is-safe-path $p) } | get 0?)
     if $unsafe != null {
         return (deny $"rm -r + -f on unsafe target '($unsafe)' is forbidden. Drop -f, use a relative or temp path.")
     }
-    defer
+    defer "rm -rf recursively deletes"
 }
 
 def has-recursive-force [argv: list<string>]: nothing -> bool {
