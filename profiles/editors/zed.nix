@@ -6,6 +6,9 @@
 
 let
   isDarwin = config.nixpkgs.hostPlatform.isDarwin;
+
+  main_font_size = 12.5;
+  sub_font_size = 11.5;
 in
 {
   homebrew = lib.mkIf isDarwin {
@@ -48,7 +51,7 @@ in
           };
           use_modifier_to_send = true;
         };
-        agent_buffer_font_size = 11.5;
+        agent_buffer_font_size = sub_font_size;
         agent_servers = {
           claude-acp = {
             type = "registry";
@@ -65,7 +68,7 @@ in
         auto_update = false;
         auto_signature_help = true;
         buffer_font_family = "JetBrainsMono Nerd Font";
-        buffer_font_size = 12.5;
+        buffer_font_size = main_font_size;
         collaboration_panel = {
           dock = "right";
         };
@@ -106,6 +109,7 @@ in
             min_column = 120;
           };
         };
+        git_commit_buffer_font_size = sub_font_size;
         git_panel = {
           dock = "right";
           file_icons = true;
@@ -177,7 +181,7 @@ in
           bell = "system";
           blinking = "on";
           copy_on_select = true;
-          font_size = 11.5;
+          font_size = sub_font_size;
         };
         theme = {
           dark = "One Dark";
@@ -191,7 +195,7 @@ in
           show_user_picture = false;
         };
         ui_font_family = "JetBrainsMono Nerd Font";
-        ui_font_size = 12.5;
+        ui_font_size = main_font_size;
         use_smartcase_search = true;
         use_system_path_prompts = false;
         use_system_prompts = false;
