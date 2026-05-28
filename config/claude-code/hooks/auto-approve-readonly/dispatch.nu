@@ -33,6 +33,7 @@ use ($SCRIPT_DIR | path join "handler-rm.nu")
 use ($SCRIPT_DIR | path join "handler-robocop.nu")
 use ($SCRIPT_DIR | path join "handler-ruff.nu")
 use ($SCRIPT_DIR | path join "handler-rustc.nu")
+use ($SCRIPT_DIR | path join "handler-sed.nu")
 use ($SCRIPT_DIR | path join "handler-shellcheck.nu")
 use ($SCRIPT_DIR | path join "handler-shfmt.nu")
 use ($SCRIPT_DIR | path join "handler-sort.nu")
@@ -93,6 +94,7 @@ export def dispatcher [argv: list<string>]: nothing -> record<decision: string, 
         "robocop" => (handler-robocop handler $argv),
         "ruff" => (handler-ruff handler $argv),
         "rustc" => (handler-rustc handler $argv),
+        "sed" => (handler-sed handler $argv),
         "shellcheck" => (handler-shellcheck handler $argv),
         "shfmt" => (handler-shfmt handler $argv),
         "sort" => (handler-sort handler $argv),
