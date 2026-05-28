@@ -19,7 +19,7 @@ in
   };
 
   sops = {
-    # To edit the secret: "nix-shell -p sops --run 'sops secrets/aws/credentials.yaml'"
+    # To edit the secret: "sops --run 'sops secrets/aws/credentials.yaml'"
     secrets = {
       aws_access_key_id = {
         sopsFile = ../../secrets/aws/credentials.yaml;

@@ -17,7 +17,7 @@ in
 
   sops = {
     secrets = {
-      # To edit the secret: "nix-shell -p sops --run 'sops secrets/gitlab/credentials.yaml'"
+      # To edit the secret: "sops --run 'sops secrets/gitlab/credentials.yaml'"
       gitlab_personal_access_token = {
         sopsFile = ../../secrets/gitlab/credentials.yaml;
 

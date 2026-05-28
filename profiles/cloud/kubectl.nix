@@ -5,8 +5,8 @@ let
 in
 {
   sops = {
-    # To decrypt the secret: "nix-shell -p sops --run 'sops -d secrets/kube/config'"
-    # To encrypt the secret: "nix-shell -p sops --run 'sops -e secrets/kube/config' > secrets/kube/config"
+    # To decrypt the secret: "sops --run 'sops -d secrets/kube/config'"
+    # To encrypt the secret: "sops --run 'sops -e secrets/kube/config' > secrets/kube/config"
     secrets.kube_config = {
       sopsFile = ../../secrets/kube/config;
       format = "binary";
