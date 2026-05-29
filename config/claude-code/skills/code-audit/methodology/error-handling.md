@@ -56,6 +56,7 @@ For every function that mutates state and can fail midway:
 ## Reporting
 
 For each finding, state:
+
 - The fallible call (file, line).
 - How the error is mishandled (swallowed, wrong type, no cleanup, partial state).
 - The consequence (silent data corruption, misleading error message, resource leak).

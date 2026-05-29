@@ -35,44 +35,52 @@ branch-coverage, edge-cases, assertions, isolation, negative-testing, mutation-r
 ## Language-specific patterns
 
 ### JUnit 5 vs JUnit 4
+
 - Verify the project is not mixing JUnit 4 and 5 annotations in the same test class.
 - JUnit 5 `@Test` does not support `expected` parameter; use `assertThrows()` instead.
 - JUnit 5 `assertAll()` for grouped assertions that report all failures, not just the first.
 - `@DisplayName` for readable test names (complements method names, does not replace good naming).
 
 ### Exception testing
+
 - Use `assertThrows(SpecificException.class, () to ...)` and assert on the returned exception.
 - Do not use `@Test(expected = ...)` (JUnit 4) or try/catch with `fail()`: these are weaker patterns.
 - Verify the exception message and cause when they are part of the contract.
 
 ### Parameterized tests
+
 - `@ParameterizedTest` with `@MethodSource`, `@CsvSource`, `@ValueSource`, `@EnumSource`.
 - Check that parameter sources cover edge cases, not just typical values.
 - Verify the display name includes the parameter values for readable failure output.
 
 ### Mock verification
+
 - `verify()` calls should assert meaningful interactions, not just that a method was called.
 - `verifyNoMoreInteractions()` is often too strict; flag if it makes tests brittle.
 - Check for mocks that are set up but never verified (unused mocking setup).
 - `@InjectMocks`: verify all dependencies are accounted for; missing mocks get null-injected silently.
 
 ### Equality and comparison
+
 - Override `equals()` / `hashCode()` testing: test symmetry, transitivity, consistency, null.
 - Use `assertThat(actual).usingRecursiveComparison()` (AssertJ) for deep comparison without relying on `equals()`.
 - `Comparable` implementations should be tested for consistency with `equals()`.
 
 ### Concurrency
+
 - Tests for concurrent code should use `CountDownLatch`, `CyclicBarrier`, or `CompletableFuture` for synchronization; not `Thread.sleep()`.
 - Verify thread-safety tests actually interleave operations (a test that runs sequentially proves nothing about concurrency).
 - `@Timeout` annotation to prevent hanging tests.
 
 ### Spring context
+
 - Minimize `@SpringBootTest` usage for unit tests; it loads the full application context.
 - Use `@WebMvcTest`, `@DataJpaTest`, or `@JsonTest` for slice tests.
 - Verify `@MockBean` is used intentionally and that the test actually exercises the real component's logic, not just the mock.
 - Check for `@DirtiesContext`: it slows down the test suite and may indicate poor isolation.
 
 ### Resource management
+
 - Use `try-with-resources` in tests for `AutoCloseable` resources.
 - `@TempDir` (JUnit 5) for temporary directory management.
 - Verify database tests use `@Transactional` with rollback or clean up after themselves.

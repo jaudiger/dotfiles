@@ -37,6 +37,7 @@ Mutation testing conceptually applies small changes (mutants) to the source code
 ## Reporting
 
 For each surviving mutant, state:
+
 - The source line and the specific mutation (e.g., "negating condition at line 34 would not be caught").
 - Which test was expected to catch it and why it does not.
 - The assertion or test case that is missing to kill the mutant.

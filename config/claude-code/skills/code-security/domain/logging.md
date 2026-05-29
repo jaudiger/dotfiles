@@ -63,6 +63,7 @@ For each event type that should be logged but is not, flag as a finding.
 ## Reporting
 
 For each finding, state:
+
 - The logging call (file, line, function).
 - The specific weakness (e.g., "JWT token logged in plaintext at INFO level").
 - A concrete attack scenario (e.g., "attacker with log access can steal session tokens").

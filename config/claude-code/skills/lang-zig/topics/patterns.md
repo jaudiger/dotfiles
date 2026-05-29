@@ -1,9 +1,6 @@
 # Design Patterns
 
-> **Source**: [matklad: Programming Aphorisms](https://matklad.github.io/2026/02/11/programming-aphorisms.html),
-> [matklad: Strictly Monotonic Time](https://matklad.github.io/2026/01/23/strictly-monotonic-time.html),
-> [matklad: Zig defer Patterns](https://matklad.github.io/2024/03/21/defer-patterns.html),
-> [matklad: Zig And Rust](https://matklad.github.io/2023/03/26/zig-and-rust.html)
+> **Source**: [matklad: Programming Aphorisms](https://matklad.github.io/2026/02/11/programming-aphorisms.html), [matklad: Strictly Monotonic Time](https://matklad.github.io/2026/01/23/strictly-monotonic-time.html), [matklad: Zig defer Patterns](https://matklad.github.io/2024/03/21/defer-patterns.html), [matklad: Zig And Rust](https://matklad.github.io/2023/03/26/zig-and-rust.html)
 
 ## Options Struct Pattern
 

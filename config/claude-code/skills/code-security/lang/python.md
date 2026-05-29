@@ -11,7 +11,7 @@ authn, authz, crypto, input-validation, transport, logging, config
 - **CSPRNG**: `secrets` module (`secrets.token_bytes()`, `secrets.token_hex()`, `secrets.token_urlsafe()`, `secrets.choice()`). Reject: `random` module for any security purpose (predictable PRNG).
 - **Password hashing**: `bcrypt` package (`bcrypt.hashpw`, `bcrypt.checkpw`), `argon2-cffi` (`argon2.PasswordHasher`). Reject: `hashlib.sha256(password)` alone, `crypt` module (removed from stdlib).
 - **Constant-time comparison**: `hmac.compare_digest()`. Reject: `==` on secrets, tokens, MACs, hashes.
-- **hashlib**: uses HACL* verified implementations for SHA1/SHA2/SHA3/MD5. Still reject MD5/SHA1 for security purposes (algorithm weakness, not implementation).
+- **hashlib**: uses HACL\* verified implementations for SHA1/SHA2/SHA3/MD5. Still reject MD5/SHA1 for security purposes (algorithm weakness, not implementation).
 - **Cryptography package**: third-party `cryptography` library. No CAST5/SEED/IDEA/Blowfish ciphers. Supports Argon2id. Use `Fernet` for symmetric encryption (AES-CBC + HMAC, high-level), or `AESGCM`/`ChaCha20Poly1305` for AEAD.
 - **Key/secret zeroing**: Python does not make this easy (immutable strings, GC). Avoid storing secrets in `str`: use `bytes`/`bytearray` and zero manually. Consider `SecretStr` from pydantic for API boundaries.
 

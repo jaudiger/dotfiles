@@ -31,7 +31,7 @@ authn, authz, crypto, input-validation, transport, logging, config
 ## Input validation
 
 - **Schema validation**: `zod`, `joi`, `yup`, `ajv` for runtime validation. Validate at system boundaries (API handlers, form submissions).
-- **SQL injection**: use parameterized queries via ORM (Prisma, TypeORM, Knex `?` placeholders). Flag: template literals in SQL (`\`SELECT * FROM ${table}\``).
+- **SQL injection**: use parameterized queries via ORM (Prisma, TypeORM, Knex `?` placeholders). Flag: template literals in SQL (`\`SELECT \* FROM ${table}\``).
 - **Command injection**: `child_process.execFile('cmd', [arg1, arg2])` (safe). Reject: `child_process.exec(userInput)`, `child_process.execSync(cmd + userInput)`.
 - **XSS**: `DOMPurify` for HTML sanitization. Flag: `innerHTML`, `dangerouslySetInnerHTML`, `document.write()` with user input.
 - **Path traversal**: `path.join(base, userInput)` does not prevent `..`. Use `path.resolve()` then verify `result.startsWith(base)`.

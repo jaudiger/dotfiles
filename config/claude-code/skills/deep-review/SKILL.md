@@ -1,11 +1,6 @@
 ---
 name: deep-review
-description: >
-  Comprehensive read-only multi-dimensional code analysis. Orchestrates
-  code-review, code-audit, code-security, and code-test with centralized
-  context gathering. Input is source code targets (file, folder, symbol, or
-  diff); NOT issue reports. For resolving bug reports and issues, use
-  deep-resolve instead.
+description: Comprehensive read-only multi-dimensional code analysis. Orchestrates code-review, code-audit, code-security, and code-test with centralized context gathering. Input is source code targets (file, folder, symbol, or diff); NOT issue reports. For resolving bug reports and issues, use deep-resolve instead.
 argument-hint: "[targets...]"
 allowed-tools: Bash, Read, Grep, Glob, Task, WebFetch
 ---
@@ -18,18 +13,13 @@ allowed-tools: Bash, Read, Grep, Glob, Task, WebFetch
 !`ls -1d ~/.claude/skills/code-audit ~/.claude/skills/code-review ~/.claude/skills/code-security ~/.claude/skills/code-test 2>/dev/null`
 ```
 
-Use these resolved paths when reading sub-skill files in Phase 5.
-Read skill files using the absolute paths listed above.
+Use these resolved paths when reading sub-skill files in Phase 5. Read skill files using the absolute paths listed above.
 
-If the output above is empty or missing any of the four expected directories,
-stop and report which skills could not be resolved; do not proceed to Phase 5.
+If the output above is empty or missing any of the four expected directories, stop and report which skills could not be resolved; do not proceed to Phase 5.
 
 ## Interactive mode (no arguments)
 
-If the user did not provide any targets, print the usage guide below and wait
-for their reply. The AskUserQuestion tool is reserved for prompts with at most
-3 short enumerated options; for this open-ended guide, output it as formatted
-text directly in the conversation.
+If the user did not provide any targets, print the usage guide below and wait for their reply. The AskUserQuestion tool is reserved for prompts with at most 3 short enumerated options; for this open-ended guide, output it as formatted text directly in the conversation.
 
 ### Usage
 
@@ -42,7 +32,7 @@ text directly in the conversation.
 All targets use a prefix to indicate the type of input:
 
 | Prefix | Format | Description |
-|--------|--------|-------------|
+| --- | --- | --- |
 | `file:` | `file:PATH` or `file:PATH#L1-L2` | Single file, optional line range |
 | `folder:` | `folder:PATH` | All source files within the dir (recursive) |
 | `symbol:` | `symbol:PATH:LINE` or `symbol:PATH:LINE#L1-L2` | Function/struct/class/method at LINE, optional focus range |
@@ -69,7 +59,7 @@ Bare paths (no prefix) are shorthand for `file:PATH`.
 Create all phase tasks upfront with the available task-tracking tool, then track each with `in_progress` / `completed` as work proceeds.
 
 | Task subject | activeForm |
-|--------------|------------|
+| --- | --- |
 | Parse and validate input | Parsing and validating input |
 | Detect language, framework, version | Detecting language, framework, version |
 | Gather context | Gathering context |
@@ -94,14 +84,9 @@ Classify each target by prefix and validate syntax:
 
 ### 1b: Semantic validation
 
-- **Empty file check**: for `file:` targets, verify the file is non-empty. If
-  every `file:` target is empty, report "All target files are empty" and stop.
-- **Folder source-file check**: for `folder:` targets, defer validation until
-  after Phase 2 language detection (the folder must contain files matching the
-  detected language).
-- **Symbol resolution confirmation**: for `symbol:` targets, emit a
-  confirmation of the resolved symbol (name, kind, location) after Phase 3
-  symbol resolution completes.
+- **Empty file check**: for `file:` targets, verify the file is non-empty. If every `file:` target is empty, report "All target files are empty" and stop.
+- **Folder source-file check**: for `folder:` targets, defer validation until after Phase 2 language detection (the folder must contain files matching the detected language).
+- **Symbol resolution confirmation**: for `symbol:` targets, emit a confirmation of the resolved symbol (name, kind, location) after Phase 3 symbol resolution completes.
 
 ## Phase 2: Detect language, framework, version
 
@@ -111,16 +96,14 @@ Classify each target by prefix and validate syntax:
    - `Cargo.toml`, `package.json`, `go.mod`, `pom.xml`, `build.gradle`, `pyproject.toml`, `build.zig.zon`, `requirements.txt`, `tsconfig.json`, etc.
 3. Record findings for inclusion in context passed to sub-skills.
 
-**Deferred folder validation:** For any `folder:` targets from Phase 1b, verify
-the folder contains source files matching the detected language. If not, report
-"No <language> source files found in <folder>" and exclude that target.
+**Deferred folder validation:** For any `folder:` targets from Phase 1b, verify the folder contains source files matching the detected language. If not, report "No <language> source files found in <folder>" and exclude that target.
 
 ## Phase 3: Gather context
 
 Context depth varies by input type:
 
 | Input type | Depth | What to gather |
-|------------|-------|----------------|
+| --- | --- | --- |
 | `symbol:` | DEEP | Full symbol definition + implementations of called methods + type definitions for params/returns + trait/interface definitions + related tests + up to 5 callers. Use Grep/Read, optionally the Task tool with `subagent_type: Explore` for complex call graphs |
 | `file:` | SHALLOW | Read the file (or line range). Project config only |
 | `folder:` | SHALLOW | Glob + read discovered files. Project config only |
@@ -129,7 +112,7 @@ Context depth varies by input type:
 ### Diff resolution
 
 | Source | Resolution |
-|--------|------------|
+| --- | --- |
 | `diff:local` | `git diff HEAD` for tracked changes + `git ls-files --others --exclude-standard` for untracked |
 | `diff:branch` | Detect default branch (`git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null \| sed 's@^refs/remotes/origin/@@'`, falling back to `main`), then `git diff <default>...HEAD` |
 | `diff:branch:REF` | `git diff REF...HEAD` |
@@ -141,6 +124,7 @@ If the diff is empty, report "No changes found" and stop.
 ### Symbol context (DEEP)
 
 For each `symbol:` target:
+
 1. Read the file at PATH. Identify the innermost function, method, struct, class, enum, or trait definition containing LINE.
 2. If LINE lands on blank/comment/import, scan up/down ~20 lines for nearest symbol; error if none found.
 3. Nested symbols to resolve to innermost enclosing.
@@ -164,7 +148,7 @@ For each `symbol:` target:
 Scan the gathered code for patterns and select ALL matching concerns (no artificial cap):
 
 | Pattern observed | Skills + concerns |
-|------------------|-------------------|
+| --- | --- |
 | `unsafe`, raw pointers, FFI | code-audit: `uaf`, `leaks`, `ub` |
 | Mutex, RwLock, channels, goroutines, threads | code-audit: `races`, `deadlocks` |
 | `.await`, async/spawn, futures, promises | code-audit: `async-bugs` |
@@ -188,44 +172,31 @@ Scan the gathered code for patterns and select ALL matching concerns (no artific
 | Error handling paths in source | code-test: `negative-testing` |
 | No clear pattern match | Safe defaults: code-audit `error-handling`+`lifecycle`, code-security `input-validation`+`config` |
 
-Filter out concerns not available for the detected language (check each skill's
-Available languages table).
+Filter out concerns not available for the detected language (check each skill's Available languages table).
 
 ## Phase 5: Invoke skills via Task agents
 
 ### 5a: Task dispatch
 
-Dispatch each skill as a **Task agent** (`subagent_type: general-purpose`). This
-is necessary because skills with `context: fork` don't see conversation history,
-so context must be injected explicitly. Task agents also allow parallel execution.
+Dispatch each skill as a **Task agent** (`subagent_type: general-purpose`). This is necessary because skills with `context: fork` don't see conversation history, so context must be injected explicitly. Task agents also allow parallel execution.
 
 #### Preparing each Task prompt
 
-Each skill stores its checklist files under a different sub-folder, and
-code-review does not ship language patterns:
+Each skill stores its checklist files under a different sub-folder, and code-review does not ship language patterns:
 
 | Skill | Checklist folder | Language patterns |
-|-------|------------------|-------------------|
+| --- | --- | --- |
 | code-audit | `methodology/$CONCERN.md` | `lang/$LANG.md` |
 | code-security | `domain/$DOMAIN.md` | `lang/$LANG.md` |
 | code-test | `practice/$PRACTICE.md` | `lang/$LANG.md` |
 | code-review | `aspects/$ASPECT.md` | (none; skip the lang step) |
 
-For each skill invocation, use the absolute paths from the "Skills directory"
-section above:
+For each skill invocation, use the absolute paths from the "Skills directory" section above:
 
-1. Read `<skill-path>/SKILL.md`. When injecting it into the Task prompt, strip
-   the `## Interactive mode` section (and its sub-sections, up to but not
-   including the next `##` heading). That block instructs a fresh agent to
-   re-ask the user for arguments and must not leak into sub-agent dispatch.
-2. For code-audit, code-security, and code-test: read
-   `<skill-path>/lang/$LANG.md` for the detected language. code-review has no
-   `lang/` directory; omit this step and the "Language Patterns" section of
-   the injected prompt entirely.
-3. Read the checklist file indicated in the "Checklist folder" column above
-   for each selected concern, domain, practice, or aspect.
-4. Construct a Task prompt (Task tool with `subagent_type: general-purpose`)
-   that includes all of the above plus the gathered context.
+1. Read `<skill-path>/SKILL.md`. When injecting it into the Task prompt, strip the `## Interactive mode` section (and its sub-sections, up to but not including the next `##` heading). That block instructs a fresh agent to re-ask the user for arguments and must not leak into sub-agent dispatch.
+2. For code-audit, code-security, and code-test: read `<skill-path>/lang/$LANG.md` for the detected language. code-review has no `lang/` directory; omit this step and the "Language Patterns" section of the injected prompt entirely.
+3. Read the checklist file indicated in the "Checklist folder" column above for each selected concern, domain, practice, or aspect.
+4. Construct a Task prompt (Task tool with `subagent_type: general-purpose`) that includes all of the above plus the gathered context.
 
 #### Context injection format
 
@@ -273,27 +244,21 @@ Targets: <target specification>
 #### Invocation order
 
 1. If `diff:` target: launch code-review Task agent **first**, wait for results.
-2. Then launch remaining skills (code-audit, code-security, code-test) as
-   **parallel Task agents**: one Task per selected concern/domain/practice.
+2. Then launch remaining skills (code-audit, code-security, code-test) as **parallel Task agents**: one Task per selected concern/domain/practice.
 3. For multi-language changesets: invoke per-language with the appropriate files.
 4. Wait for all Task agents to complete and collect results.
 
 ### 5b: Pattern-scope analysis
 
-After all Task agents complete, assess how widely each Critical and High finding
-applies across the codebase:
+After all Task agents complete, assess how widely each Critical and High finding applies across the codebase:
 
-1. For each Critical or High finding, extract the **code pattern** that
-   constitutes the defect (e.g., a function call without error check, an unsafe
-   cast, a missing validation).
-2. Use **Grep** to search the full codebase for sibling occurrences of the same
-   pattern.
+1. For each Critical or High finding, extract the **code pattern** that constitutes the defect (e.g., a function call without error check, an unsafe cast, a missing validation).
+2. Use **Grep** to search the full codebase for sibling occurrences of the same pattern.
 3. **Classify** each match:
    - **Same defect**: the match exhibits the identical problem.
    - **Similar but safe**: the pattern appears but is handled correctly.
    - **False positive**: syntactic match but semantically unrelated.
-4. **Record scope** for each finding: count of "same defect" matches plus a
-   `file:line` list of each occurrence.
+4. **Record scope** for each finding: count of "same defect" matches plus a `file:line` list of each occurrence.
 
 ## Phase 6: Synthesize report
 

@@ -88,7 +88,7 @@ var writer: std.Io.Writer = .fixed(buffer);
 ### Format Specifiers
 
 | Specifier | Purpose |
-|-----------|---------|
+| --- | --- |
 | `{f}` | Calls the value's `format` method |
 | `{any}` | Skips format methods, uses default |
 | `{t}` | Shorthand for `@tagName()` / `@errorName()` |
@@ -136,12 +136,14 @@ When porting such code to 0.16+, change `writer: anytype` to `writer: *std.Io.Wr
 Since the format signature does not accept format strings, use one of:
 
 **1. Multiple format methods:**
+
 ```zig
 pub fn format(self: @This(), writer: *std.Io.Writer) std.Io.Writer.Error!void { ... }
 pub fn formatVerbose(self: @This(), writer: *std.Io.Writer) std.Io.Writer.Error!void { ... }
 ```
 
 **2. `std.fmt.Alt` wrapper:**
+
 ```zig
 const MyType = struct {
     number: u8,
@@ -161,6 +163,7 @@ try writer.print("{f}", .{wrapped});
 ```
 
 **3. Return a struct with a format method:**
+
 ```zig
 pub fn fmtDetailed(self: @This()) FmtDetailed {
     return .{ .inner = self };

@@ -56,6 +56,7 @@ For every mutable variable accessed both before and after an await/yield:
 ## Reporting
 
 For each finding, state:
+
 - The async operation (file, line).
 - The bug class (floating promise, async TOCTOU, callback leak, unhandled rejection).
 - A concrete interleaving or scenario that triggers the bug.

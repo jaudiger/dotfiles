@@ -58,6 +58,7 @@ For every file path constructed from user input:
 ## Reporting
 
 For each finding, state:
+
 - The input source (file, line, variable).
 - The dangerous sink (file, line, operation).
 - The injection type (SQL, command, path traversal, XSS, etc.).

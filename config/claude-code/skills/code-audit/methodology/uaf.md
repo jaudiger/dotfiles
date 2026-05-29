@@ -53,6 +53,7 @@ For every arena reset, pool return, or region dealloc:
 ## Reporting
 
 For each finding, state:
+
 - The pointer/reference and where it was obtained (file, line).
 - The invalidating operation (free, realloc, arena reset, container mutation) and its line.
 - The use-after-invalidation and its line.

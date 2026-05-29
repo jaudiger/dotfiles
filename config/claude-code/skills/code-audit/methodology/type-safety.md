@@ -99,6 +99,7 @@ Check for language-specific type system traps:
 ## Reporting
 
 For each finding, state:
+
 - The type escape hatch (file, line, construct).
 - The runtime type mismatch it could cause.
 - A concrete input or scenario that triggers a runtime error.

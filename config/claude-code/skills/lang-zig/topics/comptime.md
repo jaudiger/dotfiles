@@ -1,8 +1,6 @@
 # Comptime Patterns
 
-> **Source**: [matklad: Things Zig comptime Won't Do](https://matklad.github.io/2025/04/19/things-zig-comptime-wont-do.html),
-> [matklad: Comptime Zig ORM](https://matklad.github.io/2025/03/19/comptime-zig-orm.html),
-> [matklad: A Fun Zig Program](https://matklad.github.io/2025/04/21/fun-zig-program.html)
+> **Source**: [matklad: Things Zig comptime Won't Do](https://matklad.github.io/2025/04/19/things-zig-comptime-wont-do.html), [matklad: Comptime Zig ORM](https://matklad.github.io/2025/03/19/comptime-zig-orm.html), [matklad: A Fun Zig Program](https://matklad.github.io/2025/04/21/fun-zig-program.html)
 
 ## Basic Comptime Evaluation
 
@@ -29,10 +27,7 @@ const lookup_table = comptime blk: {
 
 ## `@setEvalBranchQuota`
 
-Comptime evaluation has a default branch budget. Nontrivial work hits the
-limit and the compiler aborts: deep recursion, accumulating slices across
-many fields, or iterating over a large generated table. Raise the quota at
-the top of the function or block that needs it.
+Comptime evaluation has a default branch budget. Nontrivial work hits the limit and the compiler aborts: deep recursion, accumulating slices across many fields, or iterating over a large generated table. Raise the quota at the top of the function or block that needs it.
 
 ```zig
 fn TableType(comptime Schema: type) type {
@@ -41,8 +36,7 @@ fn TableType(comptime Schema: type) type {
 }
 ```
 
-The number is empirical: bump it until the build passes. Keep the call
-narrowly scoped rather than raising it globally.
+The number is empirical: bump it until the build passes. Keep the call narrowly scoped rather than raising it globally.
 
 ## `inline for` vs `comptime for`
 
@@ -71,8 +65,7 @@ switch (info) {
 }
 ```
 
-The `.@"fn"` case exposes a callable's signature, which lets a generic
-helper validate a user-supplied callback at comptime.
+The `.@"fn"` case exposes a callable's signature, which lets a generic helper validate a user-supplied callback at comptime.
 
 ```zig
 fn registerCallback(comptime callback: anytype) void {
@@ -102,10 +95,7 @@ Use `&@splat(.{})` for default attributes across all fields.
 
 For types without a dedicated builtin, use literal syntax: `opaque {}`, `?T`, `E!T`, `error{ ... }`, `[len]Elem`.
 
-When the bit count is itself a comptime expression, prefer the
-standard-library helper `std.meta.Int(sign, bits)` over `@Int`. The bit
-count is typically `@bitSizeOf(SomeType)` or arithmetic over several
-`@bitSizeOf` values.
+When the bit count is itself a comptime expression, prefer the standard-library helper `std.meta.Int(sign, bits)` over `@Int`. The bit count is typically `@bitSizeOf(SomeType)` or arithmetic over several `@bitSizeOf` values.
 
 ```zig
 const Word = u64;
@@ -114,9 +104,7 @@ const Index = std.meta.Int(.unsigned, @bitSizeOf(Word) - 1);
 
 ## Field-Driven Struct Generation
 
-A common comptime task is to derive one struct type from another: walk the
-input type's fields, accumulate parallel name and type slices, and reify
-the result with `@Struct`. The accumulators start empty and grow with `++`.
+A common comptime task is to derive one struct type from another: walk the input type's fields, accumulate parallel name and type slices, and reify the result with `@Struct`. The accumulators start empty and grow with `++`.
 
 ```zig
 fn IndexesType(comptime Object: type) type {
@@ -132,9 +120,7 @@ fn IndexesType(comptime Object: type) type {
 }
 ```
 
-`&@splat(.{})` applies default attributes uniformly. When a field needs a
-specific `alignment`, `default_value_ptr`, or `is_comptime`, build the
-attribute slice explicitly instead of splatting.
+`&@splat(.{})` applies default attributes uniformly. When a field needs a specific `alignment`, `default_value_ptr`, or `is_comptime`, build the attribute slice explicitly instead of splatting.
 
 ## `std.meta.FieldEnum` and `@FieldType` for Field-Level Dispatch
 
@@ -152,11 +138,7 @@ fn IndexTableType(
 
 ## Comptime Layout Assertions
 
-Wire-format types, FFI structs, and packed bitfields depend on a specific
-memory layout. Pin that contract with a `comptime { ... }` block inside the
-struct that asserts `@sizeOf`, `@alignOf`, `@bitSizeOf`, and `@offsetOf`
-against expected values. An accidental field reorder, padding change, or
-type swap then fails the build instead of corrupting data at runtime.
+Wire-format types, FFI structs, and packed bitfields depend on a specific memory layout. Pin that contract with a `comptime { ... }` block inside the struct that asserts `@sizeOf`, `@alignOf`, `@bitSizeOf`, and `@offsetOf` against expected values. An accidental field reorder, padding change, or type swap then fails the build instead of corrupting data at runtime.
 
 ```zig
 const Header = extern struct {
@@ -184,8 +166,7 @@ const Flags = packed struct(u16) {
 };
 ```
 
-See the `types` topic for related discipline on `extern` and `packed`
-structs.
+See the `types` topic for related discipline on `extern` and `packed` structs.
 
 ## Comptime Limitations (By Design)
 

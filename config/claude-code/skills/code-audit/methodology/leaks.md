@@ -45,6 +45,7 @@ For languages with defer, errdefer, RAII, or try-with-resources:
 ## Reporting
 
 For each leak found, state:
+
 - The allocation (file, line, call).
 - The code path that leaks (which branch, which condition).
 - Why the resource is not freed on that path.

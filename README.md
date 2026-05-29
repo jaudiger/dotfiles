@@ -23,7 +23,7 @@ sh <(curl --proto '=https' --tlsv1.2 -L https://nixos.org/nix/install)
 ### Available hosts
 
 | Host | Platform |
-|------|----------|
+| --- | --- |
 | `darwin-aarch64` | macOS (Apple Silicon) |
 | `nixos-aarch64` | NixOS (ARM64) |
 

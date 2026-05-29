@@ -7,8 +7,7 @@ Tests that lack meaningful assertions, violate AAA structure, assert on implemen
 1. **AAA structure**: verify each test follows a clear Arrange-Act-Assert sequence:
    - **Arrange**: set up inputs, dependencies, and preconditions. This section should be clearly separated from the action.
    - **Act**: perform exactly one action (call the function under test). Tests that perform multiple actions in sequence are testing a workflow, not a unit; flag if this is inside a unit test.
-   - **Assert**: verify the outcome. Assertions should immediately follow the action with no further mutations in between.
-   Flag tests that interleave arrangement, action, and assertion without clear separation.
+   - **Assert**: verify the outcome. Assertions should immediately follow the action with no further mutations in between. Flag tests that interleave arrangement, action, and assertion without clear separation.
 
 2. **Assertion presence**: flag tests that have no assertions at all (relying only on "no exception = pass"). A test that only calls a function without checking its return value or side effects proves nothing.
 
@@ -20,8 +19,7 @@ Tests that lack meaningful assertions, violate AAA structure, assert on implemen
 4. **Behavioral vs implementation assertions**: flag tests that assert on:
    - Internal method call counts or ordering (over-specified mocking) unless the call order is the contract.
    - Private state or internal fields instead of observable behavior.
-   - Exact log messages or debug output instead of return values or side effects.
-   These tests break when the implementation is refactored even if behavior is preserved.
+   - Exact log messages or debug output instead of return values or side effects. These tests break when the implementation is refactored even if behavior is preserved.
 
 5. **Tautological assertions**: flag assertions that cannot fail:
    - `assert(true)`, `assert(1 == 1)`.
@@ -40,6 +38,7 @@ Tests that lack meaningful assertions, violate AAA structure, assert on implemen
 ## Reporting
 
 For each finding, state:
+
 - The test function name and line number.
 - The AAA violation or assertion weakness.
 - Why the assertion is insufficient; what specific incorrect behavior it would fail to detect.

@@ -1,7 +1,6 @@
 ---
 name: code-audit
-description: >
-  Audit source files for bugs and defects using static analysis.
+description: Audit source files for bugs and defects using static analysis.
 argument-hint: "[lang] [concern] [targets...]"
 allowed-tools: Bash, Read, Grep, Glob
 ---
@@ -25,7 +24,7 @@ Present everything in one message so the user can answer all at once (e.g., "rus
 All targets use a prefix to indicate the type of input:
 
 | Prefix | Format | Description |
-|--------|--------|-------------|
+| --- | --- | --- |
 | `file:` | `file:PATH` or `file:PATH#L1-L2` | Single file, optional line range |
 | `folder:` | `folder:PATH` | All source files within the dir (recursive) |
 | `symbol:` | `symbol:PATH:LINE` or `symbol:PATH:LINE#L1-L2` | Function/struct/class/method at LINE, optional focus range |
@@ -44,7 +43,7 @@ Bare paths (no prefix) are shorthand for `file:PATH`.
 **`diff:SOURCE`**: Resolve the diff:
 
 | Source | Resolution |
-|--------|------------|
+| --- | --- |
 | `diff:local` | `git diff HEAD` for tracked changes + `git ls-files --others --exclude-standard` for untracked |
 | `diff:branch` | Detect default branch (`git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null \| sed 's@^refs/remotes/origin/@@'`, falling back to `main`), then `git diff <default>...HEAD` |
 | `diff:branch:REF` | `git diff REF...HEAD` |
@@ -63,9 +62,9 @@ After resolving the diff, extract changed files and changed line regions (hunks)
 
 ## Audit steps
 
-**Language:** $0
-**Concern:** $1
-**Targets:** all arguments after the second are targets to analyze (see Target syntax above).
+- **Language:** $0
+- **Concern:** $1
+- **Targets:** all arguments after the second are targets to analyze (see Target syntax above).
 
 1. Read [`lang/$0.md`](lang/$0.md) to confirm the concern is valid for this language and load language-specific patterns.
 2. Read [`methodology/$1.md`](methodology/$1.md) to load the audit methodology and generic checklist.
@@ -85,7 +84,7 @@ After resolving the diff, extract changed files and changed line regions (hunks)
 ## Available languages
 
 | Language | Concerns |
-|----------|----------|
+| --- | --- |
 | `zig` | leaks, uaf, deadlocks, races, oom, lifecycle, overflow, error-handling, ub, injection |
 | `c` | leaks, uaf, deadlocks, races, oom, lifecycle, overflow, error-handling, ub, injection |
 | `rust` | leaks, uaf, deadlocks, races, oom, lifecycle, overflow, error-handling, async-bugs, ub, injection, type-safety |

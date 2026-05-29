@@ -23,6 +23,7 @@ Untested conditional branches, match/switch arms, early returns, loop boundaries
 ## Reporting
 
 For each untested branch, state:
+
 - The branching construct and line number.
 - Which specific path is untested (e.g., "else branch at line 42", "Err arm of Result at line 78").
 - What input would reach that path.

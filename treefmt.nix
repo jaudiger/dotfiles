@@ -2,10 +2,26 @@
   projectRootFile = "flake.nix";
 
   programs = {
-    # JSON
+    # JSON and Markdown
     prettier = {
       enable = true;
-      includes = [ "*.json" ];
+      includes = [
+        "*.json"
+        "*.md"
+      ];
+      settings = {
+        proseWrap = "never";
+        # Tiny printWidth keeps all Markdown tables in the compact delimiter form.
+        overrides = [
+          {
+            files = "*.md";
+            options = {
+              printWidth = 1;
+              embeddedLanguageFormatting = "off";
+            };
+          }
+        ];
+      };
     };
 
     # Nix

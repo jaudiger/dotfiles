@@ -1,8 +1,6 @@
 # Error Handling & Defer Patterns
 
-> **Source**: [matklad: Zig defer Patterns](https://matklad.github.io/2024/03/21/defer-patterns.html),
-> [matklad: Error Codes for Control Flow](https://matklad.github.io/2025/11/06/error-codes-for-control-flow.html),
-> [matklad: Diagnostics Factory](https://matklad.github.io/2026/02/16/diagnostics-factory.html)
+> **Source**: [matklad: Zig defer Patterns](https://matklad.github.io/2024/03/21/defer-patterns.html), [matklad: Error Codes for Control Flow](https://matklad.github.io/2025/11/06/error-codes-for-control-flow.html), [matklad: Diagnostics Factory](https://matklad.github.io/2026/02/16/diagnostics-factory.html)
 
 ## Error Unions
 

@@ -1,9 +1,6 @@
 # Type System, Generics, Tagged Unions & Newtype Index Pattern
 
-> **Source**: [matklad: Types and the Zig Programming Language](https://matklad.github.io/2023/08/09/types-and-zig.html),
-> [matklad: Zig's Lovely Syntax](https://matklad.github.io/2025/08/09/zigs-lovely-syntax.html),
-> [matklad: Partially Matching Zig Enums](https://matklad.github.io/2025/08/08/partially-matching-zig-enums.html),
-> [matklad: Newtype Index Pattern In Zig](https://matklad.github.io/2025/12/23/zig-newtype-index-pattern.html)
+> **Source**: [matklad: Types and the Zig Programming Language](https://matklad.github.io/2023/08/09/types-and-zig.html), [matklad: Zig's Lovely Syntax](https://matklad.github.io/2025/08/09/zigs-lovely-syntax.html), [matklad: Partially Matching Zig Enums](https://matklad.github.io/2025/08/08/partially-matching-zig-enums.html), [matklad: Newtype Index Pattern In Zig](https://matklad.github.io/2025/12/23/zig-newtype-index-pattern.html)
 
 ## Nominal Types Without Names
 
@@ -54,8 +51,7 @@ buf.push(42);
 
 ### Concrete Generics vs `anytype`
 
-Both forms accept a flexible parameter; they differ in where the contract is
-checked and how the generated code reads.
+Both forms accept a flexible parameter; they differ in where the contract is checked and how the generated code reads.
 
 ```zig
 // Concrete generic: monomorphized per T, contract checked at the definition
@@ -72,18 +68,11 @@ fn serialize(writer: anytype, value: anytype) !void {
 }
 ```
 
-Prefer `fn Type(comptime T: type) type` for hot paths and library cores: the
-monomorphization site is explicit, the type is grep-able, and the compiler
-verifies the contract once at the definition rather than at every call site.
-Reach for `anytype` in adapter-like helpers (formatters, generic writers,
-comptime config-struct passers) where the parameter is genuinely structural
-and naming a concrete type would just push boilerplate onto callers.
+Prefer `fn Type(comptime T: type) type` for hot paths and library cores: the monomorphization site is explicit, the type is grep-able, and the compiler verifies the contract once at the definition rather than at every call site. Reach for `anytype` in adapter-like helpers (formatters, generic writers, comptime config-struct passers) where the parameter is genuinely structural and naming a concrete type would just push boilerplate onto callers.
 
 ### `void` as a Structural Placeholder
 
-When a generic accepts an optional component, accepting `void` and degenerating
-the dependent sub-types is cleaner than threading an optional through. A `void`
-field is zero-sized, so the runtime layout collapses for the absent case.
+When a generic accepts an optional component, accepting `void` and degenerating the dependent sub-types is cleaner than threading an optional through. A `void` field is zero-sized, so the runtime layout collapses for the absent case.
 
 ```zig
 pub fn KeyType(comptime Prefix: type) type {
@@ -106,8 +95,7 @@ pub fn KeyType(comptime Prefix: type) type {
 }
 ```
 
-The `if (Prefix == void) {} else ...` form is comptime-evaluated, so the dead
-branch contributes no runtime code.
+The `if (Prefix == void) {} else ...` form is comptime-evaluated, so the dead branch contributes no runtime code.
 
 ## Tagged Unions & Enum Matching
 
@@ -127,8 +115,7 @@ switch (result) {
 
 ### Non-Exhaustive Enum Switch
 
-For a non-exhaustive enum (declared with a trailing `_`), handle the explicit
-tags and use a standalone `_` prong for unnamed values:
+For a non-exhaustive enum (declared with a trailing `_`), handle the explicit tags and use a standalone `_` prong for unnamed values:
 
 ```zig
 switch (enum_val) {
@@ -140,9 +127,7 @@ switch (enum_val) {
 
 ### Comptime Exhaustiveness Assertion
 
-`@typeInfo(E).@"enum".is_exhaustive` is `true` at compile time when `E` has
-no trailing `_`. Useful as a contract check in generics that take an enum
-type as a comptime parameter:
+`@typeInfo(E).@"enum".is_exhaustive` is `true` at compile time when `E` has no trailing `_`. Useful as a contract check in generics that take an enum type as a comptime parameter:
 
 ```zig
 fn Dispatcher(comptime E: type) type {
@@ -188,9 +173,7 @@ switch (result) {
 
 ### `inline for` Over a Tuple of Types
 
-When the same comptime logic must run over several related types (multiple
-enums that share a tag space, several struct types that share a method name),
-iterate over a tuple of types:
+When the same comptime logic must run over several related types (multiple enums that share a tag space, several struct types that share a method name), iterate over a tuple of types:
 
 ```zig
 inline for (.{ OperationA, OperationB }) |Enum| {

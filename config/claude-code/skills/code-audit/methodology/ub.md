@@ -32,7 +32,7 @@ For every raw pointer dereference, cast, or arithmetic:
 
 1. Two mutable pointers/references to the same memory at the same time (Rust: violates borrow rules, only possible in unsafe).
 2. Mutable access through a const/immutable pointer (C: casting away const, Zig: @constCast).
-3. Strict aliasing violations in C: accessing an object through a pointer of incompatible type (except char*).
+3. Strict aliasing violations in C: accessing an object through a pointer of incompatible type (except char\*).
 4. Zig: @ptrCast between types with different alignment or size requirements.
 
 ### Step 5: Audit uninitialized memory
@@ -44,6 +44,7 @@ For every raw pointer dereference, cast, or arithmetic:
 ### Step 6: Audit language-specific UB patterns
 
 **Zig-specific:**
+
 - `@intCast` with out-of-range value (safety-checked in safe builds, UB in ReleaseFast).
 - `@ptrCast` aliasing violations.
 - `@truncate` of sentinel-terminated slices losing the sentinel.
@@ -51,6 +52,7 @@ For every raw pointer dereference, cast, or arithmetic:
 - Returning from a function with `noreturn` return type.
 
 **C-specific:**
+
 - Sequence point violations (modifying a variable twice between sequence points).
 - Signed integer overflow in any arithmetic.
 - Accessing a union member other than the last one written (type punning via union).
@@ -60,6 +62,7 @@ For every raw pointer dereference, cast, or arithmetic:
 - va_arg with wrong type.
 
 **Rust-specific (unsafe blocks only):**
+
 - Creating invalid references (null, dangling, unaligned).
 - Breaking the aliasing rules (&T and &mut T to same data simultaneously).
 - Calling functions with wrong ABI or invalid arguments.
@@ -76,6 +79,7 @@ For every raw pointer dereference, cast, or arithmetic:
 ## Reporting
 
 For each finding, state:
+
 - The UB-triggering operation (file, line).
 - The specific UB rule violated (cite the language spec category).
 - The input or condition that triggers it.

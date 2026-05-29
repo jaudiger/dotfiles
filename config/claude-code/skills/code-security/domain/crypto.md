@@ -68,6 +68,7 @@ For each cryptographic operation:
 ## Reporting
 
 For each finding, state:
+
 - The cryptographic operation (file, line, function/API).
 - The specific weakness (e.g., "AES-ECB used for encryption; no semantic security").
 - A concrete attack scenario (e.g., "identical plaintext blocks produce identical ciphertext, revealing patterns").

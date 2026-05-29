@@ -62,7 +62,7 @@ leaks, lifecycle, error-handling, async-bugs, type-safety, injection
 
 ## Injection patterns
 
-- Template literals in SQL: `\`SELECT * FROM ${table}\``: SQL injection. Use parameterized queries.
+- Template literals in SQL: `\`SELECT \* FROM ${table}\``: SQL injection. Use parameterized queries.
 - `child_process.exec(userInput)`: command injection. Use `execFile` with argument array.
 - `eval()`, `new Function(userInput)`: code injection. Flag always.
 - `innerHTML`, `dangerouslySetInnerHTML` with user input; XSS. Use textContent or sanitize.

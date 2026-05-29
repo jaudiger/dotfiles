@@ -30,33 +30,39 @@ branch-coverage, edge-cases, assertions, isolation, negative-testing, mutation-r
 ## Language-specific patterns
 
 ### Result and Option testing
+
 - Tests should verify both `Ok` and `Err` variants of `Result` returns.
 - Use `unwrap()` only in tests where the assertion IS that the value is `Ok`/`Some`: otherwise use pattern matching for clearer failure messages.
 - For `Err` variants, assert on the error type/variant AND the error message when it is part of the contract.
 - Check for `.is_ok()` / `.is_err()` assertions that discard the inner value; these are weak assertions.
 
 ### Panic testing
+
 - `#[should_panic]` tests should include the `expected` string to avoid false passes from unrelated panics.
 - For `Result`-based APIs, panics should generally not be the tested contract; test the `Err` return instead.
 - Verify that `#[should_panic]` tests are not masking bugs by catching panics from the wrong location.
 
 ### Trait and generic testing
+
 - Generic functions should be tested with multiple concrete types, especially types at the boundaries of trait constraints.
 - Trait implementations on custom types should be tested directly, not just through higher-level functions.
 - `Default`, `Clone`, `PartialEq`, `Debug` derived traits; verify round-trip properties when they matter.
 
 ### Ownership and lifetime patterns
+
 - Tests should verify that functions consuming ownership actually take ownership (compile-time check, but lifetime-related bugs in unsafe code need runtime tests).
 - Tests for mutable references should verify the referenced data is correctly modified.
 - Tests involving `Arc`/`Rc` shared ownership should verify no unexpected clones or reference cycles.
 
 ### Async testing
+
 - Async tests should test cancellation behavior (dropping futures mid-execution).
 - Tests with `tokio::select!` should cover all arms, including the case where specific branches win.
 - Timeouts in async tests should use `tokio::time::timeout()` rather than thread sleep.
 - Verify tests handle `JoinError` for spawned tasks.
 
 ### Error type testing
+
 - Custom error types (with `thiserror` or manual `impl`) should have tests for:
   - Each variant construction.
   - `Display` output.
@@ -64,10 +70,12 @@ branch-coverage, edge-cases, assertions, isolation, negative-testing, mutation-r
   - `source()` chain (if wrapping other errors).
 
 ### Unsafe code
+
 - Unsafe code blocks require tests that exercise the safety invariants the developer is asserting.
 - Run tests under Miri when possible; check if the CI configuration includes Miri runs.
 - Tests should cover the boundary between safe and unsafe: what happens when the safe API is misused in ways the unsafe implementation relies on not happening?
 
 ### Feature-flagged code
+
 - Code behind `#[cfg(feature = "...")]` should have tests that run with that feature enabled.
 - Check `Cargo.toml` for test-specific features and verify CI runs tests with relevant feature combinations.

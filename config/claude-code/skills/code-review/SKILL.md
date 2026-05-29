@@ -1,9 +1,6 @@
 ---
 name: code-review
-description: >
-  Review code quality from local modifications, branches, commits, pull
-  requests (PRs), or direct file/symbol targets. All review aspects are applied
-  by default; append aspect names after a `--` separator to narrow the focus.
+description: Review code quality from local modifications, branches, commits, pull requests (PRs), or direct file/symbol targets. All review aspects are applied by default; append aspect names after a `--` separator to narrow the focus.
 argument-hint: "[targets...] [-- aspect...]"
 allowed-tools: Bash, Read, Grep, Glob
 ---
@@ -12,10 +9,7 @@ allowed-tools: Bash, Read, Grep, Glob
 
 ## Interactive mode (no arguments)
 
-If the user did not provide any targets, print the usage guide below and wait
-for their reply. The AskUserQuestion tool is reserved for prompts with at most
-3 short enumerated options; for this open-ended guide, output it as formatted
-text directly in the conversation.
+If the user did not provide any targets, print the usage guide below and wait for their reply. The AskUserQuestion tool is reserved for prompts with at most 3 short enumerated options; for this open-ended guide, output it as formatted text directly in the conversation.
 
 ### Usage
 
@@ -28,7 +22,7 @@ text directly in the conversation.
 All targets use a prefix to indicate the type of input:
 
 | Prefix | Format | Description |
-|--------|--------|-------------|
+| --- | --- | --- |
 | `file:` | `file:PATH` or `file:PATH#L1-L2` | Single file, optional line range |
 | `folder:` | `folder:PATH` | All source files within the dir (recursive) |
 | `symbol:` | `symbol:PATH:LINE` or `symbol:PATH:LINE#L1-L2` | Function/struct/class/method at LINE, optional focus range |
@@ -47,7 +41,7 @@ Bare paths (no prefix) are shorthand for `file:PATH`.
 **`diff:SOURCE`**: Resolve the diff:
 
 | Source | Resolution |
-|--------|------------|
+| --- | --- |
 | `diff:local` | `git diff HEAD` for tracked changes + `git ls-files --others --exclude-standard` for untracked |
 | `diff:branch` | Detect default branch (`git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null \| sed 's@^refs/remotes/origin/@@'`, falling back to `main`), then `git diff <default>...HEAD` |
 | `diff:branch:REF` | `git diff REF...HEAD` |
@@ -96,34 +90,20 @@ If there are no code regions to review (empty diff, no files found), report it a
 2. For `diff:branch` targets: additionally run `git log --oneline <default>..HEAD` to capture commit context.
 3. For `diff:pr:` targets: additionally run `gh pr view N [--repo owner/repo]` (GitHub) or `glab mr view N` (GitLab) to fetch the PR title, description, and labels. Use these to understand the author's stated intent and evaluate the changes against that intent.
 4. For `file:`/`folder:`/`symbol:` targets: read the target files/regions. For `symbol:` targets, read the full file to understand context around the symbol.
-5. Identify functions, methods, and types **called or referenced** in the
-   reviewed code but **defined outside it**. Use Grep and Read to locate
-   and read their implementations. This is essential for understanding the
-   intended workflow and judging whether the code uses those functions
-   correctly (argument semantics, error contracts, side effects, ordering
-   requirements). Prioritize:
+5. Identify functions, methods, and types **called or referenced** in the reviewed code but **defined outside it**. Use Grep and Read to locate and read their implementations. This is essential for understanding the intended workflow and judging whether the code uses those functions correctly (argument semantics, error contracts, side effects, ordering requirements). Prioritize:
    - Functions called in new or modified lines (for diffs) or in the reviewed region (for file/symbol targets).
    - Types constructed, returned, or pattern-matched.
-   - Trait/interface implementations when the code interacts with a
-     polymorphic boundary.
-   Stop expanding once you have enough context to evaluate correctness; do not
-   chase the entire call graph.
+   - Trait/interface implementations when the code interacts with a polymorphic boundary. Stop expanding once you have enough context to evaluate correctness; do not chase the entire call graph.
 
 ### Step 3: Detect languages
 
-Determine the language(s) from file extensions in the changeset or target files. Use this to
-inform language-aware feedback (idiomatic patterns, common pitfalls) but do
-not load external files.
+Determine the language(s) from file extensions in the changeset or target files. Use this to inform language-aware feedback (idiomatic patterns, common pitfalls) but do not load external files.
 
 ### Step 4: Apply aspects
 
-For each selected aspect (all seven by default, or only those listed after
-`--`), read the corresponding [`aspects/<aspect>.md`](aspects/) checklist and
-evaluate the code against it.
+For each selected aspect (all seven by default, or only those listed after `--`), read the corresponding [`aspects/<aspect>.md`](aspects/) checklist and evaluate the code against it.
 
-For `diff:` targets: focus on **changed and added code**. Do not flag pre-existing issues in
-unchanged lines unless a change makes them actively dangerous or the context
-is necessary to understand a new bug.
+For `diff:` targets: focus on **changed and added code**. Do not flag pre-existing issues in unchanged lines unless a change makes them actively dangerous or the context is necessary to understand a new bug.
 
 For `file:`/`folder:`/`symbol:` targets: review the code region directly, applying each aspect as a general code quality evaluation.
 
@@ -144,19 +124,14 @@ For each finding, provide:
 ### Step 6: Summary
 
 1. A table of all findings grouped by severity.
-2. A one-paragraph overall assessment: is this code ready to merge as-is (for diffs),
-   or what are the key areas for improvement (for file/symbol reviews)?
+2. A one-paragraph overall assessment: is this code ready to merge as-is (for diffs), or what are the key areas for improvement (for file/symbol reviews)?
 
 ## Rules
 
 - For `diff:` targets: review the **diff**, not the entire file. Flag issues in changed and added lines. Only flag unchanged code if a change makes a pre-existing issue actively dangerous.
 - For `file:`/`folder:`/`symbol:` targets: review the **code region** directly. Apply aspects as a general code quality evaluation.
-- Be specific. Every finding must reference exact file paths and lines, and
-  explain the concrete problem.
+- Be specific. Every finding must reference exact file paths and lines, and explain the concrete problem.
 - Do not modify any files. This is analysis only.
 - Do not invent problems. If an aspect has no findings, say so explicitly.
-- Respect the author's intent. Read the PR description or commit message. Do
-  not suggest redesigns that contradict the stated goal unless the approach is
-  fundamentally flawed.
-- Keep low-severity items separate from critical issues. Do not bury critical
-  issues among style suggestions.
+- Respect the author's intent. Read the PR description or commit message. Do not suggest redesigns that contradict the stated goal unless the approach is fundamentally flawed.
+- Keep low-severity items separate from critical issues. Do not bury critical issues among style suggestions.

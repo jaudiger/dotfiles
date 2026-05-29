@@ -74,6 +74,7 @@ For every outbound HTTP request constructed from user input:
 ## Reporting
 
 For each finding, state:
+
 - The network operation (file, line, function/API).
 - The specific weakness (e.g., "TLS certificate verification disabled in production HTTP client").
 - A concrete attack scenario (e.g., "attacker can perform MITM and intercept all traffic").

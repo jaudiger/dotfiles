@@ -59,6 +59,7 @@ For every compound operation on shared state:
 ## Reporting
 
 For each finding, state:
+
 - The shared variable/field (file, line of declaration).
 - The unsynchronized access sites (file, line, read or write).
 - Which threads/tasks can reach those sites concurrently.

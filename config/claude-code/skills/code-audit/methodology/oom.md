@@ -50,6 +50,7 @@ For languages/allocators where allocation panics on OOM instead of returning an 
 ## Reporting
 
 For each finding, state:
+
 - The allocation site (file, line, call).
 - Whether the failure is unchecked, partially handled, or leads to inconsistent state.
 - The external input path that could trigger unbounded growth (if applicable).

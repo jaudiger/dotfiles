@@ -63,6 +63,7 @@ For every JWT or similar token:
 ## Reporting
 
 For each finding, state:
+
 - The authentication mechanism (file, line, function).
 - The specific weakness (e.g., "password hashed with SHA256 without salt").
 - A concrete attack scenario (e.g., "attacker with database access can crack passwords using rainbow tables").

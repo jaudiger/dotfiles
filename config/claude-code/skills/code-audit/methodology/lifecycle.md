@@ -62,6 +62,7 @@ For languages with automatic cleanup:
 ## Reporting
 
 For each finding, state:
+
 - The lifecycle phase affected (init, deinit, shutdown).
 - The resource that is leaked, double-freed, or used-after-free during lifecycle transition.
 - The triggering condition (partial init failure, out-of-order shutdown, signal during teardown).

@@ -6,19 +6,15 @@ Evaluate changed and added code for logical errors.
 
 ### 1. Logic errors
 
-- Conditions: inverted boolean logic, wrong operator (`&&` vs `||`, `<` vs
-  `<=`), missing negation.
+- Conditions: inverted boolean logic, wrong operator (`&&` vs `||`, `<` vs `<=`), missing negation.
 - Off-by-one: loop bounds, slice/substring indices, fence-post errors.
-- Short-circuit evaluation: side effects skipped by short-circuit, wrong
-  operand order.
+- Short-circuit evaluation: side effects skipped by short-circuit, wrong operand order.
 
 ### 2. State consistency
 
-- Variables modified in the diff: are all downstream consumers updated to
-  match?
+- Variables modified in the diff: are all downstream consumers updated to match?
 - Enum/union variants added or removed: are all switch/match arms updated?
-- Struct/class fields added or removed: are all constructors, serializers, and
-  comparators updated?
+- Struct/class fields added or removed: are all constructors, serializers, and comparators updated?
 
 ### 3. Edge cases
 
@@ -29,16 +25,14 @@ Evaluate changed and added code for logical errors.
 
 ### 4. Contract violations
 
-- Preconditions: does the changed code assume inputs that callers may not
-  guarantee?
+- Preconditions: does the changed code assume inputs that callers may not guarantee?
 - Postconditions: does the changed code still satisfy what callers expect?
 - Invariants: does the change break any documented or implicit invariant?
 
 ### 5. Regression risk
 
 - Changed function signatures: are all call sites updated?
-- Changed return values or error types: do callers handle the new
-  possibilities?
+- Changed return values or error types: do callers handle the new possibilities?
 - Removed code: was the removed code load-bearing for another path?
 
 ### 6. Data handling

@@ -60,6 +60,7 @@ For every endpoint that accesses an object by user-supplied identifier:
 ## Reporting
 
 For each finding, state:
+
 - The authorization decision point (file, line, function).
 - The specific weakness (e.g., "no ownership check on object retrieval by ID").
 - A concrete attack scenario (e.g., "user A can access user B's records by changing the ID parameter").

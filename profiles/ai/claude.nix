@@ -32,24 +32,18 @@ in
           meta-learn = ''
             ---
             name: meta-learn
-            description: >
-              Review the current session for skill/project-config gaps and
-              stale patterns, then update the relevant files.
+            description: Review the current session for skill/project-config gaps and stale patterns, then update the relevant files.
             allowed-tools: Read, Grep, Glob, Edit, Write
             ---
 
             # Self-Improve
 
-            Review what was accomplished in this session. Identify any patterns,
-            methodologies, or language-specific knowledge that were used but are
-            not currently captured in:
+            Review what was accomplished in this session. Identify any patterns, methodologies, or language-specific knowledge that were used but are not currently captured in:
 
-            **Global skills** live under `${host.dotfilesDirectory}/config/claude-code/skills/`.
-            Glob that directory to enumerate the currently installed skills,
-            then read each `SKILL.md` to understand its scope before
-            identifying gaps.
+            **Global skills** live under `${host.dotfilesDirectory}/config/claude-code/skills/`. Glob that directory to enumerate the currently installed skills, then read each `SKILL.md` to understand its scope before identifying gaps.
 
             **Project-level Claude files** (in the current working repository):
+
             - `CLAUDE.md` at the repo root
             - `.claude/settings.json`
             - `.claude/commands/`
@@ -59,31 +53,30 @@ in
             ## Phase 1: Gap detection
 
             For each gap found:
+
             1. State which file should be updated and why
             2. Show the proposed addition
             3. Apply the edit after confirmation
 
-            When adding a new concern/aspect/domain to a skill, update both
-            the SKILL.md coverage matrix and create the corresponding sub-file.
+            When adding a new concern/aspect/domain to a skill, update both the SKILL.md coverage matrix and create the corresponding sub-file.
 
             ## Phase 2: Staleness detection
 
-            Read through all skill files and project Claude files that were
-            relevant to this session. Flag any content that is out of date:
+            Read through all skill files and project Claude files that were relevant to this session. Flag any content that is out of date:
+
             - Deprecated API patterns, removed functions, renamed tools
             - Language version assumptions that no longer hold
             - References to files, modules, or dependencies absent from the repo
             - Checklist items now redundant with modern compiler/linter defaults
 
             For each stale item:
+
             1. Quote the outdated content
             2. Explain why it is stale
             3. Propose the updated replacement
             4. Apply the edit after confirmation
 
-            If any out-of-date content is detected, suggest concrete modifications
-            to update it, even if the current task did not require that knowledge.
-            Do not silently ignore stale guidance.
+            If any out-of-date content is detected, suggest concrete modifications to update it, even if the current task did not require that knowledge. Do not silently ignore stale guidance.
 
             If no gaps or stale content are found, say so explicitly.
           '';
@@ -98,6 +91,7 @@ in
             ## Banned characters
 
             Never produce any of these Unicode characters:
+
             - Em dash (U+2014), en dash (U+2013)
             - Curly/smart quotes (U+2018, U+2019, U+201C, U+201D)
             - Horizontal ellipsis (U+2026)
@@ -107,15 +101,11 @@ in
 
             ## Style guidance
 
-            Do not use `--` or `->` in prose. Reserve `--` for CLI flags
-            and `->` for code and type signatures. Rephrase with commas,
-            parentheses, or separate sentences.
+            Do not use `--` or `->` in prose. Reserve `--` for CLI flags and `->` for code and type signatures. Rephrase with commas, parentheses, or separate sentences.
 
             ## Exceptions
 
-            Permitted when preserving existing non-ASCII content, in string
-            literals that require Unicode, or in names that naturally
-            contain non-ASCII characters.
+            Permitted when preserving existing non-ASCII content, in string literals that require Unicode, or in names that naturally contain non-ASCII characters.
           '';
           comment-banned-patterns = ''
             # Banned patterns in code comments
@@ -124,26 +114,19 @@ in
 
             ## No numbered sequences
 
-            Do not use `1.`, `2.`, `Step 1`, `Phase 1`, or any
-            numbered/lettered enumeration.
+            Do not use `1.`, `2.`, `Step 1`, `Phase 1`, or any numbered/lettered enumeration.
 
             ## No section banners
 
-            Do not use `// -- SECTION --`, `// === SECTION ===`,
-            `// --- SECTION ---`, `/* ======= */`, or any decorative
-            separator line.
+            Do not use `// -- SECTION --`, `// === SECTION ===`, `// --- SECTION ---`, `/* ======= */`, or any decorative separator line.
 
             ## No lists
 
-            Do not use bullet, numbered, or dash-separated lists. Fold
-            the information into flowing prose sentences instead.
+            Do not use bullet, numbered, or dash-separated lists. Fold the information into flowing prose sentences instead.
 
             ## No concrete examples
 
-            Do not illustrate with concrete values. Avoid "e.g.",
-            "for example", "such as", "like", and bare parenthetical
-            values. Describe behavior abstractly. If a concrete value
-            is essential for understanding, put it in a test.
+            Do not illustrate with concrete values. Avoid "e.g.", "for example", "such as", "like", and bare parenthetical values. Describe behavior abstractly. If a concrete value is essential for understanding, put it in a test.
           '';
           comment-style = ''
             # Human-sounding code comments
@@ -152,41 +135,33 @@ in
 
             ## Brevity
 
-            - Inside function bodies, keep comments to one short sentence
-              or a few words.
+            - Inside function bodies, keep comments to one short sentence or a few words.
             - Doc comments may be longer, but still concise and direct.
             - Never restate what the code already says.
 
             ## Tone
 
-            - Write plain, direct English as if leaving a note for a
-              colleague.
-            - Avoid formal phrasing ("It should be noted that...",
-              "This function is responsible for...").
-            - Avoid hedging ("This might be needed because..."). State
-              the fact or remove the comment.
+            - Write plain, direct English as if leaving a note for a colleague.
+            - Avoid formal phrasing ("It should be noted that...", "This function is responsible for...").
+            - Avoid hedging ("This might be needed because..."). State the fact or remove the comment.
           '';
           test-style = ''
             # Testing practices
 
             ## Extend before create
 
-            Add assertions to an existing test when the setup and action
-            match. Only create a new test for a genuinely different scenario.
+            Add assertions to an existing test when the setup and action match. Only create a new test for a genuinely different scenario.
 
             ## One concept per test
 
-            Each test verifies one logical behavior. Multiple assertions
-            are fine when they all check facets of the same behavior.
+            Each test verifies one logical behavior. Multiple assertions are fine when they all check facets of the same behavior.
 
             ## Keep tests minimal
 
             - Only arrange what the test actually needs.
-            - No logic in tests: no conditionals or branching. Loops
-              are acceptable for table-driven / parameterized tests.
+            - No logic in tests: no conditionals or branching. Loops are acceptable for table-driven / parameterized tests.
             - No helper abstractions for a single test. Inline the setup.
-            - Prefer literal values over computed ones so expected results
-              are obvious at a glance.
+            - Prefer literal values over computed ones so expected results are obvious at a glance.
           '';
         };
 

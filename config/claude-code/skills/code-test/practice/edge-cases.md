@@ -35,6 +35,7 @@ Missing tests for boundary values, degenerate inputs, type limits, encoding edge
 ## Reporting
 
 For each missing edge case, state:
+
 - The function and parameter(s) involved.
 - The equivalence class or boundary value that is untested.
 - Why this gap matters; what bug class it could miss (off-by-one, nil dereference, panic, silent data corruption).

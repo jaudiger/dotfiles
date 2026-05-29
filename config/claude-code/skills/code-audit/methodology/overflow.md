@@ -60,6 +60,7 @@ For every conversion between signed and unsigned:
 ## Reporting
 
 For each finding, state:
+
 - The arithmetic operation or cast (file, line).
 - The input range that triggers overflow/underflow/truncation.
 - The consequence (wrong buffer size, incorrect branch, UB, wrap-around).

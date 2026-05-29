@@ -1,7 +1,6 @@
 ---
 name: code-security
-description: >
-  Audit source files for security vulnerabilities and weaknesses.
+description: Audit source files for security vulnerabilities and weaknesses.
 argument-hint: "[lang] [domain] [targets...]"
 allowed-tools: Bash, Read, Grep, Glob
 ---
@@ -25,7 +24,7 @@ Present everything in one message so the user can answer all at once (e.g., "pyt
 All targets use a prefix to indicate the type of input:
 
 | Prefix | Format | Description |
-|--------|--------|-------------|
+| --- | --- | --- |
 | `file:` | `file:PATH` or `file:PATH#L1-L2` | Single file, optional line range |
 | `folder:` | `folder:PATH` | All source files within the dir (recursive) |
 | `symbol:` | `symbol:PATH:LINE` or `symbol:PATH:LINE#L1-L2` | Function/struct/class/method at LINE, optional focus range |
@@ -44,7 +43,7 @@ Bare paths (no prefix) are shorthand for `file:PATH`.
 **`diff:SOURCE`**: Resolve the diff:
 
 | Source | Resolution |
-|--------|------------|
+| --- | --- |
 | `diff:local` | `git diff HEAD` for tracked changes + `git ls-files --others --exclude-standard` for untracked |
 | `diff:branch` | Detect default branch (`git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null \| sed 's@^refs/remotes/origin/@@'`, falling back to `main`), then `git diff <default>...HEAD` |
 | `diff:branch:REF` | `git diff REF...HEAD` |
@@ -63,9 +62,9 @@ After resolving the diff, extract changed files and changed line regions (hunks)
 
 ## Audit steps
 
-**Language:** $0
-**Domain:** $1
-**Targets:** all arguments after the second are targets to analyze (see Target syntax above).
+- **Language:** $0
+- **Domain:** $1
+- **Targets:** all arguments after the second are targets to analyze (see Target syntax above).
 
 1. Read [`lang/$0.md`](lang/$0.md) to confirm the domain is valid for this language and load language-specific secure patterns.
 2. Read [`domain/$1.md`](domain/$1.md) to load the security domain checklist.
@@ -92,11 +91,11 @@ After resolving the diff, extract changed files and changed line regions (hunks)
 ## Available languages
 
 | Language | Domains |
-|----------|---------|
-| `c`      | authn, authz, crypto, input-validation, transport, logging, config |
-| `go`     | authn, authz, crypto, input-validation, transport, logging, config |
-| `java`   | authn, authz, crypto, input-validation, transport, logging, config |
+| --- | --- |
+| `c` | authn, authz, crypto, input-validation, transport, logging, config |
+| `go` | authn, authz, crypto, input-validation, transport, logging, config |
+| `java` | authn, authz, crypto, input-validation, transport, logging, config |
 | `python` | authn, authz, crypto, input-validation, transport, logging, config |
-| `rust`   | authn, authz, crypto, input-validation, transport, logging, config |
-| `ts`     | authn, authz, crypto, input-validation, transport, logging, config |
-| `zig`    | crypto, input-validation, transport, logging, config |
+| `rust` | authn, authz, crypto, input-validation, transport, logging, config |
+| `ts` | authn, authz, crypto, input-validation, transport, logging, config |
+| `zig` | crypto, input-validation, transport, logging, config |

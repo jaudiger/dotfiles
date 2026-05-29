@@ -65,6 +65,7 @@ These are starvation risks and potential deadlocks if the blocked operation need
 ## Reporting
 
 For each finding, state:
+
 - The locks involved and their locations.
 - The code path that leads to deadlock (which thread/task acquires what, in what order).
 - A concrete triggering scenario.

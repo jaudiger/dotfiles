@@ -36,9 +36,7 @@ const arena = arena_allocator.allocator();
 
 ## Allocator Composition
 
-Every allocator implements the `std.mem.Allocator` interface, so you can stack
-behaviors by wrapping one allocator with another. A common composition is a
-page-backed arena fronted by a policy or instrumentation layer:
+Every allocator implements the `std.mem.Allocator` interface, so you can stack behaviors by wrapping one allocator with another. A common composition is a page-backed arena fronted by a policy or instrumentation layer:
 
 ```zig
 var arena_instance: std.heap.ArenaAllocator = .init(std.heap.page_allocator);
@@ -48,16 +46,11 @@ var counter: CountingAllocator = .init(arena_instance.allocator());
 const gpa = counter.allocator();
 ```
 
-The wrapper sees every `alloc`, `resize`, `remap`, and `free` call before
-forwarding to its parent. This is how `DebugAllocator` adds leak tracking and
-how `ArenaAllocator` adds bulk reclamation, without any call site needing to
-know which behaviors are stacked.
+The wrapper sees every `alloc`, `resize`, `remap`, and `free` call before forwarding to its parent. This is how `DebugAllocator` adds leak tracking and how `ArenaAllocator` adds bulk reclamation, without any call site needing to know which behaviors are stacked.
 
 ## Lifecycle-Gated Allocator
 
-In programs with a clear startup phase, steady-state, and shutdown phase, a
-small wrapper can refuse allocation after startup. Reaching steady-state with
-a frozen allocator is a runtime proof that the hot path is allocation-free:
+In programs with a clear startup phase, steady-state, and shutdown phase, a small wrapper can refuse allocation after startup. Reaching steady-state with a frozen allocator is a runtime proof that the hot path is allocation-free:
 
 ```zig
 const Lifecycle = struct {
@@ -103,14 +96,11 @@ const Lifecycle = struct {
 };
 ```
 
-The pattern fits databases, embedded firmware, real-time systems, and game
-engines, where a steady-state allocation would be a bug.
+The pattern fits databases, embedded firmware, real-time systems, and game engines, where a steady-state allocation would be a bug.
 
 ## Instrumented Allocator
 
-A wrapper can also passively observe traffic. Counting bytes in and bytes out
-gives a live "bytes in use" gauge that works in release builds, not only in
-debug:
+A wrapper can also passively observe traffic. Counting bytes in and bytes out gives a live "bytes in use" gauge that works in release builds, not only in debug:
 
 ```zig
 const Counting = struct {
@@ -154,8 +144,7 @@ The same shell scales to peak tracking, sampling, or per-subsystem budgets.
 
 ## ArrayList
 
-`std.ArrayList(T)` does not store an allocator internally. Pass it at each
-call site, and choose between heap-backed and stack-backed initialization:
+`std.ArrayList(T)` does not store an allocator internally. Pass it at each call site, and choose between heap-backed and stack-backed initialization:
 
 ```zig
 // Heap-backed: allocator passed on every mutating call.
@@ -173,8 +162,7 @@ The underlying type is `std.array_list.Aligned(T, null)`.
 
 ## DoublyLinkedList
 
-`std.DoublyLinkedList` is intrusive. Embed a `Node` in your struct and use
-`@fieldParentPtr` to recover the containing data:
+`std.DoublyLinkedList` is intrusive. Embed a `Node` in your struct and use `@fieldParentPtr` to recover the containing data:
 
 ```zig
 const MyNode = struct {
@@ -191,9 +179,7 @@ fn getData(node: *std.DoublyLinkedList.Node) *MyNode {
 
 ## Intrusive Queue and Stack
 
-The same intrusive technique gives allocation-free FIFO and LIFO containers.
-Embed a `next` link in your element; the container itself stores only head
-and tail pointers, so ownership of nodes stays with the caller:
+The same intrusive technique gives allocation-free FIFO and LIFO containers. Embed a `next` link in your element; the container itself stores only head and tail pointers, so ownership of nodes stays with the caller:
 
 ```zig
 fn IntrusiveQueue(comptime T: type) type {
@@ -226,10 +212,7 @@ const Job = struct {
 var queue: IntrusiveQueue(Job) = .{};
 ```
 
-A LIFO stack is the same pattern with a single `head` field: push prepends,
-pop removes from the head. When a node must participate in several lists at
-once, replace the bare `next` field with a named `Link` substruct and recover
-the element with `@fieldParentPtr("link", link)`, as in `DoublyLinkedList`.
+A LIFO stack is the same pattern with a single `head` field: push prepends, pop removes from the head. When a node must participate in several lists at once, replace the bare `next` field with a named `Link` substruct and recover the element with `@fieldParentPtr("link", link)`, as in `DoublyLinkedList`.
 
 ## HashMap
 
@@ -241,5 +224,4 @@ defer map.deinit(allocator);
 try map.put(allocator, "key", 42);
 ```
 
-`array_hash_map.Auto`, `array_hash_map.String`, and `array_hash_map.Custom`
-are the standard hash map types.
+`array_hash_map.Auto`, `array_hash_map.String`, and `array_hash_map.Custom` are the standard hash map types.

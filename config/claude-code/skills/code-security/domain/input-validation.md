@@ -71,6 +71,7 @@ For every file upload handler:
 ## Reporting
 
 For each finding, state:
+
 - The input source (file, line, variable).
 - The specific weakness (e.g., "XML parser allows external entities; XXE possible").
 - A concrete attack scenario (e.g., "attacker can read arbitrary files via XXE payload").

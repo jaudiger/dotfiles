@@ -67,6 +67,7 @@ Record each with its line number and the configuration key or value.
 ## Reporting
 
 For each finding, state:
+
 - The configuration point (file, line, setting).
 - The specific weakness (e.g., "debug mode enabled by default; stack traces visible to end users").
 - A concrete attack scenario (e.g., "attacker can enumerate internal file paths and framework versions from error messages").
