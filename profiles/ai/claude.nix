@@ -171,6 +171,7 @@ in
             commit = "";
             pr = "";
           };
+          autoDreamEnabled = true;
           defaultMode = "acceptEdits";
           env = {
             CLAUDE_CODE_DISABLE_FEEDBACK_SURVEY = 1;
