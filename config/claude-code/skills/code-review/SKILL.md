@@ -38,13 +38,13 @@ Bare paths (no prefix) are shorthand for `file:PATH`.
 
 #### Resolution rules
 
-**`file:PATH[#L1-L2]`**; Read the file. If `#L1-L2` is present, review only that line range but read enough surrounding context (imports, type definitions) to understand it.
+**`file:PATH[#L1-L2]`**: Read the file. If `#L1-L2` is present, review only that line range but read enough surrounding context (imports, type definitions) to understand it.
 
-**`folder:PATH`**; Glob for source files within PATH. Treat each discovered file as a `file:` target.
+**`folder:PATH`**: Glob for source files within PATH. Treat each discovered file as a `file:` target.
 
-**`symbol:PATH:LINE[#L1-L2]`**; Read the file at PATH. Identify the innermost function, method, struct, class, enum, or trait definition containing LINE. Review that symbol boundary (from signature to closing delimiter). If `#L1-L2` is appended, focus on that range within the symbol.
+**`symbol:PATH:LINE[#L1-L2]`**: Read the file at PATH. Identify the innermost function, method, struct, class, enum, or trait definition containing LINE. Review that symbol boundary (from signature to closing delimiter). If `#L1-L2` is appended, focus on that range within the symbol.
 
-**`diff:SOURCE`**; Resolve the diff:
+**`diff:SOURCE`**: Resolve the diff:
 
 | Source | Resolution |
 |--------|------------|
@@ -92,7 +92,7 @@ If there are no code regions to review (empty diff, no files found), report it a
 
 ### Step 2: Gather context
 
-1. For `diff:` targets: extract the list of changed files from the diff. Read each changed file in full using the Read tool. Skip deleted files. If a file exceeds 2 000 lines, read only the regions surrounding changed hunks (200 lines of context around each hunk).
+1. For `diff:` targets: extract the list of changed files from the diff. Read each changed file in full using the Read tool. Skip deleted files.
 2. For `diff:branch` targets: additionally run `git log --oneline <default>..HEAD` to capture commit context.
 3. For `diff:pr:` targets: additionally run `gh pr view N [--repo owner/repo]` (GitHub) or `glab mr view N` (GitLab) to fetch the PR title, description, and labels. Use these to understand the author's stated intent and evaluate the changes against that intent.
 4. For `file:`/`folder:`/`symbol:` targets: read the target files/regions. For `symbol:` targets, read the full file to understand context around the symbol.
@@ -138,8 +138,8 @@ For each finding, provide:
   - `high`: should fix; correctness risk or significant design flaw that will bite in production.
   - `medium`: should fix; maintainability concern, weaker design choice, or non-critical correctness gap.
   - `low`: optional; style, naming, or minor simplification.
-- **Description**; what is wrong and why it matters.
-- **Suggestion**; a concrete fix, alternative approach, or question for the author.
+- **Description**: what is wrong and why it matters.
+- **Suggestion**: a concrete fix, alternative approach, or question for the author.
 
 ### Step 6: Summary
 
@@ -153,12 +153,10 @@ For each finding, provide:
 - For `file:`/`folder:`/`symbol:` targets: review the **code region** directly. Apply aspects as a general code quality evaluation.
 - Be specific. Every finding must reference exact file paths and lines, and
   explain the concrete problem.
-- Do NOT modify any files. This is analysis only.
-- Do NOT invent problems. If an aspect has no findings, say so explicitly.
+- Do not modify any files. This is analysis only.
+- Do not invent problems. If an aspect has no findings, say so explicitly.
 - Respect the author's intent. Read the PR description or commit message. Do
   not suggest redesigns that contradict the stated goal unless the approach is
   fundamentally flawed.
 - Keep low-severity items separate from critical issues. Do not bury critical
   issues among style suggestions.
-- For large changesets (50+ files), warn the user and suggest narrowing scope
-  to specific directories or aspects rather than producing a shallow review.

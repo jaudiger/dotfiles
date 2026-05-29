@@ -99,7 +99,7 @@ handling may require both `json` and `errors` topics.
 ## Rules
 
 - Always present code examples using Zig 0.16+ syntax.
-- Do NOT invent patterns not covered by the reference content. If unsure,
+- Do not invent patterns not covered by the reference content. If unsure,
   state that the topic is not covered.
 - When the user is actively coding, prefer showing concrete code examples over
   abstract descriptions.

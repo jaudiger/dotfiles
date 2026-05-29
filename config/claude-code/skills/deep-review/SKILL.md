@@ -19,7 +19,7 @@ allowed-tools: Bash, Read, Grep, Glob, Task, WebFetch
 ```
 
 Use these resolved paths when reading sub-skill files in Phase 5.
-All `Read` calls for skill files MUST use the absolute paths listed above.
+Read skill files using the absolute paths listed above.
 
 If the output above is empty or missing any of the four expected directories,
 stop and report which skills could not be resolved; do not proceed to Phase 5.
@@ -77,7 +77,7 @@ Create all phase tasks upfront with the available task-tracking tool, then track
 | Invoke skills via Task agents | Invoking skills via Task agents |
 | Synthesize report | Synthesizing report |
 
-This is mandatory. Never skip task creation or updates.
+Keep the task list current as work proceeds.
 
 ## Phase 1: Parse and validate input
 
@@ -94,20 +94,20 @@ Classify each target by prefix and validate syntax:
 
 ### 1b: Semantic validation
 
-- **Empty file check**; for `file:` targets, verify the file is non-empty. If
+- **Empty file check**: for `file:` targets, verify the file is non-empty. If
   every `file:` target is empty, report "All target files are empty" and stop.
-- **Folder source-file check**; for `folder:` targets, defer validation until
+- **Folder source-file check**: for `folder:` targets, defer validation until
   after Phase 2 language detection (the folder must contain files matching the
   detected language).
-- **Symbol resolution confirmation**; for `symbol:` targets, emit a
+- **Symbol resolution confirmation**: for `symbol:` targets, emit a
   confirmation of the resolved symbol (name, kind, location) after Phase 3
   symbol resolution completes.
 
 ## Phase 2: Detect language, framework, version
 
-1. **Language**; determine from file extensions in target paths or diff changeset:
+1. **Language**: determine from file extensions in target paths or diff changeset:
    - `.rs` to rust, `.go` to go, `.ts`/`.tsx` to ts, `.java` to java, `.c`/`.h` to c, `.zig` to zig, `.py` to python
-2. **Framework and version**; inspect project config files:
+2. **Framework and version**: inspect project config files:
    - `Cargo.toml`, `package.json`, `go.mod`, `pom.xml`, `build.gradle`, `pyproject.toml`, `build.zig.zon`, `requirements.txt`, `tsconfig.json`, etc.
 3. Record findings for inclusion in context passed to sub-skills.
 
@@ -274,7 +274,7 @@ Targets: <target specification>
 
 1. If `diff:` target: launch code-review Task agent **first**, wait for results.
 2. Then launch remaining skills (code-audit, code-security, code-test) as
-   **parallel Task agents**; one Task per selected concern/domain/practice.
+   **parallel Task agents**: one Task per selected concern/domain/practice.
 3. For multi-language changesets: invoke per-language with the appropriate files.
 4. Wait for all Task agents to complete and collect results.
 
@@ -289,9 +289,9 @@ applies across the codebase:
 2. Use **Grep** to search the full codebase for sibling occurrences of the same
    pattern.
 3. **Classify** each match:
-   - **Same defect**; the match exhibits the identical problem.
-   - **Similar but safe**; the pattern appears but is handled correctly.
-   - **False positive**; syntactic match but semantically unrelated.
+   - **Same defect**: the match exhibits the identical problem.
+   - **Similar but safe**: the pattern appears but is handled correctly.
+   - **False positive**: syntactic match but semantically unrelated.
 4. **Record scope** for each finding: count of "same defect" matches plus a
    `file:line` list of each occurrence.
 
@@ -352,5 +352,4 @@ When the same file+line+issue appears across multiple skills, merge into a singl
 - Do not skip context gathering; the centralized context is the value over running individual skills separately.
 - Let sub-skills run their full procedure. Do not truncate or summarize their instructions.
 - If a skill finds no issues, note it in the report rather than omitting it.
-- For large changesets (50+ files), warn the user and suggest narrowing scope.
 - If a language is unsupported by a particular skill, skip that skill for those files and note it in the report.

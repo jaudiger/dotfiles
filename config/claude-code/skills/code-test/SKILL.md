@@ -36,13 +36,13 @@ Bare paths (no prefix) are shorthand for `file:PATH`.
 
 ### Resolution rules
 
-**`file:PATH[#L1-L2]`**; Read the file. If `#L1-L2` is present, analyze only that line range but read enough surrounding context (imports, type definitions) to understand it.
+**`file:PATH[#L1-L2]`**: Read the file. If `#L1-L2` is present, analyze only that line range but read enough surrounding context (imports, type definitions) to understand it.
 
-**`folder:PATH`**; Glob for files matching the language's typical extensions within PATH. Treat each discovered file as a `file:` target.
+**`folder:PATH`**: Glob for files matching the language's typical extensions within PATH. Treat each discovered file as a `file:` target.
 
-**`symbol:PATH:LINE[#L1-L2]`**; Read the file at PATH. Identify the innermost function, method, struct, class, enum, or trait definition containing LINE. Analyze that symbol boundary (from signature to closing delimiter). If `#L1-L2` is appended, focus on that range within the symbol. When invoked standalone (not by deep-review), do NOT chase callers/implementations outside the file. When run under deep-review, callers, callees, type definitions, and related tests will already be supplied in the `## Gathered Context` section of the Task prompt, so rely on those rather than re-gathering. After resolving the symbol, also locate the corresponding test file using project test conventions. The symbol gives the source region; test-file discovery gives the test region to evaluate against it.
+**`symbol:PATH:LINE[#L1-L2]`**: Read the file at PATH. Identify the innermost function, method, struct, class, enum, or trait definition containing LINE. Analyze that symbol boundary (from signature to closing delimiter). If `#L1-L2` is appended, focus on that range within the symbol. When invoked standalone (not by deep-review), do not chase callers/implementations outside the file. When run under deep-review, callers, callees, type definitions, and related tests will already be supplied in the `## Gathered Context` section of the Task prompt, so rely on those rather than re-gathering. After resolving the symbol, also locate the corresponding test file using project test conventions. The symbol gives the source region; test-file discovery gives the test region to evaluate against it.
 
-**`diff:SOURCE`**; Resolve the diff:
+**`diff:SOURCE`**: Resolve the diff:
 
 | Source | Resolution |
 |--------|------------|
@@ -71,13 +71,13 @@ After resolving the diff, extract changed files and changed line regions (hunks)
 1. Read [`lang/$0.md`](lang/$0.md) to confirm the practice is valid for this language and load language-specific testing patterns.
 2. Read [`practice/$1.md`](practice/$1.md) to load the testing practice methodology and checklist.
 3. Resolve all targets into concrete code regions using the target resolution rules.
-4. **Locate test files**; for each target source file (or resolved source region), find the corresponding test file(s) using the project's test conventions (co-located `_test.go`, `mod_test.rs`, `*.test.ts`, `*Test.java`, `test_*.py`, etc.). Read each test file in full. If no test file exists, report it as a critical finding.
-5. **Read source files**; read every target source file in full. Build a model of: all functions/methods, their parameters (types and domains), return types, branching structure, error paths, and side effects.
+4. **Locate test files**: for each target source file (or resolved source region), find the corresponding test file(s) using the project's test conventions (co-located `_test.go`, `mod_test.rs`, `*.test.ts`, `*Test.java`, `test_*.py`, etc.). Read each test file in full. If no test file exists, report it as a critical finding.
+5. **Read source files**: read every target source file in full. Build a model of: all functions/methods, their parameters (types and domains), return types, branching structure, error paths, and side effects.
 6. Apply the loaded practice checklist against the source-test pair.
 
 ## Rules
 
-- Read EVERY line of each source and test file. Do not skip or skim.
+- Read each source and test file in full rather than sampling it.
 - **Derive test expectations from the interface, not the implementation.** Examine parameter types, return types, and documented contracts. For each input, enumerate the equivalence classes and boundary values of its domain. Flag any equivalence class that has no corresponding test, even if the current code does not distinguish it; that is precisely where bugs hide.
 - For each finding provide:
   - **Source file** and **line number(s)** of the untested or poorly tested code.
@@ -88,12 +88,12 @@ After resolving the diff, extract changed files and changed line regions (hunks)
     - `high`: significant branches or failure modes are untested.
     - `medium`: edge cases or secondary paths lack coverage.
     - `low`: minor improvements to test quality or structure.
-  - **Description**; what is missing or wrong and why it matters.
-  - **Suggested test**; a concrete test case description (inputs, expected outcome, what bug it would catch). Describe the test; do not write full implementation code.
+  - **Description**: what is missing or wrong and why it matters.
+  - **Suggested test**: a concrete test case description (inputs, expected outcome, what bug it would catch). Describe the test; do not write full implementation code.
 - When analyzing a `symbol:` target, report the symbol name and its span in the heading for that target's findings.
 - When analyzing a `diff:` target, focus on changed and added code. Flag pre-existing issues in unchanged lines only if a change makes them actively dangerous.
-- If you find NO issues for a section, say so explicitly; do not invent problems.
-- Do NOT modify any files. This is analysis only.
+- If you find no issues for a section, say so explicitly; do not invent problems.
+- Do not modify any files. This is analysis only.
 - At the end, produce a summary table of all findings grouped by severity.
 
 ## Available languages

@@ -12,7 +12,7 @@ branch-coverage, edge-cases, assertions, isolation, negative-testing, mutation-r
   - JUnit 5 (`org.junit.jupiter`); look for `@Test` from `org.junit.jupiter.api.Test`.
   - JUnit 4 (`junit:junit`); look for `@Test` from `org.junit.Test`.
   - TestNG; look for `org.testng` imports.
-  - Do NOT confuse JUnit 4 and JUnit 5; their annotations and assertions are incompatible packages.
+  - Do not confuse JUnit 4 and JUnit 5; their annotations and assertions are incompatible packages.
 - **Assertion and mock libraries**: check imports and dependencies for:
   - `org.assertj`: fluent assertions.
   - `org.hamcrest`: matcher-based assertions.
@@ -42,7 +42,7 @@ branch-coverage, edge-cases, assertions, isolation, negative-testing, mutation-r
 
 ### Exception testing
 - Use `assertThrows(SpecificException.class, () to ...)` and assert on the returned exception.
-- Do NOT use `@Test(expected = ...)` (JUnit 4) or try/catch with `fail()`: these are weaker patterns.
+- Do not use `@Test(expected = ...)` (JUnit 4) or try/catch with `fail()`: these are weaker patterns.
 - Verify the exception message and cause when they are part of the contract.
 
 ### Parameterized tests

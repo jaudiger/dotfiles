@@ -12,7 +12,7 @@ branch-coverage, edge-cases, assertions, isolation, negative-testing, mutation-r
   - `pytest`: dominant framework, look for `conftest.py` files, `@pytest.mark.*` decorators.
   - `unittest`: stdlib, look for `class XxxTest(unittest.TestCase)`.
   - `doctest`: inline tests in docstrings.
-  Do NOT mix `pytest` and `unittest` style assertions in the same test unless the project does so intentionally.
+  Do not mix `pytest` and `unittest` style assertions in the same test unless the project does so intentionally.
 - **Test utility libraries**: check `pyproject.toml` or `requirements-dev.txt` for:
   - `pytest-mock` / `unittest.mock`: mocking.
   - `pytest-asyncio` / `anyio`: async test support.
@@ -42,7 +42,7 @@ branch-coverage, edge-cases, assertions, isolation, negative-testing, mutation-r
 ### Exception testing
 - Use `pytest.raises(SpecificException)` as a context manager.
 - Verify the `match` parameter or assert on `exc_info.value` attributes; not just the exception type.
-- Do NOT use bare `try/except` with `pytest.fail()`: the context manager is clearer and less error-prone.
+- Do not use bare `try/except` with `pytest.fail()`: the context manager is clearer and less error-prone.
 - For `unittest`: use `self.assertRaises()` or `self.assertRaisesRegex()`.
 
 ### Mocking

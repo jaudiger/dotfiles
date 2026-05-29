@@ -42,7 +42,7 @@ in
 
             Review what was accomplished in this session. Identify any patterns,
             methodologies, or language-specific knowledge that were used but are
-            NOT currently captured in:
+            not currently captured in:
 
             **Global skills** live under `${host.dotfilesDirectory}/config/claude-code/skills/`.
             Glob that directory to enumerate the currently installed skills,

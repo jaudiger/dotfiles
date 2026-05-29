@@ -19,7 +19,7 @@ allowed-tools: AskUserQuestion, Bash, Read, Grep, Glob, Edit, Task, WebFetch, En
 ```
 
 Use these resolved paths when reading sub-skill files in Phase 5.
-All `Read` calls for skill files MUST use the absolute paths listed above.
+Read skill files using the absolute paths listed above.
 
 If the output above is empty or missing any of the four expected directories,
 stop and report which skills could not be resolved; do not proceed to Phase 5.
@@ -78,7 +78,7 @@ Create all phase tasks upfront with the available task-tracking tool, then track
 | Resolve | Resolving |
 | Write summary | Writing summary |
 
-This is mandatory. Never skip task creation or updates.
+Keep the task list current as work proceeds.
 
 ## Phase 0: Enter plan mode
 
@@ -87,14 +87,14 @@ read-only exploration of Phases 1-6 from the edit work in Phase 7 and gives
 the user a single approval gate at the boundary, using the plan file as the
 review artifact.
 
-1. **Detect existing plan mode**; if a plan-mode system reminder is already
+1. **Detect existing plan mode**: if a plan-mode system reminder is already
    present in the conversation, the session is already in plan mode. Record
    the plan file path it announces and proceed to Phase 1.
-2. **Enter plan mode**; otherwise, call `EnterPlanMode`. The harness shows
+2. **Enter plan mode**: otherwise, call `EnterPlanMode`. The harness shows
    a consent prompt to the user. If consent is declined or the call fails,
    stop and report that `deep-resolve` requires plan mode for its
    exploration-then-edit workflow.
-3. **Record the plan file path**; after consent, the harness emits a
+3. **Record the plan file path**: after consent, the harness emits a
    plan-mode system reminder containing the assigned plan file path. Parse
    and record this path. Phase 7 step 3 writes the change plan there; no
    other files may be edited until plan mode exits.
@@ -113,11 +113,11 @@ Fetch and normalize the report from whatever source was provided:
 | Bare text | Use the text directly |
 
 Extract from the report:
-1. **Problem statement**; what is broken or missing
-2. **Reproduction steps**; if provided
-3. **Error output**; stack traces, logs, error messages
-4. **Affected areas**; file paths, function names, modules, endpoints mentioned
-5. **Labels/tags**; issue labels that hint at category (bug, security, performance, etc.)
+1. **Problem statement**: what is broken or missing
+2. **Reproduction steps**: if provided
+3. **Error output**: stack traces, logs, error messages
+4. **Affected areas**: file paths, function names, modules, endpoints mentioned
+5. **Labels/tags**: issue labels that hint at category (bug, security, performance, etc.)
 
 ## Phase 2: Validate report
 
@@ -142,23 +142,23 @@ If the report is **relevant**: proceed to 2b.
 ### 2b: Factual verification
 
 Cross-reference every concrete claim in the report against the actual codebase.
-This is a lightweight, read-only check; do NOT run the code.
+This is a lightweight, read-only check; do not run the code.
 
 1. **Paths and symbols**. Do the files, modules, functions, types, or endpoints
    mentioned in the report actually exist? Use Glob and Grep to verify.
-2. **Code structure**; Does the code at the referenced locations match what the
+2. **Code structure**: Does the code at the referenced locations match what the
    report describes (e.g., function signatures, control flow, data types)?
    Read the relevant source to confirm.
-3. **Described behavior**; Does the code logic support the behavior the report
+3. **Described behavior**: Does the code logic support the behavior the report
    claims? Trace the relevant code paths by reading to see whether the described
    scenario is plausible given the current source.
 4. **Versions and dependencies**. If the report references specific library
    versions, APIs, or features, confirm they match what the project actually uses.
 
 For each claim, record one of:
-- **Confirmed**; the codebase matches the report's claim.
-- **Incorrect**; the codebase contradicts the claim (note what actually exists).
-- **Unverifiable**; the claim cannot be confirmed or denied from source alone.
+- **Confirmed**: the codebase matches the report's claim.
+- **Incorrect**: the codebase contradicts the claim (note what actually exists).
+- **Unverifiable**: the claim cannot be confirmed or denied from source alone.
 
 **Outcome:**
 - If critical claims are **incorrect** (e.g., the described function does not
@@ -170,14 +170,14 @@ For each claim, record one of:
 
 ## Phase 3: Deep codebase exploration
 
-This is a critical phase. Do NOT skip or abbreviate it.
+Later phases build on this exploration; work through it fully rather than abbreviating.
 
 ### 3a: Detect language, framework, version
 
-1. **Language**; determine from file extensions in affected paths and source
+1. **Language**: determine from file extensions in affected paths and source
    files discovered during exploration:
    - `.rs` to rust, `.go` to go, `.ts`/`.tsx` to ts, `.java` to java, `.c`/`.h` to c, `.zig` to zig, `.py` to python
-2. **Framework and version**; inspect project config files:
+2. **Framework and version**: inspect project config files:
    - `Cargo.toml`, `package.json`, `go.mod`, `pom.xml`, `build.gradle`, `pyproject.toml`, `build.zig.zon`, `requirements.txt`, `tsconfig.json`, etc.
 3. Record findings; these are needed in Phase 5 to load the correct
    `lang/$LANG.md` files for sub-skills.
@@ -186,11 +186,11 @@ This is a critical phase. Do NOT skip or abbreviate it.
 
 Before touching any code, build a mental model of the codebase:
 
-1. **Project structure**; read the top-level directory layout, build system
+1. **Project structure**: read the top-level directory layout, build system
    files, and module organization.
-2. **Entry points**; identify how the application starts, how requests flow,
+2. **Entry points**: identify how the application starts, how requests flow,
    where the public API surface is.
-3. **Module boundaries**; understand which modules own which responsibilities
+3. **Module boundaries**: understand which modules own which responsibilities
    and how they communicate (imports, trait implementations, interfaces, event
    buses, etc.).
 
@@ -198,13 +198,13 @@ Before touching any code, build a mental model of the codebase:
 
 Using the problem statement and any file/function hints from the report:
 
-1. **Locate the symptom**; find the exact code location where the reported
+1. **Locate the symptom**: find the exact code location where the reported
    behavior manifests (the crash site, the wrong output, the missing handling).
-2. **Trace upstream**; follow the data/control flow backward from the symptom
+2. **Trace upstream**: follow the data/control flow backward from the symptom
    toward the origin of the data or decision that causes the defect.
-3. **Read related modules**; read adjacent modules, shared utilities, type
+3. **Read related modules**: read adjacent modules, shared utilities, type
    definitions, and configuration that interact with the affected area.
-4. **Read tests**; find and read existing tests for the affected area. Note
+4. **Read tests**: find and read existing tests for the affected area. Note
    what is covered and what is not.
 
 ## Phase 4: Root cause & impact
@@ -213,22 +213,22 @@ Using the problem statement and any file/function hints from the report:
 
 With the full exploration context from Phase 3, determine:
 
-1. **What is actually wrong**; the defect, not just the symptom.
-2. **Why it exists**; what design assumption or oversight led to this state.
-3. **What the correct design should be**; how this area should work given the
+1. **What is actually wrong**: the defect, not just the symptom.
+2. **Why it exists**: what design assumption or oversight led to this state.
+3. **What the correct design should be**: how this area should work given the
    overall architecture, not just how to suppress the symptom.
 
 ### 4b: Impact analysis
 
 Consolidate the full blast radius of the defect and the planned fix:
 
-1. **Downstream consumers**; identify all callers and consumers of the affected
+1. **Downstream consumers**: identify all callers and consumers of the affected
    code. Trace how the defect propagates through each consumer.
-2. **Sibling patterns**; use Grep to find other code locations that use the
+2. **Sibling patterns**: use Grep to find other code locations that use the
    same flawed pattern. Record each match with file path and line number.
-3. **Related fragile code**; identify adjacent code that shares assumptions
+3. **Related fragile code**: identify adjacent code that shares assumptions
    with the defect (e.g., relies on the same invalid invariant).
-4. **Test gap assessment**; cross-reference the affected code paths against
+4. **Test gap assessment**: cross-reference the affected code paths against
    existing test coverage. Record which paths have tests, which lack coverage,
    and which tests are likely to break from the fix.
 
@@ -356,7 +356,7 @@ Targets: <affected code regions>
 
 ### Invocation order
 
-1. Launch all selected sub-skill Task agents in **parallel**; one Task per
+1. Launch all selected sub-skill Task agents in **parallel**: one Task per
    selected concern/domain/practice.
 2. For multi-language codebases: invoke per-language with the appropriate files
    and the matching `lang/$LANG.md`.
@@ -423,17 +423,17 @@ skill diverges from analysis-only tools; it modifies the codebase.
 
 ### Change strategy
 
-1. **Plan the changes**; before editing, list every file that needs to change
+1. **Plan the changes**: before editing, list every file that needs to change
    and what the change will be. Verify that the changes are consistent with
    each other and with the overall architecture.
-2. **Check plan against Phase 4a design**; compare the planned changes against
+2. **Check plan against Phase 4a design**: compare the planned changes against
    the correct design identified in Phase 4a-3. If the plan is a behavioral
    patch (changes how the code behaves in the specific failing case) rather
    than a structural fix (changes the design so the defect class cannot occur),
    reconsider the approach. Prefer structural fixes that make the defect class
    impossible by construction over behavioral patches that merely avoid the
    specific trigger.
-3. **Write the plan file and request approval**; write the plan from steps
+3. **Write the plan file and request approval**: write the plan from steps
    1-2 into the plan file recorded in Phase 0, overwriting any prior
    contents. The plan must include, for each file to be changed: the path,
    the intent of the edit, and whether the change is structural or
@@ -446,13 +446,13 @@ skill diverges from analysis-only tools; it modifies the codebase.
      again. If the user closes the skill or otherwise abandons the gate,
      stop without editing any files and skip to Phase 8 noting that the
      resolution was not applied.
-4. **Apply changes**; implement the correct design identified in Phase 4a.
+4. **Apply changes**: implement the correct design identified in Phase 4a.
    Prefer targeted edits over full file rewrites unless a full rewrite is
    genuinely cleaner.
-5. **Verify consistency**; after applying all changes, re-read the modified
+5. **Verify consistency**: after applying all changes, re-read the modified
    files to confirm correctness. Check that imports, type signatures, and
    cross-module references are consistent.
-6. **Run checks**; if the project has a build command, linter, or test suite,
+6. **Run checks**: if the project has a build command, linter, or test suite,
    run them. Fix any failures introduced by the changes.
 
 ## Phase 8: Summary
