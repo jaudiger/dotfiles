@@ -23,6 +23,7 @@ in
 
       userSettings = {
         agent = {
+          commit_message_instructions = "Use conventional commit message format";
           commit_message_model = {
             model = "devstral-small-latest";
             provider = "mistral";
