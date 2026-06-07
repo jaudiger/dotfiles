@@ -54,7 +54,10 @@ in
         };
         agent_buffer_font_size = sub_font_size;
         agent_servers = {
-          claude-acp = {
+          mistral-vibe = {
+            type = "registry";
+          };
+          opencode = {
             type = "registry";
           };
         };

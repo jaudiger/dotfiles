@@ -1,0 +1,26 @@
+_:
+
+{
+  nixpkgs.config.allowUnfreePackages = [
+    "mistral-vibe"
+
+    # Dependencies of 'mistral-vibe'
+    "textual-speedups"
+  ];
+
+  modules.home-manager.programs.mistral-vibe = {
+    enable = true;
+
+    settings = {
+      disable_welcome_banner_animation = true;
+
+      enable_auto_update = false;
+      enable_telemetry = false;
+      enable_update_checks = false;
+
+      include_commit_signature = false;
+
+      vim_keybindings = true;
+    };
+  };
+}
