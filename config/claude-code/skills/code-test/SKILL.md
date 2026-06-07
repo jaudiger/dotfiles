@@ -1,8 +1,6 @@
 ---
 name: code-test
 description: Audit test suites for quality, coverage gaps, missing tests, and mutation resistance.
-argument-hint: "[lang] [practice] [targets...]"
-allowed-tools: Bash, Read, Grep, Glob
 ---
 
 # Code Test Audit

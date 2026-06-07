@@ -1,8 +1,6 @@
 ---
 name: lang-zig
 description: Zig 0.16+ idiomatic best practices and patterns reference. Provides guidance on I/O, JSON, memory management, error handling, comptime, types, testing, build system, and syntax idioms.
-argument-hint: "[topic...]"
-allowed-tools: Read, Grep, Glob
 ---
 
 # Zig Best Practices Reference

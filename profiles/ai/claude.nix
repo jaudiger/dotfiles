@@ -194,17 +194,8 @@ in
             ];
           };
           permissions = {
-            allow = [
-              "Glob"
-              "Grep"
-              "Read"
-              "WebFetch"
-              "WebSearch"
-            ];
             deny = [
-              "Edit(.env*)"
               "Read(.env*)"
-              "Write(.env*)"
             ];
           };
           preferredNotifChannel = "terminal_bell";

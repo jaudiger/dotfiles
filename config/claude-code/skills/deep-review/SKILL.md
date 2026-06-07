@@ -1,8 +1,6 @@
 ---
 name: deep-review
 description: Comprehensive read-only multi-dimensional code analysis. Orchestrates code-review, code-audit, code-security, and code-test with centralized context gathering. Input is source code targets (file, folder, symbol, or diff); NOT issue reports. For resolving bug reports and issues, use deep-resolve instead.
-argument-hint: "[targets...]"
-allowed-tools: Bash, Read, Grep, Glob, Task, WebFetch
 ---
 
 # Deep Review

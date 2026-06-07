@@ -1,8 +1,6 @@
 ---
 name: code-audit
 description: Audit source files for bugs and defects using static analysis.
-argument-hint: "[lang] [concern] [targets...]"
-allowed-tools: Bash, Read, Grep, Glob
 ---
 
 # Code Audit
