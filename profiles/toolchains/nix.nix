@@ -21,6 +21,18 @@ in
     };
 
     programs = {
+      # Claude Code configuration
+      claude-code = {
+        lspServers = {
+          nixd = {
+            command = "nixd";
+            extensionToLanguage = {
+              ".nix" = "nix";
+            };
+          };
+        };
+      };
+
       # Neovim configuration
       nixvim = {
         plugins.lsp.servers = {
@@ -44,25 +56,42 @@ in
         };
       };
 
-      # Zed configuration
-      zed-editor.userSettings = {
-        languages = {
-          Nix = {
-            language_servers = [
-              "nixd"
-              "!nil"
-              "..."
-            ];
+      # Opencode configuration
+      opencode = {
+        settings = {
+          lsp = {
+            nixd = {
+              command = [ "nixd" ];
+              initialization = {
+                nixpkgs.expr = "import <nixpkgs> {}";
+                options =
+                  if isDarwin then
+                    {
+                      darwin.expr = ''(builtins.getFlake "${host.dotfilesDirectory}").darwinConfigurations.darwin-aarch64.options'';
+                      home-manager.expr = ''(builtins.getFlake "${host.dotfilesDirectory}").darwinConfigurations.darwin-aarch64.options.home-manager'';
+                    }
+                  else
+                    {
+                      nixos.expr = ''(builtins.getFlake "${host.dotfilesDirectory}").nixosConfigurations.nixos-aarch64.options'';
+                      home-manager.expr = ''(builtins.getFlake "${host.dotfilesDirectory}").nixosConfigurations.nixos-aarch64.options.home-manager'';
+                    };
+              };
+            };
           };
         };
       };
 
-      # Claude Code configuration
-      claude-code.lspServers = {
-        nixd = {
-          command = "nixd";
-          extensionToLanguage = {
-            ".nix" = "nix";
+      # Zed configuration
+      zed-editor = {
+        userSettings = {
+          languages = {
+            Nix = {
+              language_servers = [
+                "nixd"
+                "!nil"
+                "..."
+              ];
+            };
           };
         };
       };

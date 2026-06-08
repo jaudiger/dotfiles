@@ -32,6 +32,20 @@ in
       };
 
       programs = {
+        # Claude Code configuration
+        claude-code = {
+          lspServers = {
+            yaml-language-server = {
+              command = "yaml-language-server";
+              args = [ "--stdio" ];
+              extensionToLanguage = {
+                ".yaml" = "yaml";
+                ".yml" = "yaml";
+              };
+            };
+          };
+        };
+
         # Neovim configuration
         nixvim = {
           plugins.lsp.servers = {
@@ -42,23 +56,28 @@ in
           };
         };
 
-        # Zed configuration
-        zed-editor.userSettings = {
-          lsp = {
-            "yaml-language-server" = {
-              settings = yamlConfig;
+        # Opencode configuration
+        opencode = {
+          settings = {
+            lsp = {
+              yaml-ls = {
+                command = [
+                  "yaml-language-server"
+                  "--stdio"
+                ];
+                initialization = yamlConfig;
+              };
             };
           };
         };
 
-        # Claude Code configuration
-        claude-code.lspServers = {
-          yaml-language-server = {
-            command = "yaml-language-server";
-            args = [ "--stdio" ];
-            extensionToLanguage = {
-              ".yaml" = "yaml";
-              ".yml" = "yaml";
+        # Zed configuration
+        zed-editor = {
+          userSettings = {
+            lsp = {
+              "yaml-language-server" = {
+                settings = yamlConfig;
+              };
             };
           };
         };

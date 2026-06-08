@@ -58,23 +58,39 @@ in
           };
         };
 
-        # Zed configuration
-        zed-editor.userSettings = {
-          lsp = {
+        # Claude Code configuration
+        claude-code = {
+          lspServers = {
             jdtls = {
-              initialization_options = {
-                settings = jdtlsConfig;
+              command = "jdtls";
+              extensionToLanguage = {
+                ".java" = "java";
               };
             };
           };
         };
 
-        # Claude Code configuration
-        claude-code.lspServers = {
-          jdtls = {
-            command = "jdtls";
-            extensionToLanguage = {
-              ".java" = "java";
+        # Opencode configuration
+        opencode = {
+          settings = {
+            lsp = {
+              jdtls = {
+                command = [ "jdtls" ];
+                initialization = jdtlsConfig;
+              };
+            };
+          };
+        };
+
+        # Zed configuration
+        zed-editor = {
+          userSettings = {
+            lsp = {
+              jdtls = {
+                initialization_options = {
+                  settings = jdtlsConfig;
+                };
+              };
             };
           };
         };

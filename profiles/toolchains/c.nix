@@ -35,6 +35,23 @@ in
       };
 
       programs = {
+        # Claude Code configuration
+        claude-code = {
+          lspServers = {
+            clangd = {
+              command = "clangd";
+              extensionToLanguage = {
+                ".c" = "c";
+                ".h" = "c";
+                ".cpp" = "cpp";
+                ".cc" = "cpp";
+                ".cxx" = "cpp";
+                ".hpp" = "cpp";
+              };
+            };
+          };
+        };
+
         # Neovim configuration
         nixvim = {
           plugins.lsp.servers = {
@@ -44,17 +61,13 @@ in
           };
         };
 
-        # Claude Code configuration
-        claude-code.lspServers = {
-          clangd = {
-            command = "clangd";
-            extensionToLanguage = {
-              ".c" = "c";
-              ".h" = "c";
-              ".cpp" = "cpp";
-              ".cc" = "cpp";
-              ".cxx" = "cpp";
-              ".hpp" = "cpp";
+        # Opencode configuration
+        opencode = {
+          settings = {
+            lsp = {
+              clangd = {
+                command = [ "clangd" ];
+              };
             };
           };
         };

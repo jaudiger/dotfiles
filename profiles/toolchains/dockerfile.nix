@@ -12,11 +12,27 @@
       ];
     };
 
-    # Neovim configuration
-    programs.nixvim = {
-      plugins.lsp.servers = {
-        dockerls = {
-          enable = true;
+    programs = {
+      # Neovim configuration
+      nixvim = {
+        plugins.lsp.servers = {
+          dockerls = {
+            enable = true;
+          };
+        };
+      };
+
+      # Opencode configuration
+      opencode = {
+        settings = {
+          lsp = {
+            dockerfile = {
+              command = [
+                "docker-langserver"
+                "--stdio"
+              ];
+            };
+          };
         };
       };
     };

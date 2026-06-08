@@ -71,47 +71,65 @@ in
         };
 
         # Claude Code configuration
-        claude-code.lspServers = {
-          ruff = {
-            command = "ruff";
-            args = [ "server" ];
-            extensionToLanguage = {
-              ".py" = "python";
-              ".pyi" = "python";
+        claude-code = {
+          lspServers = {
+            ruff = {
+              command = "ruff";
+              args = [ "server" ];
+              extensionToLanguage = {
+                ".py" = "python";
+                ".pyi" = "python";
+              };
+            };
+            ty = {
+              command = "ty";
+              args = [ "server" ];
+              extensionToLanguage = {
+                ".py" = "python";
+                ".pyi" = "python";
+              };
             };
           };
-          ty = {
-            command = "ty";
-            args = [ "server" ];
-            extensionToLanguage = {
-              ".py" = "python";
-              ".pyi" = "python";
+        };
+
+        # Opencode configuration
+        opencode = {
+          settings = {
+            lsp = {
+              ty = {
+                command = [
+                  "ty"
+                  "server"
+                ];
+              };
             };
           };
         };
 
         # Zed configuration
-        zed-editor.userSettings = {
-          languages = {
-            Python = {
-              formatter = [
-                { code_action = "source.organizeImports.ruff"; }
-                {
-                  language_server = {
-                    name = "ruff";
-                  };
-                }
-              ];
-              language_servers = [
-                "ty"
-                "!basedpyright"
-                "..."
-              ];
+        zed-editor = {
+          userSettings = {
+            languages = {
+              Python = {
+                formatter = [
+                  { code_action = "source.organizeImports.ruff"; }
+                  {
+                    language_server = {
+                      name = "ruff";
+                    };
+                  }
+                ];
+                language_servers = [
+                  "ty"
+                  "!basedpyright"
+                  "..."
+                ];
+              };
             };
-          };
-          lsp = {
-            ruff = {
-              initialization_options = ruffConfig;
+            lsp = {
+              ruff = {
+                initialization_options = ruffConfig;
+              };
             };
           };
         };

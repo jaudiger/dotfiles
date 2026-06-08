@@ -26,6 +26,18 @@
     };
 
     programs = {
+      # Claude Code configuration
+      claude-code = {
+        lspServers = {
+          zls = {
+            command = "zls";
+            extensionToLanguage = {
+              ".zig" = "zig";
+            };
+          };
+        };
+      };
+
       # Neovim configuration
       nixvim = {
         plugins.lsp.servers = {
@@ -35,12 +47,13 @@
         };
       };
 
-      # Claude Code configuration
-      claude-code.lspServers = {
-        zls = {
-          command = "zls";
-          extensionToLanguage = {
-            ".zig" = "zig";
+      # Opencode configuration
+      opencode = {
+        settings = {
+          lsp = {
+            zls = {
+              command = [ "zls" ];
+            };
           };
         };
       };

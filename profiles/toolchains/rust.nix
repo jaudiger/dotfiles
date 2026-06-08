@@ -241,6 +241,18 @@ in
         };
       };
 
+      # Claude Code configuration
+      claude-code = {
+        lspServers = {
+          rust-analyzer = {
+            command = "rust-analyzer";
+            extensionToLanguage = {
+              ".rs" = "rust";
+            };
+          };
+        };
+      };
+
       # Neovim configuration
       nixvim = {
         plugins.lsp.servers = {
@@ -253,21 +265,25 @@ in
         };
       };
 
-      # Zed configuration
-      zed-editor.userSettings = {
-        lsp = {
-          "rust-analyzer" = {
-            initialization_options = rustAnalyzerConfig;
+      # Opencode configuration
+      opencode = {
+        settings = {
+          lsp = {
+            rust = {
+              command = [ "rust-analyzer" ];
+              initialization = rustAnalyzerConfig;
+            };
           };
         };
       };
 
-      # Claude Code configuration
-      claude-code.lspServers = {
-        rust-analyzer = {
-          command = "rust-analyzer";
-          extensionToLanguage = {
-            ".rs" = "rust";
+      # Zed configuration
+      zed-editor = {
+        userSettings = {
+          lsp = {
+            "rust-analyzer" = {
+              initialization_options = rustAnalyzerConfig;
+            };
           };
         };
       };
