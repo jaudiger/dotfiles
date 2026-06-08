@@ -1,16 +1,23 @@
 {
   config,
+  lib,
   ...
 }:
 
 let
   host = config.modules.host;
+
+  # Rules
+  rulesDir = ../../config/agents/rules;
+  ruleFiles = builtins.sort (a: b: a < b) (builtins.attrNames (builtins.readDir rulesDir));
 in
 {
   modules = {
     home-manager = {
       programs.opencode = {
         enable = true;
+
+        context = lib.concatMapStrings (name: builtins.readFile (rulesDir + "/${name}")) ruleFiles;
 
         settings = {
           autoupdate = false;
@@ -26,21 +33,13 @@ in
           };
         };
 
+        skills = ../../config/agents/skills;
+
         tui = {
           theme = "system";
           scroll_acceleration = {
             enabled = true;
           };
-        };
-
-        skills = {
-          code-audit = ../../config/agents/skills/code-audit;
-          code-review = ../../config/agents/skills/code-review;
-          code-security = ../../config/agents/skills/code-security;
-          code-test = ../../config/agents/skills/code-test;
-          deep-resolve = ../../config/agents/skills/deep-resolve;
-          deep-review = ../../config/agents/skills/deep-review;
-          lang-zig = ../../config/agents/skills/lang-zig;
         };
       };
     };

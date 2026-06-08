@@ -1,5 +1,8 @@
-_:
+{ config, ... }:
 
+let
+  host = config.modules.host;
+in
 {
   nixpkgs.config.allowUnfreePackages = [
     "mistral-vibe"
@@ -19,6 +22,8 @@ _:
       enable_update_checks = false;
 
       include_commit_signature = false;
+
+      skill_paths = [ "${host.dotfilesDirectory}/config/agents/skills" ];
 
       vim_keybindings = true;
     };

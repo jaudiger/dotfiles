@@ -7,13 +7,7 @@ description: Resolve bug reports, debug issues, and fix defects by deeply unders
 
 ## Skills directory (resolved at load time)
 
-```
-!`ls -1d ~/.claude/skills/code-audit ~/.claude/skills/code-review ~/.claude/skills/code-security ~/.claude/skills/code-test 2>/dev/null`
-```
-
-Use these resolved paths when reading sub-skill files in Phase 5. Open sub-skill files using the absolute paths listed above.
-
-If the output above is empty or missing any of the four expected directories, stop and report which skills could not be resolved; do not proceed to Phase 5.
+The four sub-skills (`code-audit`, `code-review`, `code-security`, `code-test`) live as sibling directories next to this `SKILL.md`. Before Phase 5, list the parent directory of this `SKILL.md` to resolve their absolute paths. Use those paths when reading sub-skill files in Phase 5.
 
 ## Interactive mode (no arguments)
 
