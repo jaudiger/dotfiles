@@ -32,7 +32,7 @@ Bare paths (no prefix) are shorthand for `file:PATH`.
 
 **`file:PATH[#L1-L2]`**: Read the file. If `#L1-L2` is present, review only that line range but read enough surrounding context (imports, type definitions) to understand it.
 
-**`folder:PATH`**: Glob for source files within PATH. Treat each discovered file as a `file:` target.
+**`folder:PATH`**: List source files within PATH matching the language's typical extensions. Treat each discovered file as a `file:` target.
 
 **`symbol:PATH:LINE[#L1-L2]`**: Read the file at PATH. Identify the innermost function, method, struct, class, enum, or trait definition containing LINE. Review that symbol boundary (from signature to closing delimiter). If `#L1-L2` is appended, focus on that range within the symbol.
 
@@ -84,11 +84,11 @@ If there are no code regions to review (empty diff, no files found), report it a
 
 ### Step 2: Gather context
 
-1. For `diff:` targets: extract the list of changed files from the diff. Read each changed file in full using the Read tool. Skip deleted files.
+1. For `diff:` targets: extract the list of changed files from the diff. Read each changed file in full. Skip deleted files.
 2. For `diff:branch` targets: additionally run `git log --oneline <default>..HEAD` to capture commit context.
 3. For `diff:pr:` targets: additionally run `gh pr view N [--repo owner/repo]` (GitHub) or `glab mr view N` (GitLab) to fetch the PR title, description, and labels. Use these to understand the author's stated intent and evaluate the changes against that intent.
 4. For `file:`/`folder:`/`symbol:` targets: read the target files/regions. For `symbol:` targets, read the full file to understand context around the symbol.
-5. Identify functions, methods, and types **called or referenced** in the reviewed code but **defined outside it**. Use Grep and Read to locate and read their implementations. This is essential for understanding the intended workflow and judging whether the code uses those functions correctly (argument semantics, error contracts, side effects, ordering requirements). Prioritize:
+5. Identify functions, methods, and types **called or referenced** in the reviewed code but **defined outside it**. Search the codebase to locate and read their implementations. This is essential for understanding the intended workflow and judging whether the code uses those functions correctly (argument semantics, error contracts, side effects, ordering requirements). Prioritize:
    - Functions called in new or modified lines (for diffs) or in the reviewed region (for file/symbol targets).
    - Types constructed, returned, or pattern-matched.
    - Trait/interface implementations when the code interacts with a polymorphic boundary. Stop expanding once you have enough context to evaluate correctness; do not chase the entire call graph.

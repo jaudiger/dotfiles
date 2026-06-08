@@ -11,7 +11,7 @@ description: Comprehensive read-only multi-dimensional code analysis. Orchestrat
 !`ls -1d ~/.claude/skills/code-audit ~/.claude/skills/code-review ~/.claude/skills/code-security ~/.claude/skills/code-test 2>/dev/null`
 ```
 
-Use these resolved paths when reading sub-skill files in Phase 5. Read skill files using the absolute paths listed above.
+Use these resolved paths when reading sub-skill files in Phase 5. Open sub-skill files using the absolute paths listed above.
 
 If the output above is empty or missing any of the four expected directories, stop and report which skills could not be resolved; do not proceed to Phase 5.
 
@@ -102,9 +102,9 @@ Context depth varies by input type:
 
 | Input type | Depth | What to gather |
 | --- | --- | --- |
-| `symbol:` | DEEP | Full symbol definition + implementations of called methods + type definitions for params/returns + trait/interface definitions + related tests + up to 5 callers. Use Grep/Read, optionally run analysis in parallel for complex call graphs |
+| `symbol:` | DEEP | Full symbol definition + implementations of called methods + type definitions for params/returns + trait/interface definitions + related tests + up to 5 callers. Search the codebase and read the relevant files, optionally running analysis in parallel for complex call graphs |
 | `file:` | SHALLOW | Read the file (or line range). Project config only |
-| `folder:` | SHALLOW | Glob + read discovered files. Project config only |
+| `folder:` | SHALLOW | List files in the directory matching the language's typical extensions, then read the relevant ones. Project config only |
 | `diff:` | MODERATE | Resolve diff, read changed files in full. For each function containing changed lines: find implementations of called functions in changed lines, type definitions, test files |
 
 ### Diff resolution
@@ -127,10 +127,10 @@ For each `symbol:` target:
 2. If LINE lands on blank/comment/import, scan up/down ~20 lines for nearest symbol; error if none found.
 3. Nested symbols to resolve to innermost enclosing.
 4. Read the full symbol definition (signature to closing delimiter).
-5. For each function/method called within the symbol: use Grep to find its definition, then Read it. Collect up to the first-level callees.
+5. For each function/method called within the symbol: search for its definition in the codebase, then read it. Collect up to the first-level callees.
 6. For parameter types and return types: find their definitions (struct/class/enum/trait/interface).
 7. Find related tests: look for test files using project conventions, search for tests that reference the symbol name.
-8. Find up to 5 callers of this symbol using Grep.
+8. Find up to 5 callers of this symbol by searching the codebase for references to it.
 9. For complex call graphs, run analysis in parallel to assist.
 
 ## Phase 4: Select skills and concerns
@@ -191,9 +191,9 @@ Each skill stores its checklist files under a different sub-folder, and code-rev
 
 For each skill invocation, use the absolute paths from the "Skills directory" section above:
 
-1. Read `<skill-path>/SKILL.md`. When injecting it into the prompt, strip the `## Interactive mode` section (and its sub-sections, up to but not including the next `##` heading). That block instructs a fresh agent to re-ask the user for arguments and must not leak into sub-agent dispatch.
+1. Open `<skill-path>/SKILL.md`. When injecting it into the prompt, strip the `## Interactive mode` section (and its sub-sections, up to but not including the next `##` heading). That block instructs a fresh agent to re-ask the user for arguments and must not leak into sub-agent dispatch.
 2. For code-audit, code-security, and code-test: read `<skill-path>/lang/$LANG.md` for the detected language. code-review has no `lang/` directory; omit this step and the "Language Patterns" section of the injected prompt entirely.
-3. Read the checklist file indicated in the "Checklist folder" column above for each selected concern, domain, practice, or aspect.
+3. Open the checklist file indicated in the "Checklist folder" column above for each selected concern, domain, practice, or aspect.
 4. Construct a prompt that includes all of the above plus the gathered context.
 
 #### Context injection format
@@ -251,7 +251,7 @@ Targets: <target specification>
 After all parallel analyses complete, assess how widely each Critical and High finding applies across the codebase:
 
 1. For each Critical or High finding, extract the **code pattern** that constitutes the defect (e.g., a function call without error check, an unsafe cast, a missing validation).
-2. Use **Grep** to search the full codebase for sibling occurrences of the same pattern.
+2. Search the full codebase for sibling occurrences of the same pattern.
 3. **Classify** each match:
    - **Same defect**: the match exhibits the identical problem.
    - **Similar but safe**: the pattern appears but is handled correctly.

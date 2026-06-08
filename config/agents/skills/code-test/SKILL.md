@@ -13,7 +13,7 @@ For each missing piece, print a numbered section:
 
 1. **Language** (if `$0` is missing or invalid); list all languages from the table below with their available practices.
 2. **Practice** (if `$1` is missing or invalid); list every valid practice for the chosen/given language.
-3. **Targets** (if no targets were provided); explain the target syntax (see below) and use Glob to discover candidate source files matching the chosen language in the current workspace. List them as suggested `file:` targets. If there are too many candidates, ask for a glob pattern instead.
+3. **Targets** (if no targets were provided); explain the target syntax (see below) and list files matching the chosen language in the current workspace to surface candidate source files. Suggest them as `file:` targets. If there are too many candidates, ask for a glob pattern instead.
 
 Present everything in one message so the user can answer all at once (e.g., "go, edge-cases, file:pkg/auth/login.go file:pkg/auth/session.go"). Wait for their reply, then proceed to the audit steps below.
 
@@ -34,7 +34,7 @@ Bare paths (no prefix) are shorthand for `file:PATH`.
 
 **`file:PATH[#L1-L2]`**: Read the file. If `#L1-L2` is present, analyze only that line range but read enough surrounding context (imports, type definitions) to understand it.
 
-**`folder:PATH`**: Glob for files matching the language's typical extensions within PATH. Treat each discovered file as a `file:` target.
+**`folder:PATH`**: List files within PATH matching the language's typical extensions. Treat each discovered file as a `file:` target.
 
 **`symbol:PATH:LINE[#L1-L2]`**: Read the file at PATH. Identify the innermost function, method, struct, class, enum, or trait definition containing LINE. Analyze that symbol boundary (from signature to closing delimiter). If `#L1-L2` is appended, focus on that range within the symbol. When invoked standalone (not by deep-review), do not chase callers/implementations outside the file. When run under deep-review, callers, callees, type definitions, and related tests will already be supplied in the `## Gathered Context` section of the prompt, so rely on those rather than re-gathering. After resolving the symbol, also locate the corresponding test file using project test conventions. The symbol gives the source region; test-file discovery gives the test region to evaluate against it.
 
@@ -64,8 +64,8 @@ After resolving the diff, extract changed files and changed line regions (hunks)
 - **Practice:** $1
 - **Targets:** all arguments after the second are targets to analyze (see Target syntax above).
 
-1. Read [`lang/$0.md`](lang/$0.md) to confirm the practice is valid for this language and load language-specific testing patterns.
-2. Read [`practice/$1.md`](practice/$1.md) to load the testing practice methodology and checklist.
+1. Open [`lang/$0.md`](lang/$0.md) to confirm the practice is valid for this language and load language-specific testing patterns.
+2. Open [`practice/$1.md`](practice/$1.md) to load the testing practice methodology and checklist.
 3. Resolve all targets into concrete code regions using the target resolution rules.
 4. **Locate test files**: for each target source file (or resolved source region), find the corresponding test file(s) using the project's test conventions (co-located `_test.go`, `mod_test.rs`, `*.test.ts`, `*Test.java`, `test_*.py`, etc.). Read each test file in full. If no test file exists, report it as a critical finding.
 5. **Read source files**: read every target source file in full. Build a model of: all functions/methods, their parameters (types and domains), return types, branching structure, error paths, and side effects.

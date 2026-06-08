@@ -68,7 +68,7 @@ If a topic does not match any entry, report it and suggest the closest match.
 
 ### Step 2 -- Read topic files
 
-Read each resolved topic file using the Read tool. Use the absolute path derived from the skill's own directory.
+Read each resolved topic file. Use the absolute path derived from the skill's own directory.
 
 ### Step 3 -- Present guidance
 

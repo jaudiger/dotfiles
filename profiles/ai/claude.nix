@@ -33,14 +33,13 @@ in
             ---
             name: meta-learn
             description: Review the current session for skill/project-config gaps and stale patterns, then update the relevant files.
-            allowed-tools: Read, Grep, Glob, Edit, Write
             ---
 
             # Self-Improve
 
             Review what was accomplished in this session. Identify any patterns, methodologies, or language-specific knowledge that were used but are not currently captured in:
 
-            **Global skills** live under `${host.dotfilesDirectory}/config/claude-code/skills/`. Glob that directory to enumerate the currently installed skills, then read each `SKILL.md` to understand its scope before identifying gaps.
+            **Global skills** live under `${host.dotfilesDirectory}/config/agents/skills/`. Glob that directory to enumerate the currently installed skills, then read each `SKILL.md` to understand its scope before identifying gaps.
 
             **Project-level Claude files** (in the current working repository):
 

@@ -11,7 +11,7 @@ description: Resolve bug reports, debug issues, and fix defects by deeply unders
 !`ls -1d ~/.claude/skills/code-audit ~/.claude/skills/code-review ~/.claude/skills/code-security ~/.claude/skills/code-test 2>/dev/null`
 ```
 
-Use these resolved paths when reading sub-skill files in Phase 5. Read skill files using the absolute paths listed above.
+Use these resolved paths when reading sub-skill files in Phase 5. Open sub-skill files using the absolute paths listed above.
 
 If the output above is empty or missing any of the four expected directories, stop and report which skills could not be resolved; do not proceed to Phase 5.
 
@@ -123,7 +123,7 @@ If the report is **relevant**: proceed to 2b.
 
 Cross-reference every concrete claim in the report against the actual codebase. This is a lightweight, read-only check; do not run the code.
 
-1. **Paths and symbols**. Do the files, modules, functions, types, or endpoints mentioned in the report actually exist? Use Glob and Grep to verify.
+1. **Paths and symbols**. Do the files, modules, functions, types, or endpoints mentioned in the report actually exist? Search the codebase and list files to verify.
 2. **Code structure**: Does the code at the referenced locations match what the report describes (e.g., function signatures, control flow, data types)? Read the relevant source to confirm.
 3. **Described behavior**: Does the code logic support the behavior the report claims? Trace the relevant code paths by reading to see whether the described scenario is plausible given the current source.
 4. **Versions and dependencies**. If the report references specific library versions, APIs, or features, confirm they match what the project actually uses.
@@ -184,7 +184,7 @@ With the full exploration context from Phase 3, determine:
 Consolidate the full blast radius of the defect and the planned fix:
 
 1. **Downstream consumers**: identify all callers and consumers of the affected code. Trace how the defect propagates through each consumer.
-2. **Sibling patterns**: use Grep to find other code locations that use the same flawed pattern. Record each match with file path and line number.
+2. **Sibling patterns**: search the codebase for other code locations that use the same flawed pattern. Record each match with file path and line number.
 3. **Related fragile code**: identify adjacent code that shares assumptions with the defect (e.g., relies on the same invalid invariant).
 4. **Test gap assessment**: cross-reference the affected code paths against existing test coverage. Record which paths have tests, which lack coverage, and which tests are likely to break from the fix.
 
@@ -245,9 +245,9 @@ Each skill stores its checklist files under a different sub-folder, and code-rev
 
 For each skill invocation, use the absolute paths from the "Skills directory" section above:
 
-1. Read `<skill-path>/SKILL.md`. When injecting it into the prompt, strip the `## Interactive mode` section (and its sub-sections, up to but not including the next `##` heading). That block instructs a fresh agent to re-ask the user for arguments and must not leak into sub-agent dispatch.
+1. Open `<skill-path>/SKILL.md`. When injecting it into the prompt, strip the `## Interactive mode` section (and its sub-sections, up to but not including the next `##` heading). That block instructs a fresh agent to re-ask the user for arguments and must not leak into sub-agent dispatch.
 2. For code-audit, code-security, and code-test: read `<skill-path>/lang/$LANG.md` for the detected language. code-review has no `lang/` directory; omit this step and the "Language Patterns" section of the injected prompt entirely.
-3. Read the checklist file indicated in the "Checklist folder" column above for each selected concern, domain, practice, or aspect.
+3. Open the checklist file indicated in the "Checklist folder" column above for each selected concern, domain, practice, or aspect.
 4. Construct a prompt that includes all of the above plus the gathered context.
 
 ### Context injection format
