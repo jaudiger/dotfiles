@@ -17,7 +17,7 @@ If the output above is empty or missing any of the four expected directories, st
 
 ## Interactive mode (no arguments)
 
-If the user did not provide any source, print the usage guide below and wait for their reply. The AskUserQuestion tool is reserved for prompts with at most 3 short enumerated options (used later in Phase 6); for this open-ended guide, output it as formatted text directly in the conversation.
+If the user did not provide any source, print the usage guide below and wait for their reply. For prompts with at most 3 short enumerated options, ask the user to select from options (used later in Phase 6); for this open-ended guide, output it as formatted text directly in the conversation.
 
 ### Usage
 
@@ -56,7 +56,7 @@ Create all phase tasks upfront with the available task-tracking tool, then track
 
 | Task subject | activeForm |
 | --- | --- |
-| Enter plan mode | Entering plan mode |
+| Enter planning phase | Entering planning phase |
 | Ingest report | Ingesting report |
 | Validate report | Validating report |
 | Explore codebase | Exploring codebase |
@@ -68,13 +68,13 @@ Create all phase tasks upfront with the available task-tracking tool, then track
 
 Keep the task list current as work proceeds.
 
-## Phase 0: Enter plan mode
+## Phase 0: Enter planning phase
 
-Before any other work, put the session in plan mode. This separates the read-only exploration of Phases 1-6 from the edit work in Phase 7 and gives the user a single approval gate at the boundary, using the plan file as the review artifact.
+Before any other work, enter the planning phase. This separates the read-only exploration of Phases 1-6 from the edit work in Phase 7 and gives the user a single approval gate at the boundary, using the plan file as the review artifact.
 
-1. **Detect existing plan mode**: if a plan-mode system reminder is already present in the conversation, the session is already in plan mode. Record the plan file path it announces and proceed to Phase 1.
-2. **Enter plan mode**: otherwise, call `EnterPlanMode`. The harness shows a consent prompt to the user. If consent is declined or the call fails, stop and report that `deep-resolve` requires plan mode for its exploration-then-edit workflow.
-3. **Record the plan file path**: after consent, the harness emits a plan-mode system reminder containing the assigned plan file path. Parse and record this path. Phase 7 step 3 writes the change plan there; no other files may be edited until plan mode exits.
+1. **Detect existing planning phase**: if a planning phase reminder is already present in the conversation, the session is already in this phase. Record the plan file path it announces and proceed to Phase 1.
+2. **Start planning phase**: otherwise, request to start planning. The system shows a consent prompt to the user. If consent is declined or the request fails, stop and report that `deep-resolve` requires a planning phase for its exploration-then-edit workflow.
+3. **Record the plan file path**: after consent, the system provides the plan file path. Parse and record this path. Phase 7 step 3 writes the change plan there; no other files may be edited until the planning phase is complete.
 
 ## Phase 1: Ingest report
 
@@ -232,7 +232,7 @@ Scan the affected code for patterns and select ALL matching concerns (no artific
 
 Filter out concerns not available for the detected language (check each skill's Available languages table).
 
-### Preparing each Task prompt
+### Preparing each prompt
 
 Each skill stores its checklist files under a different sub-folder, and code-review does not ship language patterns:
 
@@ -245,10 +245,10 @@ Each skill stores its checklist files under a different sub-folder, and code-rev
 
 For each skill invocation, use the absolute paths from the "Skills directory" section above:
 
-1. Read `<skill-path>/SKILL.md`. When injecting it into the Task prompt, strip the `## Interactive mode` section (and its sub-sections, up to but not including the next `##` heading). That block instructs a fresh agent to re-ask the user for arguments and must not leak into sub-agent dispatch.
+1. Read `<skill-path>/SKILL.md`. When injecting it into the prompt, strip the `## Interactive mode` section (and its sub-sections, up to but not including the next `##` heading). That block instructs a fresh agent to re-ask the user for arguments and must not leak into sub-agent dispatch.
 2. For code-audit, code-security, and code-test: read `<skill-path>/lang/$LANG.md` for the detected language. code-review has no `lang/` directory; omit this step and the "Language Patterns" section of the injected prompt entirely.
 3. Read the checklist file indicated in the "Checklist folder" column above for each selected concern, domain, practice, or aspect.
-4. Construct a Task prompt (Task tool with `subagent_type: general-purpose`) that includes all of the above plus the gathered context.
+4. Construct a prompt that includes all of the above plus the gathered context.
 
 ### Context injection format
 
@@ -290,7 +290,7 @@ Framework: <framework> <version>
 [contents of the checklist file: methodology/concern.md, domain/domain.md,
 practice/practice.md, or aspects/aspect.md]
 
-## Task
+## Analysis
 Analyze the following code regions using the skill instructions and methodology
 above. Use the gathered context to inform your analysis. Focus on findings
 relevant to the root cause described above.
@@ -299,15 +299,15 @@ Targets: <affected code regions>
 
 ### Invocation order
 
-1. Launch all selected sub-skill Task agents in **parallel**: one Task per selected concern/domain/practice.
+1. Launch all selected sub-skills in **parallel**: one per selected concern/domain/practice.
 2. For multi-language codebases: invoke per-language with the appropriate files and the matching `lang/$LANG.md`.
-3. Wait for all Task agents to complete and collect results.
+3. Wait for all parallel analyses to complete and collect results.
 
 ## Phase 6: Scope confirmation
 
 Before resolving, consolidate every related work item surfaced during Phases 3-5 that falls outside the minimal fix for the reported issue. Sources include sibling patterns and related fragile code from Phase 4b, test gaps from Phase 4b, additional defect instances or edge cases found by Phase 5 sub-skills, and deeper security or design concerns raised by sub-skill findings.
 
-If there are related work items, present them to the user and let them pick which items to include in the current resolution scope. Each option should briefly describe the item and which file or area it affects. Use AskUserQuestion (multiSelect: true) only when there are at most 3 items; for longer lists, output a numbered list as formatted text and ask the user to reply with the numbers they want included.
+If there are related work items, present them to the user and let them pick which items to include in the current resolution scope. Each option should briefly describe the item and which file or area it affects. For at most 3 items, ask the user to select from options; for longer lists, output a numbered list as formatted text and ask the user to reply with the numbers they want included.
 
 Items the user selects become part of Phase 7 alongside the core fix. Items the user declines are excluded entirely from the resolution and from the Phase 8 summary (they were offered and refused, not forgotten).
 
@@ -342,9 +342,9 @@ Apply changes that fix the root cause and prevent recurrence. This is where the 
 
 1. **Plan the changes**: before editing, list every file that needs to change and what the change will be. Verify that the changes are consistent with each other and with the overall architecture.
 2. **Check plan against Phase 4a design**: compare the planned changes against the correct design identified in Phase 4a-3. If the plan is a behavioral patch (changes how the code behaves in the specific failing case) rather than a structural fix (changes the design so the defect class cannot occur), reconsider the approach. Prefer structural fixes that make the defect class impossible by construction over behavioral patches that merely avoid the specific trigger.
-3. **Write the plan file and request approval**: write the plan from steps 1-2 into the plan file recorded in Phase 0, overwriting any prior contents. The plan must include, for each file to be changed: the path, the intent of the edit, and whether the change is structural or behavioral. Also note any new files, deletions, and test updates. Then call `ExitPlanMode`. The harness shows the plan file to the user and gates approval there.
-   - On approval; plan mode exits, move to step 4.
-   - On rejection; capture any feedback the user provided, return to step 1, rewrite the plan file with the revised plan, and call `ExitPlanMode` again. If the user closes the skill or otherwise abandons the gate, stop without editing any files and skip to Phase 8 noting that the resolution was not applied.
+3. **Write the plan file and request approval**: write the plan from steps 1-2 into the plan file recorded in Phase 0, overwriting any prior contents. The plan must include, for each file to be changed: the path, the intent of the edit, and whether the change is structural or behavioral. Also note any new files, deletions, and test updates. Then present the plan for user approval.
+   - On approval; proceed to step 4.
+   - On rejection; capture any feedback the user provided, return to step 1, rewrite the plan file with the revised plan, and present it again. If the user closes the skill or otherwise abandons the gate, stop without editing any files and skip to Phase 8 noting that the resolution was not applied.
 4. **Apply changes**: implement the correct design identified in Phase 4a. Prefer targeted edits over full file rewrites unless a full rewrite is genuinely cleaner.
 5. **Verify consistency**: after applying all changes, re-read the modified files to confirm correctness. Check that imports, type signatures, and cross-module references are consistent.
 6. **Run checks**: if the project has a build command, linter, or test suite, run them. Fix any failures introduced by the changes.

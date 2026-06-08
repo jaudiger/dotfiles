@@ -7,7 +7,7 @@ description: Review code quality from local modifications, branches, commits, pu
 
 ## Interactive mode (no arguments)
 
-If the user did not provide any targets, print the usage guide below and wait for their reply. The AskUserQuestion tool is reserved for prompts with at most 3 short enumerated options; for this open-ended guide, output it as formatted text directly in the conversation.
+If the user did not provide any targets, print the usage guide below and wait for their reply. For prompts with at most 3 short enumerated options, ask the user to select from options; for this open-ended guide, output it as formatted text directly in the conversation.
 
 ### Usage
 

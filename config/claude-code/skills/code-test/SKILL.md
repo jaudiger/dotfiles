@@ -7,7 +7,7 @@ description: Audit test suites for quality, coverage gaps, missing tests, and mu
 
 ## Interactive mode (no arguments or partial arguments)
 
-If the user did not provide all three pieces of information (language, practice, targets), print a single prompt that lists every missing piece and ask the user to reply with their choices. The AskUserQuestion tool is reserved for prompts with at most 3 short enumerated options; for open-ended choice lists (languages, targets), output the choices as formatted text directly in the conversation.
+If the user did not provide all three pieces of information (language, practice, targets), print a single prompt that lists every missing piece and ask the user to reply with their choices. For prompts with at most 3 short enumerated options, ask the user to select from options; for open-ended choice lists (languages, targets), output the choices as formatted text directly in the conversation.
 
 For each missing piece, print a numbered section:
 
@@ -36,7 +36,7 @@ Bare paths (no prefix) are shorthand for `file:PATH`.
 
 **`folder:PATH`**: Glob for files matching the language's typical extensions within PATH. Treat each discovered file as a `file:` target.
 
-**`symbol:PATH:LINE[#L1-L2]`**: Read the file at PATH. Identify the innermost function, method, struct, class, enum, or trait definition containing LINE. Analyze that symbol boundary (from signature to closing delimiter). If `#L1-L2` is appended, focus on that range within the symbol. When invoked standalone (not by deep-review), do not chase callers/implementations outside the file. When run under deep-review, callers, callees, type definitions, and related tests will already be supplied in the `## Gathered Context` section of the Task prompt, so rely on those rather than re-gathering. After resolving the symbol, also locate the corresponding test file using project test conventions. The symbol gives the source region; test-file discovery gives the test region to evaluate against it.
+**`symbol:PATH:LINE[#L1-L2]`**: Read the file at PATH. Identify the innermost function, method, struct, class, enum, or trait definition containing LINE. Analyze that symbol boundary (from signature to closing delimiter). If `#L1-L2` is appended, focus on that range within the symbol. When invoked standalone (not by deep-review), do not chase callers/implementations outside the file. When run under deep-review, callers, callees, type definitions, and related tests will already be supplied in the `## Gathered Context` section of the prompt, so rely on those rather than re-gathering. After resolving the symbol, also locate the corresponding test file using project test conventions. The symbol gives the source region; test-file discovery gives the test region to evaluate against it.
 
 **`diff:SOURCE`**: Resolve the diff:
 

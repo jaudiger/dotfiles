@@ -17,7 +17,7 @@ If the output above is empty or missing any of the four expected directories, st
 
 ## Interactive mode (no arguments)
 
-If the user did not provide any targets, print the usage guide below and wait for their reply. The AskUserQuestion tool is reserved for prompts with at most 3 short enumerated options; for this open-ended guide, output it as formatted text directly in the conversation.
+If the user did not provide any targets, print the usage guide below and wait for their reply. For prompts with at most 3 short enumerated options, ask the user to select from options; for this open-ended guide, output it as formatted text directly in the conversation.
 
 ### Usage
 
@@ -62,7 +62,7 @@ Create all phase tasks upfront with the available task-tracking tool, then track
 | Detect language, framework, version | Detecting language, framework, version |
 | Gather context | Gathering context |
 | Select skills and concerns | Selecting skills and concerns |
-| Invoke skills via Task agents | Invoking skills via Task agents |
+| Invoke skills in parallel | Invoking skills in parallel |
 | Synthesize report | Synthesizing report |
 
 Keep the task list current as work proceeds.
@@ -102,7 +102,7 @@ Context depth varies by input type:
 
 | Input type | Depth | What to gather |
 | --- | --- | --- |
-| `symbol:` | DEEP | Full symbol definition + implementations of called methods + type definitions for params/returns + trait/interface definitions + related tests + up to 5 callers. Use Grep/Read, optionally the Task tool with `subagent_type: Explore` for complex call graphs |
+| `symbol:` | DEEP | Full symbol definition + implementations of called methods + type definitions for params/returns + trait/interface definitions + related tests + up to 5 callers. Use Grep/Read, optionally run analysis in parallel for complex call graphs |
 | `file:` | SHALLOW | Read the file (or line range). Project config only |
 | `folder:` | SHALLOW | Glob + read discovered files. Project config only |
 | `diff:` | MODERATE | Resolve diff, read changed files in full. For each function containing changed lines: find implementations of called functions in changed lines, type definitions, test files |
@@ -131,7 +131,7 @@ For each `symbol:` target:
 6. For parameter types and return types: find their definitions (struct/class/enum/trait/interface).
 7. Find related tests: look for test files using project conventions, search for tests that reference the symbol name.
 8. Find up to 5 callers of this symbol using Grep.
-9. For complex call graphs, invoke the Task tool with `subagent_type: Explore` to assist.
+9. For complex call graphs, run analysis in parallel to assist.
 
 ## Phase 4: Select skills and concerns
 
@@ -172,13 +172,13 @@ Scan the gathered code for patterns and select ALL matching concerns (no artific
 
 Filter out concerns not available for the detected language (check each skill's Available languages table).
 
-## Phase 5: Invoke skills via Task agents
+## Phase 5: Invoke skills in parallel
 
-### 5a: Task dispatch
+### 5a: Parallel dispatch
 
-Dispatch each skill as a **Task agent** (`subagent_type: general-purpose`). This is necessary because skills with `context: fork` don't see conversation history, so context must be injected explicitly. Task agents also allow parallel execution.
+Run each skill in parallel. This is necessary because skills with separate context don't see conversation history, so context must be injected explicitly. Parallel execution allows multiple skills to run simultaneously.
 
-#### Preparing each Task prompt
+#### Preparing each prompt
 
 Each skill stores its checklist files under a different sub-folder, and code-review does not ship language patterns:
 
@@ -191,10 +191,10 @@ Each skill stores its checklist files under a different sub-folder, and code-rev
 
 For each skill invocation, use the absolute paths from the "Skills directory" section above:
 
-1. Read `<skill-path>/SKILL.md`. When injecting it into the Task prompt, strip the `## Interactive mode` section (and its sub-sections, up to but not including the next `##` heading). That block instructs a fresh agent to re-ask the user for arguments and must not leak into sub-agent dispatch.
+1. Read `<skill-path>/SKILL.md`. When injecting it into the prompt, strip the `## Interactive mode` section (and its sub-sections, up to but not including the next `##` heading). That block instructs a fresh agent to re-ask the user for arguments and must not leak into sub-agent dispatch.
 2. For code-audit, code-security, and code-test: read `<skill-path>/lang/$LANG.md` for the detected language. code-review has no `lang/` directory; omit this step and the "Language Patterns" section of the injected prompt entirely.
 3. Read the checklist file indicated in the "Checklist folder" column above for each selected concern, domain, practice, or aspect.
-4. Construct a Task prompt (Task tool with `subagent_type: general-purpose`) that includes all of the above plus the gathered context.
+4. Construct a prompt that includes all of the above plus the gathered context.
 
 #### Context injection format
 
@@ -233,7 +233,7 @@ Framework: <framework> <version>
 [contents of the checklist file: methodology/concern.md, domain/domain.md,
 practice/practice.md, or aspects/aspect.md]
 
-## Task
+## Analysis
 Analyze the following targets using the skill instructions and methodology above.
 Use the gathered context to inform your analysis.
 Targets: <target specification>
@@ -241,14 +241,14 @@ Targets: <target specification>
 
 #### Invocation order
 
-1. If `diff:` target: launch code-review Task agent **first**, wait for results.
-2. Then launch remaining skills (code-audit, code-security, code-test) as **parallel Task agents**: one Task per selected concern/domain/practice.
+1. If `diff:` target: run code-review first, wait for results.
+2. Then run remaining skills (code-audit, code-security, code-test) in parallel: one per selected concern/domain/practice.
 3. For multi-language changesets: invoke per-language with the appropriate files.
-4. Wait for all Task agents to complete and collect results.
+4. Wait for all parallel analyses to complete and collect results.
 
 ### 5b: Pattern-scope analysis
 
-After all Task agents complete, assess how widely each Critical and High finding applies across the codebase:
+After all parallel analyses complete, assess how widely each Critical and High finding applies across the codebase:
 
 1. For each Critical or High finding, extract the **code pattern** that constitutes the defect (e.g., a function call without error check, an unsafe cast, a missing validation).
 2. Use **Grep** to search the full codebase for sibling occurrences of the same pattern.

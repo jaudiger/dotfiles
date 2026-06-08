@@ -9,7 +9,7 @@ description: Zig 0.16+ idiomatic best practices and patterns reference. Provides
 
 ## Interactive mode (no arguments)
 
-If the user did not provide any topics, print the usage guide below and wait for their reply. The AskUserQuestion tool is reserved for prompts with at most 3 short enumerated options; for this open-ended guide, output it as formatted text directly in the conversation.
+If the user did not provide any topics, print the usage guide below and wait for their reply. For prompts with at most 3 short enumerated options, ask the user to select from options; for this open-ended guide, output it as formatted text directly in the conversation.
 
 ### Usage
 
