@@ -22,13 +22,13 @@ in
         enable = true;
 
         skills = {
-          code-audit = ../../config/claude-code/skills/code-audit;
-          code-review = ../../config/claude-code/skills/code-review;
-          code-security = ../../config/claude-code/skills/code-security;
-          code-test = ../../config/claude-code/skills/code-test;
-          deep-resolve = ../../config/claude-code/skills/deep-resolve;
-          deep-review = ../../config/claude-code/skills/deep-review;
-          lang-zig = ../../config/claude-code/skills/lang-zig;
+          code-audit = ../../config/agents/skills/code-audit;
+          code-review = ../../config/agents/skills/code-review;
+          code-security = ../../config/agents/skills/code-security;
+          code-test = ../../config/agents/skills/code-test;
+          deep-resolve = ../../config/agents/skills/deep-resolve;
+          deep-review = ../../config/agents/skills/deep-review;
+          lang-zig = ../../config/agents/skills/lang-zig;
           meta-learn = ''
             ---
             name: meta-learn
