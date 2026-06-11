@@ -134,6 +134,8 @@ in
         ".envrc"
         ".gemini"
         ".mcp.json"
+        ".opencode"
+        ".vibe"
         ".vscode"
         ".zed"
         "AGENTS.md"
