@@ -115,6 +115,7 @@ in
         };
         git_commit_buffer_font_size = sub_font_size;
         git_panel = {
+          commit_title_max_length = 72;
           dock = "right";
           file_icons = true;
           tree_view = true;
