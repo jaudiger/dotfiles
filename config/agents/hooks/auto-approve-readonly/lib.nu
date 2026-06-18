@@ -17,6 +17,23 @@ export const SAFE_PATH: list<string> = [
     "/var/folders/",
 ]
 
+def claude-decision-response [decision: string, reason: string]: nothing -> record<hookSpecificOutput: record<hookEventName: string, permissionDecision: string, permissionDecisionReason: string>> {
+    {
+        hookSpecificOutput: {
+            hookEventName: "PreToolUse"
+            permissionDecision: $decision
+            permissionDecisionReason: $reason
+        }
+    }
+}
+
+def mistral-vibe-decision-response [decision: string, reason: string]: nothing -> record<decision: string, reason: string> {
+    {
+        decision: $decision
+        reason: $reason
+    }
+}
+
 export def allow [reason: string]: nothing -> record<decision: string, reason: string> {
     { decision: $DECISION_ALLOW, reason: $reason }
 }
@@ -30,35 +47,35 @@ export def defer [reason: string = ""]: nothing -> record<decision: string, reas
 }
 
 export def emit-allow [reason: string]: nothing -> nothing {
-    {
-        hookSpecificOutput: {
-            hookEventName: "PreToolUse"
-            permissionDecision: "allow"
-            permissionDecisionReason: $reason
-        }
-    } | to json | print
+    if ($env.MISTRAL_API_KEY? | is-not-empty) {
+        mistral-vibe-decision-response "allow" $reason | to json | print
+    } else {
+        # Default to Claude decision response
+        claude-decision-response "allow" $reason | to json | print
+    }
+
     exit 0
 }
 
 export def emit-deny [reason: string]: nothing -> nothing {
-    {
-        hookSpecificOutput: {
-            hookEventName: "PreToolUse"
-            permissionDecision: "deny"
-            permissionDecisionReason: $reason
-        }
-    } | to json | print
+    if ($env.MISTRAL_API_KEY? | is-not-empty) {
+        mistral-vibe-decision-response "deny" $reason | to json | print
+    } else {
+        # Default to Claude decision response
+        claude-decision-response "deny" $reason | to json | print
+    }
+
     exit 0
 }
 
 export def emit-defer [reason: string = ""]: nothing -> nothing {
-    {
-        hookSpecificOutput: {
-            hookEventName: "PreToolUse"
-            permissionDecision: "defer"
-            permissionDecisionReason: $reason
-        }
-    } | to json | print
+    if ($env.MISTRAL_API_KEY? | is-not-empty) {
+        # Do nothing
+    } else {
+        # Default to Claude decision response
+        claude-decision-response "defer" $reason | to json | print
+    }
+
     exit 0
 }
 

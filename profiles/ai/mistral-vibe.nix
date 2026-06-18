@@ -11,21 +11,35 @@ in
     "textual-speedups"
   ];
 
-  modules.home-manager.programs.mistral-vibe = {
-    enable = true;
+  modules.home-manager = {
+    programs.mistral-vibe = {
+      enable = true;
 
-    settings = {
-      disable_welcome_banner_animation = true;
+      settings = {
+        disable_welcome_banner_animation = true;
 
-      enable_auto_update = false;
-      enable_telemetry = false;
-      enable_update_checks = false;
+        enable_auto_update = false;
+        enable_experimental_hooks = true;
+        enable_telemetry = false;
+        enable_update_checks = false;
 
-      include_commit_signature = false;
+        include_commit_signature = false;
 
-      skill_paths = [ "${host.dotfilesDirectory}/config/agents/skills" ];
+        skill_paths = [ "${host.dotfilesDirectory}/config/agents/skills" ];
 
-      vim_keybindings = true;
+        vim_keybindings = true;
+      };
+    };
+
+    home = {
+      file."mistralVibeHooks" = {
+        source = ../../config/agents/hooks;
+        target = ".vibe/hooks";
+      };
+      file."mistralVibeHooksConfig" = {
+        source = ../../config/mistral-vibe/hooks.toml;
+        target = ".vibe/hooks.toml";
+      };
     };
   };
 }

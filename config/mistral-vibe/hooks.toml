@@ -1,0 +1,6 @@
+[[hooks]]
+name = "auto-approve-readonly"
+type = "before_tool"
+match = "bash"
+command = "nu --stdin ${HOME}/.vibe/hooks/auto-approve-readonly/mod.nu"
+timeout = 60.0
