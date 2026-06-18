@@ -43,6 +43,7 @@ in
           message_editor_min_lines = 8;
           play_sound_when_agent_done = "when_hidden";
           show_turn_stats = true;
+          terminal_init_command = "opencode";
           thread_summary_model = {
             model = "devstral-small-latest";
             provider = "mistral";
