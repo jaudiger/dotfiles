@@ -80,7 +80,7 @@ in
 
       home = {
         file."claudeCodeHooks" = {
-          source = ../../config/claude-code/hooks;
+          source = ../../config/agents/hooks;
           target = ".claude/hooks";
         };
         file."claudeCodeStatusLine" = {
