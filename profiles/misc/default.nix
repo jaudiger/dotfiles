@@ -7,6 +7,7 @@
     ./steam.nix
     ./sweethome3d.nix
     ./teams.nix
+    ./tor-browser.nix
     ./wireshark.nix
     ./zoom.nix
   ];
