@@ -4,10 +4,7 @@
 # All rights reserved.
 #
 
-def validate_branch_name [
-    remote_exists: bool
-    fail_on_error: bool
-]: nothing -> nothing {
+def validate_branch_name [remote_exists: bool]: nothing -> nothing {
     let branch_name = (^git branch --show-current | str trim)
     const branch_regex = '^(bugfix|hotfix|imprv|feat|feature)-i[0-9]+-[a-zA-Z0-9_-]+$'
 
@@ -36,18 +33,13 @@ def validate_branch_name [
 - imprv: Overall improvement
 - feat|feature: New feature"
 
-    if ($fail_on_error) {
-        print -e $error_message
-        exit 1
-    }
-
-    print $error_message
+    print -e $error_message
+    exit 1
 }
 
 def validate_branch []: nothing -> nothing {
     # Check if the remote origin exists
     if (^git remote | lines | where $it == "origin" | is-empty) {
-        validate_branch_name false false
         return
     }
 
@@ -55,10 +47,8 @@ def validate_branch []: nothing -> nothing {
     const remote_regex = 'gitlab\.com.IoTerop'
 
     if (($remote | parse --regex $remote_regex) | is-not-empty) {
-        # If the remote is affiliated with work, exit on error if the validation failed
-        validate_branch_name true true
-    } else {
-        validate_branch_name true false
+        # If the remote is affiliated with work, validate it
+        validate_branch_name true
     }
 }
 
