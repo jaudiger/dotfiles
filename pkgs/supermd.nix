@@ -20,6 +20,9 @@ stdenv.mkDerivation rec {
     zig_0_15.hook
   ];
 
+  buildPhase = "zig build --global-cache-dir .zig-cache";
+  installPhase = "install -Dm755 zig-out/bin/docgen -t $out/bin";
+
   meta = with lib; {
     description = "SuperMD is an extension of Markdown used by https://zine-ssg.io";
     license = licenses.mit;

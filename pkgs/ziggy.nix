@@ -20,6 +20,9 @@ stdenv.mkDerivation rec {
     zig_0_15.hook
   ];
 
+  buildPhase = "zig build --global-cache-dir .zig-cache";
+  installPhase = "install -Dm755 zig-out/bin/ziggy -t $out/bin";
+
   meta = with lib; {
     description = "A data serialization language for expressing clear API messages, config files, etc";
     homepage = "https://ziggy-lang.io";

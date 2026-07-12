@@ -20,6 +20,9 @@ stdenv.mkDerivation rec {
     zig_0_15.hook
   ];
 
+  buildPhase = "zig build --global-cache-dir .zig-cache";
+  installPhase = "install -Dm755 zig-out/bin/zine -t $out/bin";
+
   meta = with lib; {
     description = "Fast, Scalable, Flexible Static Site Generator (SSG)";
     homepage = "https://zine-ssg.io";
