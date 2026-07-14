@@ -2,25 +2,25 @@
   lib,
   stdenv,
   fetchFromGitHub,
-  zig_0_15,
+  zig_master,
 }:
 
 stdenv.mkDerivation rec {
   pname = "superhtml";
-  version = "8b5bb272b269afdd38cdf641c4a707dd92fbe902";
+  version = "0.7.0";
 
   src = fetchFromGitHub {
     owner = "kristoff-it";
     repo = "superhtml";
-    rev = version;
-    hash = "sha256-9RizfSi+ouCcLUL2+gPc8GljNo9KCX57VElLSlha05A=";
+    rev = "v${version}";
+    hash = "sha256-bbRqwIdSNgHTNsPZzn+pf/9ix02rT3BXRB6uszaPdi4=";
   };
 
   nativeBuildInputs = [
-    zig_0_15.hook
+    zig_master
   ];
 
-  buildPhase = "zig build --global-cache-dir .zig-cache";
+  buildPhase = "zig build --global-cache-dir .zig-cache -Doptimize=ReleaseFast";
   installPhase = "install -Dm755 zig-out/bin/superhtml -t $out/bin";
 
   meta = with lib; {

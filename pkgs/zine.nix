@@ -23,7 +23,7 @@ stdenv.mkDerivation rec {
     substituteInPlace build.zig --replace 'return .unknown;' "return .{ .tag = \"${version}\" };"
   '';
 
-  buildPhase = "zig build --global-cache-dir .zig-cache";
+  buildPhase = "zig build --global-cache-dir .zig-cache -Doptimize=ReleaseFast";
   installPhase = "install -Dm755 zig-out/bin/zine -t $out/bin";
 
   meta = with lib; {

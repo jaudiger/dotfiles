@@ -2,25 +2,25 @@
   lib,
   stdenv,
   fetchFromGitHub,
-  zig_0_15,
+  zig_master,
 }:
 
 stdenv.mkDerivation rec {
   pname = "ziggy";
-  version = "4353b20ef2ac750e35c6d68e4eb2a07c2d7cf901";
+  version = "0.2.0";
 
   src = fetchFromGitHub {
     owner = "kristoff-it";
     repo = "ziggy";
-    rev = version;
-    hash = "sha256-7XZNKUrOkpPMge6nDSiEBlUAf7dZLDcVcJ7fHT8fPh4=";
+    rev = "v${version}";
+    hash = "sha256-luLYcGQ/2yi5SZbv1l7Be9LcizqiZdJY1i6TuxqFLdg=";
   };
 
   nativeBuildInputs = [
-    zig_0_15.hook
+    zig_master
   ];
 
-  buildPhase = "zig build --global-cache-dir .zig-cache";
+  buildPhase = "zig build --global-cache-dir .zig-cache -Doptimize=ReleaseFast";
   installPhase = "install -Dm755 zig-out/bin/ziggy -t $out/bin";
 
   meta = with lib; {

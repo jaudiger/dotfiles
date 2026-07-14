@@ -5,9 +5,11 @@
     inputs.zig-overlay.overlays.default
 
     (_final: prev: {
-      superhtml = prev.callPackage ../../pkgs/superhtml.nix { };
-      supermd = prev.callPackage ../../pkgs/supermd.nix { };
-      ziggy = prev.callPackage ../../pkgs/ziggy.nix { };
+      superhtml = prev.callPackage ../../pkgs/superhtml.nix {
+        zig_master = prev.zigpkgs.master-2026-06-13;
+      };
+      supermd = prev.callPackage ../../pkgs/supermd.nix { zig_master = prev.zigpkgs.master-2026-06-13; };
+      ziggy = prev.callPackage ../../pkgs/ziggy.nix { zig_master = prev.zigpkgs.master-2026-06-13; };
       zine = prev.callPackage ../../pkgs/zine.nix { zig_master = prev.zigpkgs.master-2026-06-13; };
     })
   ];
