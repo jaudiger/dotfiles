@@ -8,7 +8,7 @@
       superhtml = prev.callPackage ../../pkgs/superhtml.nix { };
       supermd = prev.callPackage ../../pkgs/supermd.nix { };
       ziggy = prev.callPackage ../../pkgs/ziggy.nix { };
-      zine = prev.callPackage ../../pkgs/zine.nix { };
+      zine = prev.callPackage ../../pkgs/zine.nix { zig_master = prev.zigpkgs.master-2026-06-13; };
     })
   ];
 

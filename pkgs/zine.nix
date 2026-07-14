@@ -2,23 +2,26 @@
   lib,
   stdenv,
   fetchFromGitHub,
-  zig_0_15,
+  zig_master,
 }:
 
 stdenv.mkDerivation rec {
   pname = "zine";
-  version = "6b6e9eff5ae97723b749142935673cf1a5076fe0";
+  version = "0.12.0";
 
   src = fetchFromGitHub {
     owner = "kristoff-it";
     repo = "zine";
-    rev = version;
-    hash = "sha256-gf5NEcMyRRC6UCj9xPKR8hbEcbFyiEkPTIx7LmPnERQ=";
+    rev = "v${version}";
+    hash = "sha256-GcrheiUUhQkmUY9Uy6poIM7t1/5zsNH/wWHjrN8/FFo=";
   };
 
-  nativeBuildInputs = [
-    zig_0_15.hook
-  ];
+  nativeBuildInputs = [ zig_master ];
+
+  postPatch = ''
+    # Patch build.zig to return a valid version when git is not available
+    substituteInPlace build.zig --replace 'return .unknown;' "return .{ .tag = \"${version}\" };"
+  '';
 
   buildPhase = "zig build --global-cache-dir .zig-cache";
   installPhase = "install -Dm755 zig-out/bin/zine -t $out/bin";
