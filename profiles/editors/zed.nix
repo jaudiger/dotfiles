@@ -5,6 +5,7 @@
 }:
 
 let
+  host = config.modules.host;
   isDarwin = config.nixpkgs.hostPlatform.isDarwin;
 
   main_font_size = 12.5;
@@ -25,11 +26,11 @@ in
         agent = {
           commit_message_instructions = "Use conventional commit message format";
           commit_message_model = {
-            model = "devstral-small-latest";
+            model = "mistral-small-latest";
             provider = "mistral";
           };
           default_model = {
-            model = "devstral-medium-latest";
+            model = "mistral-large-latest";
             provider = "mistral";
           };
           default_profile = "write";
@@ -37,15 +38,26 @@ in
           expand_edit_card = false;
           expand_terminal_card = false;
           inline_assistant_model = {
-            model = "devstral-medium-latest";
+            model = "mistral-medium-latest";
             provider = "mistral";
           };
           message_editor_min_lines = 8;
           play_sound_when_agent_done = "when_hidden";
+          sandbox_permissions = {
+            network_hosts = [
+              "github.com"
+              "*.github.com"
+              "*.githubusercontent.com"
+            ];
+            write_paths = [
+              "/tmp"
+              "${host.homeDirectory}/.cache"
+            ];
+          };
           show_turn_stats = true;
           terminal_init_command = "opencode";
           thread_summary_model = {
-            model = "devstral-small-latest";
+            model = "mistral-small-latest";
             provider = "mistral";
           };
           tool_permissions = {
@@ -109,6 +121,7 @@ in
             "*.bri"
           ];
         };
+        format_on_save = "modifications";
         git = {
           inline_blame = {
             min_column = 120;
