@@ -30,7 +30,7 @@ export def decide [command: string]: nothing -> record<decision: string, reason:
 
 def main []: any -> nothing {
     let payload = (try { $in | from json } catch { {} })
-    let tool_name = ($payload.tool_name? | default "" | str downcase)
+    let tool_name = ($payload.tool_name? | default "" | str lowercase)
     let command = ($payload.tool_input?.command? | default "")
 
     if $tool_name != "bash" or ($command | is-empty) {
