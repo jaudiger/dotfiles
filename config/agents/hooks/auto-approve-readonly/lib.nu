@@ -17,21 +17,35 @@ export const SAFE_PATH: list<string> = [
     "/var/folders/",
 ]
 
+export def agents-hook-debug [message: string]: nothing -> nothing {
+    if ($env.AGENTS_HOOK_DEBUG? | is-not-empty) {
+        $"[auto-approve-readonly] ($message)\n" | save -a /tmp/agents-hook.log
+    }
+}
+
 def claude-decision-response [decision: string, reason: string]: nothing -> record<hookSpecificOutput: record<hookEventName: string, permissionDecision: string, permissionDecisionReason: string>> {
-    {
+    let response = {
         hookSpecificOutput: {
             hookEventName: "PreToolUse"
             permissionDecision: $decision
             permissionDecisionReason: $reason
         }
     }
+
+    agents-hook-debug $"claude response=($response)"
+
+    $response
 }
 
 def mistral-vibe-decision-response [decision: string, reason: string]: nothing -> record<decision: string, reason: string> {
-    {
+    let response = {
         decision: $decision
         reason: $reason
     }
+
+    agents-hook-debug $"mistral vibe response=($response)"
+
+    $response
 }
 
 export def allow [reason: string]: nothing -> record<decision: string, reason: string> {

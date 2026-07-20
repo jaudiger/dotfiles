@@ -5,7 +5,7 @@
 #
 
 const SCRIPT_DIR = path self | path dirname
-use ($SCRIPT_DIR | path join "lib.nu") [allow defer emit-allow emit-deny emit-defer DECISION_ALLOW DECISION_DENY DECISION_DEFER]
+use ($SCRIPT_DIR | path join "lib.nu") [agents-hook-debug allow defer emit-allow emit-deny emit-defer DECISION_ALLOW DECISION_DENY DECISION_DEFER]
 use ($SCRIPT_DIR | path join "parse.nu") parse-shell
 use ($SCRIPT_DIR | path join "dispatch.nu")
 
@@ -32,6 +32,8 @@ def main []: any -> nothing {
     let payload = (try { $in | from json } catch { {} })
     let tool_name = ($payload.tool_name? | default "" | str lowercase)
     let command = ($payload.tool_input?.command? | default "")
+
+    agents-hook-debug $"request=($payload)"
 
     if $tool_name != "bash" or ($command | is-empty) {
         emit-defer "not a bash command"
