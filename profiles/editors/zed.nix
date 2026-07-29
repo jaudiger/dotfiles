@@ -29,6 +29,10 @@ in
             model = "mistral-small-latest";
             provider = "mistral";
           };
+          compaction_model = {
+            model = "mistral-small-latest";
+            provider = "mistral";
+          };
           default_model = {
             model = "mistral-large-latest";
             provider = "mistral";
