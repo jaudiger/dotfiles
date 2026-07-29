@@ -10,6 +10,7 @@ in
       packages = with pkgs; [
         # Tools
         nix-init
+        nixpkgs-review
 
         # Formatter
         nixfmt
