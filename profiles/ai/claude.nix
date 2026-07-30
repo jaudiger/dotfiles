@@ -56,7 +56,7 @@ in
                 hooks = [
                   {
                     type = "command";
-                    command = "nu --stdin ${host.homeDirectory}/.claude/hooks/auto-approve-readonly/mod.nu";
+                    command = "nu --stdin ${host.homeDirectory}/.claude/hooks/auto-approve-readonly/mod.nu claude";
                   }
                 ];
               }

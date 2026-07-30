@@ -37,6 +37,20 @@ def claude-decision-response [decision: string, reason: string]: nothing -> reco
     $response
 }
 
+def codex-decision-response [decision: string, reason: string]: nothing -> record<hookSpecificOutput: record<hookEventName: string, permissionDecision: string, permissionDecisionReason: string>> {
+    let response = {
+        hookSpecificOutput: {
+            hookEventName: "PreToolUse"
+            permissionDecision: $decision
+            permissionDecisionReason: $reason
+        }
+    }
+
+    agents-hook-debug $"codex response=($response)"
+
+    $response
+}
+
 def mistral-vibe-decision-response [decision: string, reason: string]: nothing -> record<decision: string, reason: string> {
     let response = {
         decision: $decision
@@ -60,34 +74,30 @@ export def defer [reason: string = ""]: nothing -> record<decision: string, reas
     { decision: $DECISION_DEFER, reason: $reason }
 }
 
-export def emit-allow [reason: string]: nothing -> nothing {
-    if ($env.MISTRAL_API_KEY? | is-not-empty) {
-        mistral-vibe-decision-response "allow" $reason | to json | print
-    } else {
-        # Default to Claude decision response
-        claude-decision-response "allow" $reason | to json | print
+export def emit-decision [protocol: string, decision: string, reason: string]: nothing -> nothing {
+    match $protocol {
+        "claude" => { claude-decision-response $decision $reason | to json | print },
+        "mistral" => { mistral-vibe-decision-response $decision $reason | to json | print },
+        "codex" => { codex-decision-response $decision $reason | to json | print },
+        _ => { error make { msg: $"unsupported hook protocol: ($protocol)" } },
     }
+}
 
+export def emit-allow [protocol: string, reason: string]: nothing -> nothing {
+    emit-decision $protocol $DECISION_ALLOW $reason
     exit 0
 }
 
-export def emit-deny [reason: string]: nothing -> nothing {
-    if ($env.MISTRAL_API_KEY? | is-not-empty) {
-        mistral-vibe-decision-response "deny" $reason | to json | print
-    } else {
-        # Default to Claude decision response
-        claude-decision-response "deny" $reason | to json | print
-    }
-
+export def emit-deny [protocol: string, reason: string]: nothing -> nothing {
+    emit-decision $protocol $DECISION_DENY $reason
     exit 0
 }
 
-export def emit-defer [reason: string = ""]: nothing -> nothing {
-    if ($env.MISTRAL_API_KEY? | is-not-empty) {
-        # Do nothing
-    } else {
-        # Default to Claude decision response
-        claude-decision-response "defer" $reason | to json | print
+export def emit-defer [protocol: string, reason: string = ""]: nothing -> nothing {
+    if $protocol == "claude" {
+        emit-decision $protocol $DECISION_DEFER $reason
+    } else if $protocol != "mistral" and $protocol != "codex" {
+        error make { msg: $"unsupported hook protocol: ($protocol)" }
     }
 
     exit 0

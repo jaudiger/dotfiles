@@ -4,7 +4,8 @@
 # All rights reserved.
 #
 
-const SCRIPT_DIR = path self | path dirname
+const SCRIPT_PATH = path self
+const SCRIPT_DIR = $SCRIPT_PATH | path dirname
 use ($SCRIPT_DIR | path join "lib.nu") [agents-hook-debug allow defer emit-allow emit-deny emit-defer DECISION_ALLOW DECISION_DENY DECISION_DEFER]
 use ($SCRIPT_DIR | path join "parse.nu") parse-shell
 use ($SCRIPT_DIR | path join "dispatch.nu")
@@ -28,7 +29,7 @@ export def decide [command: string]: nothing -> record<decision: string, reason:
     defer ($decisions | where decision == $DECISION_DEFER | get reason | compact --empty | str join '; ')
 }
 
-def main []: any -> nothing {
+def main [protocol: string]: any -> nothing {
     let payload = (try { $in | from json } catch { {} })
     let tool_name = ($payload.tool_name? | default "" | str lowercase)
     let command = ($payload.tool_input?.command? | default "")
@@ -36,16 +37,16 @@ def main []: any -> nothing {
     agents-hook-debug $"request=($payload)"
 
     if $tool_name != "bash" or ($command | is-empty) {
-        emit-defer "not a bash command"
+        emit-defer $protocol "not a bash command"
     }
 
     let result = (decide $command)
     if $result.decision == $DECISION_DENY {
-        emit-deny $result.reason
+        emit-deny $protocol $result.reason
     } else if $result.decision == $DECISION_ALLOW {
-        emit-allow $result.reason
+        emit-allow $protocol $result.reason
     } else {
-        emit-defer $result.reason
+        emit-defer $protocol $result.reason
     }
 }
 
@@ -55,6 +56,7 @@ def "main test" []: nothing -> nothing {
     for f in (glob ($SCRIPT_DIR | path join "handler-*.nu")) { ^nu $f test }
     ^nu ($SCRIPT_DIR | path join "dispatch.nu") test
     main integration-test
+    main protocol-test
 }
 
 def "main integration-test" []: nothing -> nothing {
@@ -91,4 +93,40 @@ def "main integration-test" []: nothing -> nothing {
     }
 
     print "mod integration tests passed"
+}
+
+def "main protocol-test" []: nothing -> nothing {
+    use std/assert
+
+    def run-hook [protocol: string, payload: record]: nothing -> record {
+        $payload | to json | ^nu --stdin $SCRIPT_PATH $protocol | complete
+    }
+
+    print "# mod.protocol: response contracts"
+
+    let claude = (run-hook "claude" { tool_name: "Bash", tool_input: { command: "git diff" } })
+    assert equal $claude.exit_code 0 "Claude hook exits successfully"
+    assert equal (($claude.stdout | from json).hookSpecificOutput.permissionDecision) $DECISION_ALLOW "Claude allow response"
+
+    let mistral = (run-hook "mistral" { tool_name: "Bash", tool_input: { command: "git diff" } })
+    assert equal $mistral.exit_code 0 "Mistral hook exits successfully"
+    assert equal (($mistral.stdout | from json).decision) $DECISION_ALLOW "Mistral allow response"
+
+    let codex = (run-hook "codex" { tool_name: "Bash", tool_input: { command: "git diff" } })
+    assert equal $codex.exit_code 0 "Codex hook exits successfully"
+    assert equal (($codex.stdout | from json).hookSpecificOutput.permissionDecision) $DECISION_ALLOW "Codex allow response"
+
+    let codex_deny = (run-hook "codex" { tool_name: "Bash", tool_input: { command: "git reset --hard" } })
+    assert equal $codex_deny.exit_code 0 "Codex deny exits successfully"
+    assert equal (($codex_deny.stdout | from json).hookSpecificOutput.permissionDecision) $DECISION_DENY "Codex deny response"
+
+    let codex_defer = (run-hook "codex" { tool_name: "Bash", tool_input: { command: "unknown-cmd" } })
+    assert equal $codex_defer.exit_code 0 "Codex defer exits successfully"
+    assert equal $codex_defer.stdout "" "Codex defer has no response"
+
+    let mistral_defer = (run-hook "mistral" { tool_name: "Bash", tool_input: { command: "unknown-cmd" } })
+    assert equal $mistral_defer.exit_code 0 "Mistral defer exits successfully"
+    assert equal $mistral_defer.stdout "" "Mistral defer has no response"
+
+    print "mod protocol tests passed"
 }
