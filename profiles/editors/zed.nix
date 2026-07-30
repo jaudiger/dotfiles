@@ -49,6 +49,7 @@ in
           play_sound_when_agent_done = "when_hidden";
           sandbox_permissions = {
             network_hosts = [
+              "crates.io"
               "github.com"
               "*.github.com"
               "*.githubusercontent.com"
@@ -71,6 +72,9 @@ in
         };
         agent_buffer_font_size = sub_font_size;
         agent_servers = {
+          codex-acp = {
+            type = "registry";
+          };
           mistral-vibe = {
             type = "registry";
           };
