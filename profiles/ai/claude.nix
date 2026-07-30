@@ -39,9 +39,9 @@ in
           attribution = {
             commit = "";
             pr = "";
+            sessionUrl = false;
           };
           autoDreamEnabled = true;
-          defaultMode = "acceptEdits";
           env = {
             CLAUDE_CODE_DISABLE_FEEDBACK_SURVEY = 1;
             CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC = 1;
@@ -63,8 +63,10 @@ in
             ];
           };
           permissions = {
+            defaultMode = "acceptEdits";
             deny = [
               "Read(.env*)"
+              "Edit(.env*)"
             ];
           };
           preferredNotifChannel = "terminal_bell";
