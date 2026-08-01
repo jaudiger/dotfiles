@@ -1,6 +1,8 @@
 [[hooks]]
 name = "auto-approve-readonly"
-type = "before_tool"
+type = "pre_tool"
 match = "bash"
 command = "nu --stdin ${HOME}/.vibe/hooks/auto-approve-readonly/mod.nu mistral"
 timeout = 60.0
+strict = true
+description = "Allow classified read-only shell commands without approval."

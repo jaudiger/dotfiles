@@ -19,7 +19,6 @@ in
         disable_welcome_banner_animation = true;
 
         enable_auto_update = false;
-        enable_experimental_hooks = true;
         enable_telemetry = false;
         enable_update_checks = false;
 
