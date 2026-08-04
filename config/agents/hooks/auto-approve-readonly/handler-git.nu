@@ -19,6 +19,12 @@ const GIT_SUBS: list<string> = [
     "show",
     "status",
 ]
+const GIT_GUARDED_SUBS: list<string> = [
+    "remote",
+    "reset",
+    "push",
+    "stash",
+]
 
 const GIT_STASH_DENY: list<string> = ["clear", "drop"]
 const GIT_PATH_FLAGS: list<string> = ["-C", "--git-dir", "--work-tree"]
@@ -31,15 +37,24 @@ export def handler [argv: list<string>]: nothing -> record<decision: string, rea
     let sub_index = (find-subcommand-index $argv)
     if $sub_index < 0 { return (defer "git: subcommand required") }
     let sub = ($argv | get $sub_index)
-    if $sub == "reset" { return (deny "git reset forbidden: can lose local commits or rewrite history") }
-    if $sub == "push" {
-        if "--force" in ($argv | skip ($sub_index + 1)) { return (deny "git push --force forbidden: overwrites remote history. Push without --force to defer to user.") }
-        return (defer "git push: writes to remote, requires confirmation")
-    }
-    if $sub == "stash" {
-        let arg = ($argv | get ($sub_index + 1) -o)
-        if $arg in $GIT_STASH_DENY { return (deny $"git stash ($arg) forbidden: discards stash entries") }
-        return (allow "git stash")
+    if $sub in $GIT_GUARDED_SUBS {
+        if $sub == "remote" {
+            let options = ($argv | skip ($sub_index + 1))
+            if ($options | all { |option| $option in ["-v", "--verbose"] }) {
+                return (allow "git remote")
+            }
+            return (defer "git remote: only listing remotes is auto-approved")
+        }
+        if $sub == "reset" { return (deny "git reset forbidden: can lose local commits or rewrite history") }
+        if $sub == "push" {
+            if "--force" in ($argv | skip ($sub_index + 1)) { return (deny "git push --force forbidden: overwrites remote history. Push without --force to defer to user.") }
+            return (defer "git push: writes to remote, requires confirmation")
+        }
+        if $sub == "stash" {
+            let arg = ($argv | get ($sub_index + 1) -o)
+            if $arg in $GIT_STASH_DENY { return (deny $"git stash ($arg) forbidden: discards stash entries") }
+            return (allow "git stash")
+        }
     }
     if $sub in $GIT_SUBS { return (allow $"git ($sub)") }
     defer $"git ($sub) not auto-approved; allowed: ($GIT_SUBS | str join ', '), stash, push without --force"
@@ -91,6 +106,11 @@ export def "main test" []: nothing -> nothing {
         [["git", "log"], $DECISION_ALLOW],
         [["git", "status"], $DECISION_ALLOW],
         [["git", "branch"], $DECISION_ALLOW],
+        [["git", "remote"], $DECISION_ALLOW],
+        [["git", "remote", "-v"], $DECISION_ALLOW],
+        [["git", "remote", "--verbose"], $DECISION_ALLOW],
+        [["git", "remote", "add", "origin", "url"], $DECISION_DEFER],
+        [["git", "remote", "set-url", "origin", "url"], $DECISION_DEFER],
         [["git", "ls-files"], $DECISION_ALLOW],
         [["git", "stash"], $DECISION_ALLOW],
         [["git", "stash", "list"], $DECISION_ALLOW],
