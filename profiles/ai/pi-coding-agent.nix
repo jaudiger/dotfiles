@@ -4,6 +4,7 @@
 }:
 
 let
+  # Rules
   rulesDir = ../../config/agents/rules;
   ruleFiles = builtins.sort (a: b: a < b) (builtins.attrNames (builtins.readDir rulesDir));
 in
@@ -18,6 +19,8 @@ in
 
         settings = {
           collapseChangelog = true;
+          defaultModel = "gpt-5.6-luna";
+          defaultProvider = "openai-codex";
           defaultThinkingLevel = "medium";
           enableAnalytics = false;
           enableInstallTelemetry = false;
