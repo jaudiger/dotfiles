@@ -1,0 +1,6 @@
+{
+  "actionableWarnings": {
+    "enabled": true,
+    "includeLspCodeActions": true
+  }
+}

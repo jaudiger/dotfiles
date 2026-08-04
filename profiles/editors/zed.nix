@@ -81,6 +81,9 @@ in
           opencode = {
             type = "registry";
           };
+          pi-acp = {
+            type = "registry";
+          };
         };
         auto_install_extensions = {
           html = false;
