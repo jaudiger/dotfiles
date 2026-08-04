@@ -1,0 +1,20 @@
+{
+  "artifactDir": "session",
+  "completionBatch": {
+    "enabled": true
+  },
+  "fleetView": true,
+  "maxSubagentDepth": 1,
+  "missions": {
+    "enabled": true,
+    "globalIndex": true
+  },
+  "parallel": {
+    "concurrency": 4,
+    "maxTasks": 8
+  },
+  "toolDescriptionMode": "compact",
+  "waitTool": {
+    "enabled": true
+  }
+}

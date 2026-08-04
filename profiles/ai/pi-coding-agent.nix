@@ -36,6 +36,44 @@ in
           quietStartup = true;
           showCacheMissNotices = true;
           skills = [ ../../config/agents/skills ];
+          subagents = {
+            agentOverrides = {
+              delegate = {
+                model = "openai-codex/gpt-5.6-luna";
+                thinking = "low";
+              };
+              oracle = {
+                model = "openai-codex/gpt-5.6-sol";
+                thinking = "high";
+              };
+              planner = {
+                model = "openai-codex/gpt-5.6-sol";
+                thinking = "high";
+              };
+              researcher = {
+                model = "openai-codex/gpt-5.6-luna";
+                thinking = "low";
+              };
+              reviewer = {
+                model = "openai-codex/gpt-5.6-terra";
+                thinking = "medium";
+              };
+              scout = {
+                model = "openai-codex/gpt-5.6-luna";
+                thinking = "low";
+              };
+              worker = {
+                model = "openai-codex/gpt-5.6-terra";
+                thinking = "medium";
+              };
+            };
+            defaultModel = "openai-codex/gpt-5.6-luna";
+            defaultThinking = "medium";
+            modelScope = {
+              allow = [ "openai-codex/gpt-5-*" ];
+              enforce = true;
+            };
+          };
           thinkingBudgets = {
             minimal = 1024;
             low = 4096;
@@ -58,7 +96,11 @@ in
             source = ../../config/pi/packages/pi-lens-config.json;
             target = ".pi-lens/config.json";
           };
-          "piWebSearch" = {
+          "piSubagentsConfig" = {
+            source = ../../config/pi/packages/pi-subagents.json;
+            target = ".pi/agent/extensions/subagent/config.json";
+          };
+          "piWebSearchConfig" = {
             source = ../../config/pi/packages/web-search.json;
             target = ".pi/web-search.json";
           };
