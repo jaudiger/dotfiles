@@ -17,7 +17,7 @@ in
       programs.opencode = {
         enable = true;
 
-        context = lib.concatMapStrings (name: builtins.readFile (rulesDir + "/${name}")) ruleFiles;
+        context = lib.concatMapStringsSep "\n" (name: builtins.readFile (rulesDir + "/${name}")) ruleFiles;
 
         settings = {
           autoupdate = false;
