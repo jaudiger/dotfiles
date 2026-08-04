@@ -72,9 +72,6 @@ in
         };
         agent_buffer_font_size = sub_font_size;
         agent_servers = {
-          codex-acp = {
-            type = "registry";
-          };
           mistral-vibe = {
             type = "registry";
           };
