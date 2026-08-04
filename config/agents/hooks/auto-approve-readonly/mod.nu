@@ -108,10 +108,6 @@ def "main protocol-test" []: nothing -> nothing {
     assert equal $claude.exit_code 0 "Claude hook exits successfully"
     assert equal (($claude.stdout | from json).hookSpecificOutput.permissionDecision) $DECISION_ALLOW "Claude allow response"
 
-    let mistral = (run-hook "mistral" { tool_name: "Bash", tool_input: { command: "git diff" } })
-    assert equal $mistral.exit_code 0 "Mistral hook exits successfully"
-    assert equal (($mistral.stdout | from json).decision) $DECISION_ALLOW "Mistral allow response"
-
     let codex = (run-hook "codex" { tool_name: "Bash", tool_input: { command: "git diff" } })
     assert equal $codex.exit_code 0 "Codex hook exits successfully"
     assert equal (($codex.stdout | from json).hookSpecificOutput.permissionDecision) $DECISION_ALLOW "Codex allow response"
@@ -124,9 +120,21 @@ def "main protocol-test" []: nothing -> nothing {
     assert equal $codex_defer.exit_code 0 "Codex defer exits successfully"
     assert equal $codex_defer.stdout "" "Codex defer has no response"
 
+    let mistral = (run-hook "mistral" { tool_name: "Bash", tool_input: { command: "git diff" } })
+    assert equal $mistral.exit_code 0 "Mistral hook exits successfully"
+    assert equal (($mistral.stdout | from json).decision) $DECISION_ALLOW "Mistral allow response"
+
     let mistral_defer = (run-hook "mistral" { tool_name: "Bash", tool_input: { command: "unknown-cmd" } })
     assert equal $mistral_defer.exit_code 0 "Mistral defer exits successfully"
     assert equal $mistral_defer.stdout "" "Mistral defer has no response"
+
+    let pi = (run-hook "pi" { tool_name: "Bash", tool_input: { command: "git diff" } })
+    assert equal $pi.exit_code 0 "Pi hook exits successfully"
+    assert equal (($pi.stdout | from json).decision) $DECISION_ALLOW "Pi allow response"
+
+    let pi_defer = (run-hook "pi" { tool_name: "Bash", tool_input: { command: "unknown-cmd" } })
+    assert equal $pi_defer.exit_code 0 "Pi defer exits successfully"
+    assert equal (($pi_defer.stdout | from json).decision) $DECISION_DEFER "Pi defer response"
 
     print "mod protocol tests passed"
 }

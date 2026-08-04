@@ -62,6 +62,17 @@ def mistral-vibe-decision-response [decision: string, reason: string]: nothing -
     $response
 }
 
+def pi-decision-response [decision: string, reason: string]: nothing -> record<decision: string, reason: string> {
+    let response = {
+        decision: $decision
+        reason: $reason
+    }
+
+    agents-hook-debug $"pi response=($response)"
+
+    $response
+}
+
 export def allow [reason: string]: nothing -> record<decision: string, reason: string> {
     { decision: $DECISION_ALLOW, reason: $reason }
 }
@@ -77,8 +88,9 @@ export def defer [reason: string = ""]: nothing -> record<decision: string, reas
 export def emit-decision [protocol: string, decision: string, reason: string]: nothing -> nothing {
     match $protocol {
         "claude" => { claude-decision-response $decision $reason | to json | print },
-        "mistral" => { mistral-vibe-decision-response $decision $reason | to json | print },
         "codex" => { codex-decision-response $decision $reason | to json | print },
+        "mistral" => { mistral-vibe-decision-response $decision $reason | to json | print },
+        "pi" => { pi-decision-response $decision $reason | to json | print },
         _ => { error make { msg: $"unsupported hook protocol: ($protocol)" } },
     }
 }
@@ -95,6 +107,8 @@ export def emit-deny [protocol: string, reason: string]: nothing -> nothing {
 
 export def emit-defer [protocol: string, reason: string = ""]: nothing -> nothing {
     if $protocol == "claude" {
+        emit-decision $protocol $DECISION_DEFER $reason
+    } else if $protocol == "pi" {
         emit-decision $protocol $DECISION_DEFER $reason
     } else if $protocol != "mistral" and $protocol != "codex" {
         error make { msg: $"unsupported hook protocol: ($protocol)" }
