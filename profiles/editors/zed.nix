@@ -60,7 +60,7 @@ in
             ];
           };
           show_turn_stats = true;
-          terminal_init_command = "opencode";
+          terminal_init_command = "pi";
           thread_summary_model = {
             model = "mistral-small-latest";
             provider = "mistral";
@@ -76,9 +76,6 @@ in
             type = "registry";
           };
           mistral-vibe = {
-            type = "registry";
-          };
-          opencode = {
             type = "registry";
           };
           pi-acp = {
