@@ -11,6 +11,4 @@ in
   homebrew = lib.mkIf isDarwin {
     casks = [ "chatgpt" ];
   };
-
-  nixpkgs.config.allowUnfreePackages = [ "codex" ];
 }
