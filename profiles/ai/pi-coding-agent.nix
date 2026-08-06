@@ -41,21 +41,25 @@ in
           skills = [ ../../config/agents/skills ];
           subagents = {
             agentOverrides = {
+              context-builder = {
+                model = "openai-codex/gpt-5.6-luna";
+                thinking = "medium";
+              };
               delegate = {
                 model = "openai-codex/gpt-5.6-luna";
                 thinking = "low";
               };
               oracle = {
-                model = "openai-codex/gpt-5.6-sol";
-                thinking = "high";
+                model = "openai-codex/gpt-5.6-terra";
+                thinking = "xhigh";
               };
               planner = {
-                model = "openai-codex/gpt-5.6-sol";
+                model = "openai-codex/gpt-5.6-terra";
                 thinking = "high";
               };
               researcher = {
                 model = "openai-codex/gpt-5.6-luna";
-                thinking = "low";
+                thinking = "medium";
               };
               reviewer = {
                 model = "openai-codex/gpt-5.6-terra";
@@ -63,17 +67,17 @@ in
               };
               scout = {
                 model = "openai-codex/gpt-5.6-luna";
-                thinking = "low";
+                thinking = "medium";
               };
               worker = {
                 model = "openai-codex/gpt-5.6-terra";
-                thinking = "medium";
+                thinking = "low";
               };
             };
             defaultModel = "openai-codex/gpt-5.6-luna";
             defaultThinking = "medium";
             modelScope = {
-              allow = [ "openai-codex/gpt-5-*" ];
+              allow = [ "openai-codex/gpt-5.*" ];
               enforce = true;
             };
           };
