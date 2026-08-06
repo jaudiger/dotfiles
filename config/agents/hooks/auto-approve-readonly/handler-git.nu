@@ -21,6 +21,7 @@ const GIT_SUBS: list<string> = [
     "status",
 ]
 const GIT_GUARDED_SUBS: list<string> = [
+    "config",
     "remote",
     "reset",
     "push",
@@ -28,6 +29,7 @@ const GIT_GUARDED_SUBS: list<string> = [
 ]
 
 const GIT_STASH_DENY: list<string> = ["clear", "drop"]
+const GIT_CONFIG_MUTATION_SUBS: list<string> = ["add", "edit", "remove-section", "rename-section", "replace-all", "set", "unset"]
 const GIT_PATH_FLAGS: list<string> = ["-C", "--git-dir", "--work-tree"]
 
 export def handler [argv: list<string>]: nothing -> record<decision: string, reason: string> {
@@ -39,6 +41,7 @@ export def handler [argv: list<string>]: nothing -> record<decision: string, rea
     if $sub_index < 0 { return (defer "git: subcommand required") }
     let sub = ($argv | get $sub_index)
     if $sub in $GIT_GUARDED_SUBS {
+        if $sub == "config" { return (handler-config $argv $sub_index) }
         if $sub == "remote" {
             let options = ($argv | skip ($sub_index + 1))
             if ($options | all { |option| $option in ["-v", "--verbose"] }) {
@@ -59,6 +62,19 @@ export def handler [argv: list<string>]: nothing -> record<decision: string, rea
     }
     if $sub in $GIT_SUBS { return (allow $"git ($sub)") }
     defer $"git ($sub) not auto-approved; allowed: ($GIT_SUBS | str join ', '), stash, push without --force"
+}
+
+def handler-config [argv: list<string>, sub_index: int]: nothing -> record<decision: string, reason: string> {
+    let args = ($argv | skip ($sub_index + 1))
+    let mutation = ($args | get 0? | default "")
+    if $mutation in $GIT_CONFIG_MUTATION_SUBS {
+        return (defer $"git config ($mutation) changes configuration; requires confirmation")
+    }
+    let operands = ($args | where { |arg| not ($arg | str starts-with "-") })
+    if ($operands | length) == 1 {
+        return (allow "git config reads one configuration value")
+    }
+    defer "git config command is not a read-only single-value query"
 }
 
 def path-args [argv: list<string>]: nothing -> list<record<flag: string, value: string>> {
@@ -114,6 +130,12 @@ export def "main test" []: nothing -> nothing {
         [["git", "remote", "set-url", "origin", "url"], $DECISION_DEFER],
         [["git", "ls-files"], $DECISION_ALLOW],
         [["git", "show-ref"], $DECISION_ALLOW],
+        [["git", "config", "user.name"], $DECISION_ALLOW],
+        [["git", "config", "user.email"], $DECISION_ALLOW],
+        [["git", "config", "commit.gpgsign"], $DECISION_ALLOW],
+        [["git", "config", "--get", "user.name"], $DECISION_ALLOW],
+        [["git", "config", "set", "user.name", "name"], $DECISION_DEFER],
+        [["git", "config", "user.name", "name"], $DECISION_DEFER],
         [["git", "stash"], $DECISION_ALLOW],
         [["git", "stash", "list"], $DECISION_ALLOW],
         [["git", "stash", "push"], $DECISION_ALLOW],
