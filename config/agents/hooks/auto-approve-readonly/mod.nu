@@ -80,6 +80,7 @@ def "main integration-test" []: nothing -> nothing {
         ["printf '%s\\n' value > /tmp/output", $DECISION_DEFER],
         ["printf -v value '%s' text", $DECISION_DEFER],
         ["git diff --cached", $DECISION_ALLOW],
+        ["git branch -a --contains 26355c5e; git log -1 --format='%H %ad %s' --date=iso 26355c5e; git log -1 --format='%H %ad %s' --date=iso HEAD; git show-ref | grep 26355c5e || true", $DECISION_ALLOW],
         ["git diff | cat", $DECISION_ALLOW],
         ["git log | grep TODO", $DECISION_ALLOW],
         ["find . -name '*.nu' | wc -l", $DECISION_ALLOW],

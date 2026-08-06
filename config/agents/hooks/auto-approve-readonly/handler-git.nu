@@ -17,6 +17,7 @@ const GIT_SUBS: list<string> = [
     "ls-tree",
     "rev-parse",
     "show",
+    "show-ref",
     "status",
 ]
 const GIT_GUARDED_SUBS: list<string> = [
@@ -112,6 +113,7 @@ export def "main test" []: nothing -> nothing {
         [["git", "remote", "add", "origin", "url"], $DECISION_DEFER],
         [["git", "remote", "set-url", "origin", "url"], $DECISION_DEFER],
         [["git", "ls-files"], $DECISION_ALLOW],
+        [["git", "show-ref"], $DECISION_ALLOW],
         [["git", "stash"], $DECISION_ALLOW],
         [["git", "stash", "list"], $DECISION_ALLOW],
         [["git", "stash", "push"], $DECISION_ALLOW],
