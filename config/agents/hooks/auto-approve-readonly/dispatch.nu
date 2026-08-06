@@ -43,6 +43,7 @@ use ($SCRIPT_DIR | path join "handler-shellcheck.nu")
 use ($SCRIPT_DIR | path join "handler-shfmt.nu")
 use ($SCRIPT_DIR | path join "handler-sort.nu")
 use ($SCRIPT_DIR | path join "handler-stat.nu")
+use ($SCRIPT_DIR | path join "handler-test.nu")
 use ($SCRIPT_DIR | path join "handler-tail.nu")
 use ($SCRIPT_DIR | path join "handler-tar.nu")
 use ($SCRIPT_DIR | path join "handler-tee.nu")
@@ -111,6 +112,7 @@ export def dispatcher [argv: list<string>]: nothing -> record<decision: string, 
         "sort" => (handler-sort handler $argv),
         "stat" => (handler-stat handler $argv),
         "tail" => (handler-tail handler $argv),
+        "test" => (handler-test handler $argv),
         "tar" => (handler-tar handler $argv),
         "tee" => (handler-tee handler $argv),
         "terraform" => (handler-terraform handler $argv),
