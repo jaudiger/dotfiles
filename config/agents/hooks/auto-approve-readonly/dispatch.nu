@@ -13,6 +13,7 @@ use ($SCRIPT_DIR | path join "handler-curl.nu")
 use ($SCRIPT_DIR | path join "handler-diff.nu")
 use ($SCRIPT_DIR | path join "handler-echo.nu")
 use ($SCRIPT_DIR | path join "handler-eslint.nu")
+use ($SCRIPT_DIR | path join "handler-false.nu")
 use ($SCRIPT_DIR | path join "handler-file.nu")
 use ($SCRIPT_DIR | path join "handler-find.nu")
 use ($SCRIPT_DIR | path join "handler-gh.nu")
@@ -48,6 +49,7 @@ use ($SCRIPT_DIR | path join "handler-terraform.nu")
 use ($SCRIPT_DIR | path join "handler-tflint.nu")
 use ($SCRIPT_DIR | path join "handler-tr.nu")
 use ($SCRIPT_DIR | path join "handler-tree.nu")
+use ($SCRIPT_DIR | path join "handler-true.nu")
 use ($SCRIPT_DIR | path join "handler-uname.nu")
 use ($SCRIPT_DIR | path join "handler-uniq.nu")
 use ($SCRIPT_DIR | path join "handler-wc.nu")
@@ -77,6 +79,7 @@ export def dispatcher [argv: list<string>]: nothing -> record<decision: string, 
         "diff" => (handler-diff handler $argv),
         "echo" => (handler-echo handler $argv),
         "eslint" => (handler-eslint handler $argv),
+        "false" => (handler-false handler $argv),
         "file" => (handler-file handler $argv),
         "find" => (handler-find handler $argv),
         "gh" => (handler-gh handler $argv),
@@ -112,6 +115,7 @@ export def dispatcher [argv: list<string>]: nothing -> record<decision: string, 
         "tflint" => (handler-tflint handler $argv),
         "tr" => (handler-tr handler $argv),
         "tree" => (handler-tree handler $argv),
+        "true" => (handler-true handler $argv),
         "uname" => (handler-uname handler $argv),
         "uniq" => (handler-uniq handler $argv),
         "wc" => (handler-wc handler $argv),
