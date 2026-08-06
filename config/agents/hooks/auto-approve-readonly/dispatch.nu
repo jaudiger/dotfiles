@@ -9,6 +9,7 @@ use ($SCRIPT_DIR | path join "handler-base64.nu")
 use ($SCRIPT_DIR | path join "handler-cargo.nu")
 use ($SCRIPT_DIR | path join "handler-cat.nu")
 use ($SCRIPT_DIR | path join "handler-cd.nu")
+use ($SCRIPT_DIR | path join "handler-command.nu")
 use ($SCRIPT_DIR | path join "handler-curl.nu")
 use ($SCRIPT_DIR | path join "handler-diff.nu")
 use ($SCRIPT_DIR | path join "handler-echo.nu")
@@ -75,6 +76,7 @@ export def dispatcher [argv: list<string>]: nothing -> record<decision: string, 
         "cargo" => (handler-cargo handler $argv),
         "cat" => (handler-cat handler $argv),
         "cd" => (handler-cd handler $argv),
+        "command" => (handler-command handler $argv),
         "curl" => (handler-curl handler $argv),
         "diff" => (handler-diff handler $argv),
         "echo" => (handler-echo handler $argv),
