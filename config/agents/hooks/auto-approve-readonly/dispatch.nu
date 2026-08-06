@@ -114,7 +114,7 @@ export def dispatcher [argv: list<string>]: nothing -> record<decision: string, 
         "which" => (handler-which handler $argv),
         "xxd" => (handler-xxd handler $argv),
         "zig" => (handler-zig handler $argv),
-        _ => (defer),
+        _ => (defer $"command '($argv | str join ' ')' not auto-approved"),
     }
 }
 
