@@ -8,6 +8,9 @@
 let
   host = config.modules.host;
   isDarwin = config.nixpkgs.hostPlatform.isDarwin;
+
+  # Hooks
+  autoApproveReadonlyHooks = ../../config/agents/hooks/auto-approve-readonly;
 in
 {
   homebrew = lib.mkIf isDarwin {
@@ -33,6 +36,10 @@ in
         };
 
         rulesDir = ../../config/agents/rules;
+
+        hooks = lib.mapAttrs' (
+          name: _: lib.nameValuePair "auto-approve-readonly/${name}" (autoApproveReadonlyHooks + "/${name}")
+        ) (builtins.readDir autoApproveReadonlyHooks);
 
         settings = {
           alwaysThinkingEnabled = true;
@@ -81,10 +88,6 @@ in
       };
 
       home = {
-        file."claudeCodeHooks" = {
-          source = ../../config/agents/hooks;
-          target = ".claude/hooks";
-        };
         file."claudeCodeStatusLine" = {
           source = ../../config/claude-code/status-line;
           target = ".claude/scripts/status-line";
