@@ -1,9 +1,11 @@
 {
   "artifactDir": "session",
+  "asyncByDefault": true,
   "completionBatch": {
     "enabled": true
   },
   "fleetView": true,
+  "inlineToolDisplay": "summary",
   "maxSubagentDepth": 1,
   "missions": {
     "enabled": true,
@@ -12,6 +14,9 @@
   "parallel": {
     "concurrency": 4,
     "maxTasks": 8
+  },
+  "scheduledRuns": {
+    "enabled": true
   },
   "toolDescriptionMode": "compact",
   "waitTool": {
