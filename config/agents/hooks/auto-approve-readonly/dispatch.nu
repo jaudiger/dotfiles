@@ -28,6 +28,7 @@ use ($SCRIPT_DIR | path join "handler-mkdir.nu")
 use ($SCRIPT_DIR | path join "handler-npm.nu")
 use ($SCRIPT_DIR | path join "handler-pnpm.nu")
 use ($SCRIPT_DIR | path join "handler-prettier.nu")
+use ($SCRIPT_DIR | path join "handler-printf.nu")
 use ($SCRIPT_DIR | path join "handler-pwd.nu")
 use ($SCRIPT_DIR | path join "handler-readlink.nu")
 use ($SCRIPT_DIR | path join "handler-rm.nu")
@@ -90,6 +91,7 @@ export def dispatcher [argv: list<string>]: nothing -> record<decision: string, 
         "npm" => (handler-npm handler $argv),
         "pnpm" => (handler-pnpm handler $argv),
         "prettier" => (handler-prettier handler $argv),
+        "printf" => (handler-printf handler $argv),
         "pwd" => (handler-pwd handler $argv),
         "readlink" => (handler-readlink handler $argv),
         "rm" => (handler-rm handler $argv),
