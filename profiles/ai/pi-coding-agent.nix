@@ -26,10 +26,10 @@ in
           enableInstallTelemetry = false;
           externalEditor = "nvim";
           extensions = [
-            ../../config/pi/extensions/auto-approve-readonly.ts
-            ../../config/pi/extensions/notifications.ts
-            ../../config/pi/extensions/project-trust.ts
-            ../../config/pi/extensions/protected-paths.ts
+            ../../config/pi/extensions/auto-approve-readonly
+            ../../config/pi/extensions/notifications
+            ../../config/pi/extensions/project-trust
+            ../../config/pi/extensions/protected-paths
           ];
           packages = [
             "npm:pi-lens"
