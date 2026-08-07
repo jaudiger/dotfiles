@@ -2,12 +2,14 @@
   projectRootFile = "flake.nix";
 
   programs = {
-    # JSON and Markdown
+    # JSON / Markdown / TypeScript
     prettier = {
       enable = true;
       includes = [
         "*.json"
         "*.md"
+        "*.ts"
+        "*.tsx"
       ];
       settings = {
         proseWrap = "never";
