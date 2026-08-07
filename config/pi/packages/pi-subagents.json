@@ -9,14 +9,17 @@
   "maxSubagentDepth": 1,
   "missions": {
     "enabled": true,
-    "globalIndex": true
+    "directory": "~/.pi/agent/missions",
+    "globalIndex": true,
+    "retainTerminal": 128
   },
   "parallel": {
     "concurrency": 4,
     "maxTasks": 8
   },
   "scheduledRuns": {
-    "enabled": true
+    "enabled": true,
+    "maxPending": 20
   },
   "toolDescriptionMode": "compact",
   "waitTool": {
