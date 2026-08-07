@@ -2,5 +2,6 @@
   "searchRouting": {
     "providers": ["openai", "exa"],
     "fallbackOn": ["transient", "quota", "network"]
-  }
+  },
+  "workflow": "none"
 }
