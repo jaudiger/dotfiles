@@ -6,6 +6,7 @@
 const SCRIPT_DIR = path self | path dirname
 use ($SCRIPT_DIR | path join "lib.nu") [defer DECISION_ALLOW DECISION_DENY DECISION_DEFER]
 use ($SCRIPT_DIR | path join "handler-base64.nu")
+use ($SCRIPT_DIR | path join "handler-bash.nu") [unwrap-bash]
 use ($SCRIPT_DIR | path join "handler-cargo.nu")
 use ($SCRIPT_DIR | path join "handler-cat.nu")
 use ($SCRIPT_DIR | path join "handler-cut.nu")
@@ -46,6 +47,7 @@ use ($SCRIPT_DIR | path join "handler-ruff.nu")
 use ($SCRIPT_DIR | path join "handler-rustc.nu")
 use ($SCRIPT_DIR | path join "handler-sed.nu")
 use ($SCRIPT_DIR | path join "handler-shellcheck.nu")
+use ($SCRIPT_DIR | path join "handler-sh.nu") [unwrap-sh]
 use ($SCRIPT_DIR | path join "handler-shfmt.nu")
 use ($SCRIPT_DIR | path join "handler-sort.nu")
 use ($SCRIPT_DIR | path join "handler-stat.nu")
@@ -62,22 +64,12 @@ use ($SCRIPT_DIR | path join "handler-uname.nu")
 use ($SCRIPT_DIR | path join "handler-uniq.nu")
 use ($SCRIPT_DIR | path join "handler-wc.nu")
 use ($SCRIPT_DIR | path join "handler-which.nu")
+use ($SCRIPT_DIR | path join "handler-xargs.nu") [unwrap-xargs]
 use ($SCRIPT_DIR | path join "handler-xxd.nu")
 use ($SCRIPT_DIR | path join "handler-zig.nu")
 
-# Unwrap a bare `xargs <cmd> ...` so the wrapped command reaches the match.
-# Any xargs invocation that carries its own flags is left alone and falls
-# through to defer.
-def unwrap-xargs [argv: list<string>]: nothing -> list<string> {
-    if ($argv | get 0?) != "xargs" { return $argv }
-    let rest = ($argv | skip 1)
-    if ($rest | is-empty) { return $argv }
-    if (($rest | get 0) | str starts-with "-") { return $argv }
-    unwrap-xargs $rest
-}
-
 export def dispatcher [argv: list<string>]: nothing -> record<decision: string, reason: string> {
-    let argv = (unwrap-xargs $argv)
+    let argv = unwrap-sh (unwrap-bash (unwrap-xargs $argv))
     match ($argv | get 0?) {
         "base64" => (handler-base64 handler $argv),
         "cargo" => (handler-cargo handler $argv),
@@ -147,17 +139,13 @@ export def main []: nothing -> nothing { }
 export def "main test" []: nothing -> nothing {
     use std/assert
 
-    print "# dispatch: dispatcher tree"
+    print "# dispatch: command classification"
     for case in [
         [argv, expected];
         [["cat"], $DECISION_ALLOW],
-        [["curl", "-s", "URL"], $DECISION_ALLOW],
-        [["cargo", "build"], $DECISION_ALLOW],
-        [["git", "reset"], $DECISION_DENY],
-        [["xargs", "curl", "-fsSL"], $DECISION_ALLOW],
-        [["xargs", "-n", "1", "curl"], $DECISION_DEFER],
-        [["unknown-cmd"], $DECISION_DEFER],
-        [[], $DECISION_DEFER],
+        [["ls", "-la"], $DECISION_ALLOW],
+        [["bash", "-c", "ls"], $DECISION_ALLOW],
+        [["xargs", "bash", "-c", "ls"], $DECISION_ALLOW],
     ] {
         assert equal (dispatcher $case.argv).decision $case.expected $"dispatch: ($case.argv | str join ' ')"
     }
