@@ -9,6 +9,15 @@ in
     settings = {
       download-buffer-size = 134217728; # 128MB
 
+      # Enable sandboxing for local builds
+      sandbox = true;
+      sandbox-fallback = false;
+
+      # Limit concurrent local builds and do not keep failed builds
+      cores = 2;
+      keep-failed = false;
+      max-jobs = 4;
+
       substituters = [
         "https://cache.nixos.org"
         "https://nix-community.cachix.org"
