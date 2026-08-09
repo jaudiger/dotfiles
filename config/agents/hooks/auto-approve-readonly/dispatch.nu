@@ -29,6 +29,7 @@ use ($SCRIPT_DIR | path join "handler-jq.nu")
 use ($SCRIPT_DIR | path join "handler-ls.nu")
 use ($SCRIPT_DIR | path join "handler-markdownlint-cli2.nu")
 use ($SCRIPT_DIR | path join "handler-mkdir.nu")
+use ($SCRIPT_DIR | path join "handler-mktemp.nu")
 use ($SCRIPT_DIR | path join "handler-nix.nu")
 use ($SCRIPT_DIR | path join "handler-nix-instantiate.nu")
 use ($SCRIPT_DIR | path join "handler-nixfmt.nu")
@@ -94,6 +95,7 @@ export def dispatcher [argv: list<string>]: nothing -> record<decision: string, 
         "ls" => (handler-ls handler $argv),
         "markdownlint-cli2" => (handler-markdownlint-cli2 handler $argv),
         "mkdir" => (handler-mkdir handler $argv),
+        "mktemp" => (handler-mktemp handler $argv),
         "nix" => (handler-nix handler $argv),
         "nix-instantiate" => (handler-nix-instantiate handler $argv),
         "nixfmt" => (handler-nixfmt handler $argv),
