@@ -4,6 +4,10 @@
 }:
 
 let
+  defaultProvider = "openai-codex";
+  defaultModel = "gpt-5.6-luna";
+  defaultThinkingLevel = "max";
+
   # Rules
   rulesDir = ../../config/agents/rules;
   ruleFiles = builtins.sort (a: b: a < b) (builtins.attrNames (builtins.readDir rulesDir));
@@ -19,9 +23,7 @@ in
 
         settings = {
           collapseChangelog = true;
-          defaultModel = "gpt-5.6-luna";
-          defaultProvider = "openai-codex";
-          defaultThinkingLevel = "medium";
+          inherit defaultModel defaultProvider defaultThinkingLevel;
           enableAnalytics = false;
           enableInstallTelemetry = false;
           externalEditor = "nvim";
@@ -58,7 +60,7 @@ in
                 thinking = "high";
               };
               researcher = {
-                model = "openai-codex/gpt-5.6-luna";
+                model = "openai-codex/gpt-5.6-terra";
                 thinking = "medium";
               };
               reviewer = {
@@ -74,8 +76,8 @@ in
                 thinking = "low";
               };
             };
-            defaultModel = "openai-codex/gpt-5.6-luna";
-            defaultThinking = "medium";
+            defaultModel = "${defaultProvider}/${defaultModel}";
+            defaultThinking = defaultThinkingLevel;
             modelScope = {
               allow = [ "openai-codex/gpt-5.*" ];
               enforce = true;
