@@ -7,6 +7,7 @@ const SCRIPT_DIR = path self | path dirname
 use ($SCRIPT_DIR | path join "lib.nu") [allow deny defer is-safe-path SAFE_PATH DECISION_ALLOW DECISION_DENY DECISION_DEFER]
 
 const GIT_SUBS: list<string> = [
+    "blame",
     "branch",
     "diff",
     "fetch",
@@ -61,7 +62,7 @@ export def handler [argv: list<string>]: nothing -> record<decision: string, rea
         }
     }
     if $sub in $GIT_SUBS { return (allow $"git ($sub)") }
-    defer $"git ($sub) not auto-approved; allowed: ($GIT_SUBS | str join ', '), stash, push without --force"
+    defer $"git ($sub) not auto-approved"
 }
 
 def handler-config [argv: list<string>, sub_index: int]: nothing -> record<decision: string, reason: string> {
@@ -121,6 +122,7 @@ export def "main test" []: nothing -> nothing {
         [["git", "diff"], $DECISION_ALLOW],
         [["git", "diff", "--cached"], $DECISION_ALLOW],
         [["git", "log"], $DECISION_ALLOW],
+        [["git", "blame", "-L", "1,100", "--", "profiles/ai/pi-coding-agent.nix"], $DECISION_ALLOW],
         [["git", "status"], $DECISION_ALLOW],
         [["git", "branch"], $DECISION_ALLOW],
         [["git", "remote"], $DECISION_ALLOW],
