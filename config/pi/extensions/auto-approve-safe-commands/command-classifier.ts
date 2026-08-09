@@ -13,7 +13,7 @@ const hookPath = join(
   homedir(),
   ".pi",
   "extensions",
-  "pi-auto-approve-readonly-scripts",
+  "pi-auto-approve-safe-commands-scripts",
   "mod.nu",
 );
 

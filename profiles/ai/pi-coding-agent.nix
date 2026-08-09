@@ -28,7 +28,7 @@ in
           enableInstallTelemetry = false;
           externalEditor = "nvim";
           extensions = [
-            ../../config/pi/extensions/auto-approve-readonly
+            ../../config/pi/extensions/auto-approve-safe-commands
             ../../config/pi/extensions/notifications
             ../../config/pi/extensions/project-trust
             ../../config/pi/extensions/protected-paths
@@ -97,9 +97,9 @@ in
 
       home = {
         file = {
-          "piAutoApproveReadonlyScripts" = {
-            source = ../../config/agents/hooks/auto-approve-readonly;
-            target = ".pi/extensions/pi-auto-approve-readonly-scripts";
+          "piAutoApproveSafeCommandsScript" = {
+            source = ../../config/agents/hooks/auto-approve-safe-commands;
+            target = ".pi/extensions/pi-auto-approve-safe-commands-scripts";
           };
           "piLensConfig" = {
             source = ../../config/pi/packages/pi-lens-config.json;

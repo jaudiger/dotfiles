@@ -10,7 +10,7 @@ let
   isDarwin = config.nixpkgs.hostPlatform.isDarwin;
 
   # Hooks
-  autoApproveReadonlyHooks = ../../config/agents/hooks/auto-approve-readonly;
+  autoApproveSafeCommandsHooks = ../../config/agents/hooks/auto-approve-safe-commands;
 in
 {
   homebrew = lib.mkIf isDarwin {
@@ -38,8 +38,9 @@ in
         rulesDir = ../../config/agents/rules;
 
         hooks = lib.mapAttrs' (
-          name: _: lib.nameValuePair "auto-approve-readonly/${name}" (autoApproveReadonlyHooks + "/${name}")
-        ) (builtins.readDir autoApproveReadonlyHooks);
+          name: _:
+          lib.nameValuePair "auto-approve-safe-commands/${name}" (autoApproveSafeCommandsHooks + "/${name}")
+        ) (builtins.readDir autoApproveSafeCommandsHooks);
 
         settings = {
           alwaysThinkingEnabled = true;
@@ -63,7 +64,7 @@ in
                 hooks = [
                   {
                     type = "command";
-                    command = "nu --stdin ${host.homeDirectory}/.claude/hooks/auto-approve-readonly/mod.nu claude";
+                    command = "nu --stdin ${host.homeDirectory}/.claude/hooks/auto-approve-safe-commands/mod.nu claude";
                   }
                 ];
               }

@@ -19,7 +19,7 @@ export const SAFE_PATH: list<string> = [
 
 export def agents-hook-debug [message: string]: nothing -> nothing {
     if ($env.AGENTS_HOOK_DEBUG? | is-not-empty) {
-        $"[auto-approve-readonly] ($message)\n" | save -a /tmp/agents-hook.log
+        $"[auto-approve-safe-commands] ($message)\n" | save -a /tmp/agents-hook.log
     }
 }
 
