@@ -6,7 +6,7 @@
 let
   defaultProvider = "openai-codex";
   defaultModel = "gpt-5.6-luna";
-  defaultThinkingLevel = "max";
+  defaultThinkingLevel = "high";
 
   # Rules
   rulesDir = ../../config/agents/rules;
@@ -45,11 +45,11 @@ in
             agentOverrides = {
               context-builder = {
                 model = "openai-codex/gpt-5.6-luna";
-                thinking = "medium";
+                thinking = "high";
               };
               delegate = {
                 model = "openai-codex/gpt-5.6-luna";
-                thinking = "low";
+                thinking = "medium";
               };
               oracle = {
                 model = "openai-codex/gpt-5.6-terra";
@@ -65,15 +65,15 @@ in
               };
               reviewer = {
                 model = "openai-codex/gpt-5.6-terra";
-                thinking = "medium";
+                thinking = "high";
               };
               scout = {
                 model = "openai-codex/gpt-5.6-luna";
                 thinking = "medium";
               };
               worker = {
-                model = "openai-codex/gpt-5.6-terra";
-                thinking = "low";
+                model = "openai-codex/gpt-5.6-luna";
+                thinking = "high";
               };
             };
             defaultModel = "${defaultProvider}/${defaultModel}";
