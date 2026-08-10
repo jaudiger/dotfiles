@@ -1,7 +1,13 @@
 {
   "searchRouting": {
-    "providers": ["openai", "exa"],
+    "providers": ["openai", "exa", "duckduckgo"],
     "fallbackOn": ["transient", "quota", "network"]
   },
-  "workflow": "none"
+  "video": {
+    "enabled": false
+  },
+  "workflow": "none",
+  "youtube": {
+    "enabled": false
+  }
 }

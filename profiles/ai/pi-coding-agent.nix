@@ -91,7 +91,10 @@ in
             xhigh = 65536;
             max = 131072;
           };
-          uiMode = "fullscreen";
+          markdown = {
+            mermaid = "streaming";
+          };
+          tuiMode = "fullscreen";
         };
       };
 
