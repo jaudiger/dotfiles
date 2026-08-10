@@ -4,9 +4,10 @@
 #
 
 const SCRIPT_DIR = path self | path dirname
-use ($SCRIPT_DIR | path join "lib.nu") [defer DECISION_ALLOW DECISION_DENY DECISION_DEFER]
+use ($SCRIPT_DIR | path join "lib.nu") [allow defer DECISION_ALLOW DECISION_DENY DECISION_DEFER]
+use ($SCRIPT_DIR | path join "parse.nu") parse-shell
 use ($SCRIPT_DIR | path join "handler-base64.nu")
-use ($SCRIPT_DIR | path join "handler-bash.nu") [unwrap-bash]
+use ($SCRIPT_DIR | path join "handler-bash.nu") [extract-bash]
 use ($SCRIPT_DIR | path join "handler-cargo.nu")
 use ($SCRIPT_DIR | path join "handler-cat.nu")
 use ($SCRIPT_DIR | path join "handler-cut.nu")
@@ -48,7 +49,7 @@ use ($SCRIPT_DIR | path join "handler-ruff.nu")
 use ($SCRIPT_DIR | path join "handler-rustc.nu")
 use ($SCRIPT_DIR | path join "handler-sed.nu")
 use ($SCRIPT_DIR | path join "handler-shellcheck.nu")
-use ($SCRIPT_DIR | path join "handler-sh.nu") [unwrap-sh]
+use ($SCRIPT_DIR | path join "handler-sh.nu") [extract-sh]
 use ($SCRIPT_DIR | path join "handler-shfmt.nu")
 use ($SCRIPT_DIR | path join "handler-sort.nu")
 use ($SCRIPT_DIR | path join "handler-stat.nu")
@@ -69,8 +70,40 @@ use ($SCRIPT_DIR | path join "handler-xargs.nu") [unwrap-xargs]
 use ($SCRIPT_DIR | path join "handler-xxd.nu")
 use ($SCRIPT_DIR | path join "handler-zig.nu")
 
+def dispatch-shell-script [script: string]: nothing -> record<decision: string, reason: string> {
+    if ($script | is-empty) { return (defer "shell command requires a final -c script") }
+
+    let parsed = (parse-shell $script)
+    if ($parsed.errors | is-not-empty) {
+        return (defer $"nested shell parse error: ($parsed.errors | str join '; ')")
+    }
+    if ($parsed.side_effects | is-not-empty) {
+        return (defer $"nested shell side effects require confirmation: ($parsed.side_effects | each { |s| $s.kind } | uniq | str join ', ')")
+    }
+    if ($parsed.leaves | is-empty) { return (defer "nested shell contains no commands") }
+
+    let decisions = ($parsed.leaves | each { |leaf| dispatcher $leaf.argv })
+    let deny_result = ($decisions | where decision == $DECISION_DENY | get 0?)
+    if $deny_result != null { return $deny_result }
+    if ($decisions | all { |d| $d.decision == $DECISION_ALLOW }) {
+        return (allow "all nested shell commands classified safe")
+    }
+
+    let reasons = ($decisions | where decision == $DECISION_DEFER | get reason | compact --empty | str join '; ')
+    defer $reasons
+}
+
 export def dispatcher [argv: list<string>]: nothing -> record<decision: string, reason: string> {
-    let argv = unwrap-sh (unwrap-bash (unwrap-xargs $argv))
+    let unwrapped = (unwrap-xargs $argv)
+    if ($argv | get 0?) == "xargs" and ($unwrapped | get 0?) in ["bash", "sh"] {
+        return (defer "xargs shell commands require confirmation")
+    }
+    let bash = (extract-bash $unwrapped)
+    if $bash.is_shell { return (dispatch-shell-script $bash.script) }
+    let sh = (extract-sh $unwrapped)
+    if $sh.is_shell { return (dispatch-shell-script $sh.script) }
+
+    let argv = $unwrapped
     match ($argv | get 0?) {
         "base64" => (handler-base64 handler $argv),
         "cargo" => (handler-cargo handler $argv),
@@ -146,8 +179,8 @@ export def "main test" []: nothing -> nothing {
         [argv, expected];
         [["cat"], $DECISION_ALLOW],
         [["ls", "-la"], $DECISION_ALLOW],
-        [["bash", "-c", "ls"], $DECISION_ALLOW],
-        [["xargs", "bash", "-c", "ls"], $DECISION_ALLOW],
+        [["bash", "-e", "-c", "cat file; tail -20 file"], $DECISION_ALLOW],
+        [["xargs", "sh", "-c", "echo --- {}; sed -n '1,5p' {}"], $DECISION_DEFER],
     ] {
         assert equal (dispatcher $case.argv).decision $case.expected $"dispatch: ($case.argv | str join ' ')"
     }

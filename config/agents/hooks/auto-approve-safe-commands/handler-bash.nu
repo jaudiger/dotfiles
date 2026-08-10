@@ -20,8 +20,9 @@ const SAFE_OPTIONS: list<string> = [
 const SCRIPT_DIR = path self | path dirname
 use ($SCRIPT_DIR | path join "parse.nu") parse-shell
 
-def unwrap-shell [argv: list<string>]: nothing -> list<string> {
-    if ($argv | get 0?) != "bash" { return $argv }
+export def extract-bash [argv: list<string>]: nothing -> record<is_shell: bool, script: string> {
+    if ($argv | get 0?) != "bash" { return { is_shell: false, script: "" } }
+
     let rest = ($argv | skip 1)
     mut index = 0
     while $index < ($rest | length) {
@@ -30,20 +31,22 @@ def unwrap-shell [argv: list<string>]: nothing -> list<string> {
             $index = $index + 1
             continue
         }
-        if $arg != "-c" or ($index + 1) != (($rest | length) - 1) {
-            return $argv
+        if $arg == "-c" and ($index + 1) == (($rest | length) - 1) {
+            return { is_shell: true, script: ($rest | get ($index + 1)) }
         }
-        let parsed = (parse-shell ($rest | get ($index + 1)))
-        if ($parsed.errors | is-not-empty) or ($parsed.side_effects | is-not-empty) or ($parsed.leaves | length) != 1 {
-            return $argv
-        }
-        return ($parsed.leaves | get 0 | get argv)
+        return { is_shell: true, script: "" }
     }
-    $argv
+    { is_shell: true, script: "" }
 }
 
 export def unwrap-bash [argv: list<string>]: nothing -> list<string> {
-    unwrap-shell $argv
+    let extracted = (extract-bash $argv)
+    if not $extracted.is_shell or ($extracted.script | is-empty) { return $argv }
+    let parsed = (parse-shell $extracted.script)
+    if ($parsed.errors | is-not-empty) or ($parsed.side_effects | is-not-empty) or ($parsed.leaves | length) != 1 {
+        return $argv
+    }
+    $parsed.leaves.0.argv
 }
 
 export def main []: nothing -> nothing { }
@@ -63,6 +66,12 @@ export def "main test" []: nothing -> nothing {
     ] {
         assert equal (unwrap-bash $case.argv) $case.expected $"handler-bash: ($case.argv | str join ' ')"
     }
+
+    let extracted = (extract-bash ["bash", "-e", "--noprofile", "-c", "cat; tail file"])
+    assert $extracted.is_shell "bash -c is recognized"
+    assert equal $extracted.script "cat; tail file" "bash script is extracted"
+    assert ((extract-bash ["bash", "-c", "cat", "name"]).script == "") "trailing arguments are rejected"
+    assert ((extract-bash ["bash", "-f", "-c", "cat"]).script == "") "unsafe flags are rejected"
 
     print "handler-bash tests passed"
 }
