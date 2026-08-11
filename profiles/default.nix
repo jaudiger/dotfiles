@@ -22,6 +22,7 @@ in
     dev-shell-c = "nix develop ${host.dotfilesDirectory}/dev-shell/c";
     dev-shell-rust-nightly = "nix develop ${host.dotfilesDirectory}/dev-shell/rust-nightly";
     dev-shell-rust-wasm = "nix develop ${host.dotfilesDirectory}/dev-shell/rust-wasm";
+    dev-shell-sandbox = "nix develop ${host.dotfilesDirectory}/dev-shell/sandbox";
     dev-shell-zig-nightly = "nix develop ${host.dotfilesDirectory}/dev-shell/zig-nightly";
   };
 
