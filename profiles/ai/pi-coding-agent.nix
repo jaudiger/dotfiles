@@ -43,10 +43,6 @@ in
           skills = [ ../../config/agents/skills ];
           subagents = {
             agentOverrides = {
-              context-builder = {
-                model = "openai-codex/gpt-5.6-luna";
-                thinking = "high";
-              };
               delegate = {
                 model = "openai-codex/gpt-5.6-luna";
                 thinking = "medium";
@@ -54,10 +50,6 @@ in
               oracle = {
                 model = "openai-codex/gpt-5.6-terra";
                 thinking = "xhigh";
-              };
-              planner = {
-                model = "openai-codex/gpt-5.6-terra";
-                thinking = "high";
               };
               researcher = {
                 model = "openai-codex/gpt-5.6-terra";
