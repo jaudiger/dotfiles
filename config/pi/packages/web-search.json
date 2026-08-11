@@ -1,7 +1,25 @@
 {
+  "commands": {
+    "websearch": { "enabled": false },
+    "curator": { "enabled": false },
+    "search": { "enabled": false },
+    "google-account": { "enabled": false }
+  },
+  "image": {
+    "enabled": false
+  },
+  "pdf": {
+    "enabled": false
+  },
   "searchRouting": {
     "providers": ["openai", "exa", "duckduckgo"],
     "fallbackOn": ["transient", "quota", "network"]
+  },
+  "tools": {
+    "webSearch": { "enabled": true },
+    "sourceCheck": { "enabled": false },
+    "fetchContent": { "enabled": true },
+    "getSearchContent": { "enabled": true }
   },
   "video": {
     "enabled": false
