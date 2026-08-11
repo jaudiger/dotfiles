@@ -64,7 +64,7 @@ export def handler [argv: list<string>]: nothing -> record<decision: string, rea
     if (is-local-build $args) {
         return (allow $"nixpkgs-review ($subcommand) local build")
     }
-    defer "nixpkgs-review action requires confirmation"
+    defer $"command '($argv | str join ' ')' requires confirmation because nixpkgs-review may perform remote actions or run commands; auto-approved cases are comments, help/version, and local builds without --approve-pr, --merge-pr, --post-result, or --run"
 }
 
 export def main []: nothing -> nothing { }

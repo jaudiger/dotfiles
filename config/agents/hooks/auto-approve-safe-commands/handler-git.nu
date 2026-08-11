@@ -62,7 +62,7 @@ export def handler [argv: list<string>]: nothing -> record<decision: string, rea
         }
     }
     if $sub in $GIT_SUBS { return (allow $"git ($sub)") }
-    defer $"git ($sub) not auto-approved"
+    defer $"command '($argv | str join ' ')' is not an auto-approved git operation; read-only subcommands allowed: ($GIT_SUBS | str join ', '); use one of these or request confirmation"
 }
 
 def handler-config [argv: list<string>, sub_index: int]: nothing -> record<decision: string, reason: string> {

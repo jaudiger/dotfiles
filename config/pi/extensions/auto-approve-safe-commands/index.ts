@@ -11,24 +11,18 @@ export default function (pi: ExtensionAPI) {
     const result = classify(event.input.command);
     if (result.decision === "allow") return;
 
-    if (result.decision === "deny") {
+    if (result.decision === "deny" || !ctx.hasUI) {
       return {
         block: true,
         reason: result.reason || "Command rejected by the command classifier",
       };
     }
 
-    if (!ctx.hasUI) {
-      return {
-        block: true,
-        reason: "Deferred bash commands require interactive approval",
-      };
-    }
-
+    // Else, prompt the user for approval
     const prompt = [event.input.command, result.reason]
       .filter(Boolean)
       .join("\n\n");
-    const approved = await ctx.ui.confirm("Run deferred bash command?", prompt);
+    const approved = await ctx.ui.confirm("Run deferred command?", prompt);
     if (!approved)
       return { block: true, reason: "Command rejected by the user" };
   });

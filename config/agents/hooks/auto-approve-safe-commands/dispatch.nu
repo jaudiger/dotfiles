@@ -78,7 +78,10 @@ def dispatch-shell-script [script: string]: nothing -> record<decision: string, 
         return (defer $"nested shell parse error: ($parsed.errors | str join '; ')")
     }
     if ($parsed.side_effects | is-not-empty) {
-        return (defer $"nested shell side effects require confirmation: ($parsed.side_effects | each { |s| $s.kind } | uniq | str join ', ')")
+        let side_effects = ($parsed.side_effects | each { |s|
+            if ($s.detail | is-empty) { $s.kind } else { $"($s.kind) '($s.detail)'" }
+        } | uniq | str join ', ')
+        return (defer $"nested shell script '($script)' has shell side effects that change filesystem state and require confirmation: ($side_effects)")
     }
     if ($parsed.leaves | is-empty) { return (defer "nested shell contains no commands") }
 
@@ -165,7 +168,7 @@ export def dispatcher [argv: list<string>]: nothing -> record<decision: string, 
         "which" => (handler-which handler $argv),
         "xxd" => (handler-xxd handler $argv),
         "zig" => (handler-zig handler $argv),
-        _ => (defer $"command '($argv | str join ' ')' not auto-approved"),
+        _ => (defer $"command '($argv | str join ' ')' is outside the auto-approved command allowlist"),
     }
 }
 

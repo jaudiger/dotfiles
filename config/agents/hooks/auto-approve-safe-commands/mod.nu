@@ -14,8 +14,13 @@ export def decide [command: string]: nothing -> record<decision: string, reason:
     let parsed = (parse-shell $command)
 
     if ($parsed.errors | is-not-empty) { return (defer $"shell parse error: ($parsed.errors | str join '; ')") }
-    if ($parsed.side_effects | is-not-empty) { return (defer $"shell side effects require confirmation: ($parsed.side_effects | each { |s| $s.kind } | uniq | str join ', ')") }
-    if ($parsed.leaves | is-empty) { return (defer "no commands parsed from input") }
+    if ($parsed.side_effects | is-not-empty) {
+        let side_effects = ($parsed.side_effects | each { |s|
+            if ($s.detail | is-empty) { $s.kind } else { $"($s.kind) '($s.detail)'" }
+        } | uniq | str join ', ')
+        return (defer $"command '($command)' has shell side effects that change filesystem state and require confirmation: ($side_effects)")
+    }
+    if ($parsed.leaves | is-empty) { return (defer $"no commands parsed from input: '($command)'") }
 
     let decisions = ($parsed.leaves | each { |leaf| dispatch dispatcher $leaf.argv })
 
@@ -37,7 +42,7 @@ def main [protocol: string]: any -> nothing {
     agents-hook-debug $"request=($payload)"
 
     if $tool_name != "bash" or ($command | is-empty) {
-        emit-defer $protocol "not a bash command"
+        emit-defer $protocol $"expected a non-empty Bash command, received tool '($tool_name)' with command '($command)'"
     }
 
     let result = (decide $command)

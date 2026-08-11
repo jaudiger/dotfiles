@@ -39,6 +39,7 @@ in
             "npm:pi-web-access"
           ];
           quietStartup = true;
+          shellCommandPrefix = "set -o pipefail";
           showCacheMissNotices = true;
           skills = [ ../../config/agents/skills ];
           subagents = {
