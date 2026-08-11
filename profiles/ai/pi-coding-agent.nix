@@ -106,7 +106,7 @@ in
           };
           "piWebSearchConfig" = {
             source = ../../config/pi/packages/web-search.json;
-            target = ".pi/web-search.json";
+            target = ".config/pi/web-search.json";
           };
         };
       };
