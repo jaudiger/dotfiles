@@ -8,6 +8,7 @@
   "image": {
     "enabled": false
   },
+  "maxInlineContentChars": 32768,
   "pdf": {
     "enabled": false
   },
