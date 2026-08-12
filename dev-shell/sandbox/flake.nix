@@ -40,10 +40,12 @@
               (subpath "/var/folders")
               (subpath (param "PWD")))
             (allow process-exec
-              (subpath "/nix/store")
               (subpath "/bin")
+              (subpath "/nix/store")
+              (subpath "/opt/homebrew/bin")
               (subpath "/usr/bin"))
             (allow process-fork)
+            (allow sysctl-read)
 
             (allow network*)
           '';
