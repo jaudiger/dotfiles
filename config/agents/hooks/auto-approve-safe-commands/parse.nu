@@ -3,6 +3,9 @@
 # All rights reserved.
 #
 
+const SCRIPT_DIR = path self | path dirname
+use ($SCRIPT_DIR | path join "lib.nu") [is-safe-path]
+
 export def parse-shell [cmd: string]: nothing -> record<leaves: list<record<argv: list<string>>>, side_effects: list<record<kind: string, detail: string>>, errors: list<string>> {
     parse-fragment $cmd
 }
@@ -142,7 +145,7 @@ def parse-fragment [cmd: string]: nothing -> record<leaves: list<record<argv: li
         if $c == ' ' or $c == "\t" {
             if $in_token {
                 if ($pending_redir | is-not-empty) {
-                    if not (is-null-redir-target $token) {
+                    if not (is-safe-redir-target $token) {
                         $side_effects = $side_effects | append { kind: "file_redirect", detail: ($pending_redir + " " + $token) }
                     }
                     $pending_redir = ""
@@ -159,7 +162,7 @@ def parse-fragment [cmd: string]: nothing -> record<leaves: list<record<argv: li
         if $c == '|' {
             if $in_token {
                 if ($pending_redir | is-not-empty) {
-                    if not (is-null-redir-target $token) {
+                    if not (is-safe-redir-target $token) {
                         $side_effects = $side_effects | append { kind: "file_redirect", detail: ($pending_redir + " " + $token) }
                     }
                     $pending_redir = ""
@@ -191,7 +194,7 @@ def parse-fragment [cmd: string]: nothing -> record<leaves: list<record<argv: li
             if ($i + 1) < $n and (($chars | get ($i + 1)) == '&') {
                 if $in_token {
                     if ($pending_redir | is-not-empty) {
-                        if not (is-null-redir-target $token) {
+                        if not (is-safe-redir-target $token) {
                             $side_effects = $side_effects | append { kind: "file_redirect", detail: ($pending_redir + " " + $token) }
                         }
                         $pending_redir = ""
@@ -226,7 +229,7 @@ def parse-fragment [cmd: string]: nothing -> record<leaves: list<record<argv: li
         if $c == ';' or $c == "\n" {
             if $in_token {
                 if ($pending_redir | is-not-empty) {
-                    if not (is-null-redir-target $token) {
+                    if not (is-safe-redir-target $token) {
                         $side_effects = $side_effects | append { kind: "file_redirect", detail: ($pending_redir + " " + $token) }
                     }
                     $pending_redir = ""
@@ -289,7 +292,7 @@ def parse-fragment [cmd: string]: nothing -> record<leaves: list<record<argv: li
     }
     if $in_token {
         if ($pending_redir | is-not-empty) {
-            if not (is-null-redir-target $token) {
+            if not (is-safe-redir-target $token) {
                 $side_effects = $side_effects | append { kind: "file_redirect", detail: ($pending_redir + " " + $token) }
             }
             $pending_redir = ""
@@ -387,8 +390,8 @@ def extract-backtick [chars: list<string>, start: int]: nothing -> record<ok: bo
     { ok: false, body: "", next_index: $n }
 }
 
-def is-null-redir-target [target: string]: nothing -> bool {
-    ($target == "/dev/null") or ($target =~ '^&[0-9]+$')
+def is-safe-redir-target [target: string]: nothing -> bool {
+    ($target =~ '^&[0-9]+$') or (is-safe-path $target)
 }
 
 export def main []: nothing -> nothing { }
@@ -428,14 +431,20 @@ export def "main test" []: nothing -> nothing {
 
     print "# parse-shell: redirects"
     let r = (parse-shell "ls > /tmp/out")
-    assert equal ($r.side_effects | length) 1 "file write reported"
+    assert ($r.side_effects | is-empty) "safe path write is not a side effect"
+    let r = (parse-shell "ls > /etc/out")
+    assert equal ($r.side_effects | length) 1 "unsafe file write reported"
     assert equal ($r.side_effects | get 0.kind) "file_redirect" "kind is file_redirect"
     let r = (parse-shell "ls > /dev/null")
     assert ($r.side_effects | is-empty) "/dev/null is not a side effect"
+    let r = (parse-shell "cat < /dev/stdin")
+    assert ($r.side_effects | is-empty) "/dev/stdin is not a side effect"
     let r = (parse-shell "ls 2>&1 | grep foo")
     assert ($r.side_effects | is-empty) "2>&1 fd dup is not a side effect"
     let r = (parse-shell "ls 2> /tmp/err")
-    assert equal ($r.side_effects | length) 1 "2> file is a side effect"
+    assert ($r.side_effects | is-empty) "safe stderr path is not a side effect"
+    let r = (parse-shell "ls 2> /etc/err")
+    assert equal ($r.side_effects | length) 1 "unsafe stderr path is a side effect"
 
     print "# parse-shell: command substitution"
     let r = (parse-shell "gh api repos/$(echo octocat)/orgs")

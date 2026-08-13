@@ -13,7 +13,7 @@ export def handler [argv: list<string>]: nothing -> record<decision: string, rea
     if (has-body-or-upload $argv) { return (defer "curl: -d/--data/-T/--upload-file/-F/--form sends a request body, requires confirmation") }
     let unsafe = (output-targets $argv | where { |p| not (is-safe-path $p) } | get 0?)
     if $unsafe != null {
-        return (defer $"curl: -o/--output target '($unsafe)' is outside cwd and not in ($SAFE_PATH | str join ', ')")
+        return (defer $"curl: output target '($unsafe)' is outside cwd and not in ($SAFE_PATH | str join ', ')")
     }
     allow "curl read-only fetch"
 }
@@ -34,6 +34,8 @@ def output-targets [argv: list<string>]: nothing -> list<string> {
             $argv | get ($it.index + 1)
         } else if ($OUTPUT_FLAGS | any { |f| ($f | str starts-with "--") and ($t | str starts-with ($f + "=")) }) {
             $t | str substring (($t | str index-of "=") + 1)..
+        } else if ($t | str starts-with "-o") and ($t | str length) > 2 {
+            $t | str substring 2..
         }
     } | compact
 }

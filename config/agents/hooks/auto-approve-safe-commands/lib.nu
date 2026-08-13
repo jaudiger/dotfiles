@@ -10,6 +10,7 @@ export const DECISION_DEFER: string = "defer"
 export const SAFE_PATH: list<string> = [
     "/dev/null",
     "/dev/stderr",
+    "/dev/stdin",
     "/dev/stdout",
     "/private/tmp/",
     "/private/var/folders/",
@@ -132,7 +133,8 @@ export def is-safe-path [path: string]: nothing -> bool {
     if ($path | str contains "$") or ($path | str contains "`") { return false }
     let expanded = ($path | path expand --no-symlink)
     if ($SAFE_PATH | any { |p|
-        if ($p | str ends-with "/") { $expanded | str starts-with $p } else { $expanded == $p }
+        let root = ($p | str trim --right --char "/")
+        ($expanded == $root) or ($expanded | str starts-with ($root + "/"))
     }) { return true }
     $"($expanded)/" | str starts-with $"((pwd))/"
 }
@@ -209,12 +211,17 @@ export def "main test" []: nothing -> nothing {
         ["foo/../../bar", false],
         ["/foo", false],
         ["/etc/passwd", false],
+        ["/tmp", true],
         ["/tmp/foo", true],
+        ["/private/tmp", true],
         ["/private/tmp/foo", true],
         ["/tmp/../etc/passwd", false],
+        ["/var/folders", true],
         ["/var/folders/abc/xyz", true],
+        ["/private/var/folders", true],
         ["/private/var/folders/abc/xyz", true],
         ["/dev/null", true],
+        ["/dev/stdin", true],
         ["/dev/stdout", true],
         ["/dev/stderr", true],
         ["/dev/sda", false],
