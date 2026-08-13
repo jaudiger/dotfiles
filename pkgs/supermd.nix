@@ -5,27 +5,51 @@
   zig_master,
 }:
 
-stdenv.mkDerivation rec {
+stdenv.mkDerivation (finalAttrs: {
   pname = "supermd";
   version = "70e34739939e927dcef97288b57d30b24d221497";
 
   src = fetchFromGitHub {
     owner = "kristoff-it";
     repo = "supermd";
-    rev = version;
+    rev = finalAttrs.version;
     hash = "sha256-SDkNjhBSIMdMoPJQ/rEcEnG9NQgtpP5djoGJDBd+11U=";
   };
 
-  nativeBuildInputs = [
-    zig_master
-  ];
+  zigDeps = zig_master.fetchDeps {
+    inherit (finalAttrs) src pname version;
+    fetchAll = true;
+    hash = "sha256-0OokA7lP0ynjfUn1xXoB4LriB7BbrZogR1dMWF27wFM=";
+  };
 
-  buildPhase = "zig build --global-cache-dir .zig-cache -Doptimize=ReleaseFast";
-  installPhase = "install -Dm755 zig-out/bin/docgen -t $out/bin";
+  nativeBuildInputs = [ zig_master ];
+
+  preConfigure = ''
+    export ZIG_GLOBAL_CACHE_DIR="$TMPDIR/zig-global-cache"
+    mkdir -p "$ZIG_GLOBAL_CACHE_DIR"
+  '';
+
+  postConfigure = ''
+    ln -s ${finalAttrs.zigDeps} "$ZIG_GLOBAL_CACHE_DIR/p"
+  '';
+
+  buildPhase = ''
+    runHook preBuild
+    zig build "''${zigBuildFlags[@]}"
+    runHook postBuild
+  '';
+
+  zigBuildFlags = [ "-Doptimize=ReleaseFast" ];
+
+  installPhase = ''
+    runHook preInstall
+    install -Dm755 zig-out/bin/docgen -t "$out/bin"
+    runHook postInstall
+  '';
 
   meta = with lib; {
     description = "SuperMD is an extension of Markdown used by https://zine-ssg.io";
     license = licenses.mit;
     maintainers = with maintainers; [ jaudiger ];
   };
-}
+})
