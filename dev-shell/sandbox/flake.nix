@@ -37,6 +37,7 @@
               (subpath "/private/tmp")
               (subpath "/private/var/folders")
               (subpath "/tmp")
+              (subpath "/Users/jaudiger/.cache")
               (subpath "/var/folders")
               (subpath (param "PWD")))
             (allow process-exec
