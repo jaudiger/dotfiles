@@ -19,9 +19,9 @@ in
             "--info=inline"
             "--border=rounded"
             "--ansi"
-            "--marker=▏"
-            "--pointer=▌"
-            "--prompt '▌ '"
+            "--marker=|"
+            "--pointer=>"
+            "--prompt '> '"
             "--highlight-line"
             "--color=gutter:-1,selected-bg:238,selected-fg:146,current-fg:189"
           ];
