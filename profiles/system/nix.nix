@@ -12,6 +12,15 @@ in
       # Enable sandboxing for local builds
       sandbox = true;
       sandbox-fallback = false;
+      extra-sandbox-paths =
+        if isDarwin then
+          [
+            # Allow macOS certificate store inside sandboxes.
+            "/Library/Keychains"
+            "/System/Library/Keychains"
+          ]
+        else
+          [ ];
 
       # Limit concurrent local builds and do not keep failed builds
       cores = 2;
