@@ -30,6 +30,7 @@ export default function (pi: ExtensionAPI) {
     }
     return {
       block: true,
+      terminate: true,
       reason: "Paths beginning with .env are protected",
     };
   });

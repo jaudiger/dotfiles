@@ -14,6 +14,7 @@ export default function (pi: ExtensionAPI) {
     if (result.decision === "deny" || !ctx.hasUI) {
       return {
         block: true,
+        terminate: true,
         reason: result.reason || "Command rejected by the command classifier",
       };
     }
@@ -24,6 +25,10 @@ export default function (pi: ExtensionAPI) {
       .join("\n\n");
     const approved = await ctx.ui.confirm("Run deferred command?", prompt);
     if (!approved)
-      return { block: true, reason: "Command rejected by the user" };
+      return {
+        block: true,
+        terminate: true,
+        reason: "Command rejected by the user",
+      };
   });
 }
