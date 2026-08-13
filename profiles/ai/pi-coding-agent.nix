@@ -1,9 +1,13 @@
 {
+  config,
   lib,
+  pkgs,
   ...
 }:
 
 let
+  host = config.modules.host;
+
   defaultProvider = "openai-codex";
   defaultModel = "gpt-5.6-luna";
   defaultThinkingLevel = "high";
@@ -28,7 +32,7 @@ in
           enableInstallTelemetry = false;
           externalEditor = "nvim";
           extensions = [
-            ../../config/pi/extensions/auto-approve-safe-commands
+            ../../config/pi/extensions/sandbox-bash
             ../../config/pi/extensions/notifications
             ../../config/pi/extensions/project-trust
             ../../config/pi/extensions/protected-paths
@@ -39,7 +43,6 @@ in
             "npm:pi-web-access"
           ];
           quietStartup = true;
-          shellCommandPrefix = "set -o pipefail";
           showCacheMissNotices = true;
           skills = [ ../../config/agents/skills ];
           subagents = {
@@ -92,11 +95,18 @@ in
       };
 
       home = {
+        # Bash sandbox command for Pi
+        packages = [
+          (pkgs.writeShellApplication {
+            name = "pi-bash-sandbox";
+            runtimeInputs = [ pkgs.nix ];
+            text = ''
+              exec nix run ${lib.escapeShellArg "${host.dotfilesDirectory}/dev-shell/sandbox"} -- "$@"
+            '';
+          })
+        ];
+
         file = {
-          "piAutoApproveSafeCommandsScript" = {
-            source = ../../config/agents/hooks/auto-approve-safe-commands;
-            target = ".pi/extensions/pi-auto-approve-safe-commands-scripts";
-          };
           "piLensConfig" = {
             source = ../../config/pi/packages/pi-lens-config.json;
             target = ".pi-lens/config.json";

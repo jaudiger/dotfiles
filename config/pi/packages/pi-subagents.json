@@ -6,6 +6,7 @@
   },
   "fleetView": true,
   "inlineToolDisplay": "summary",
+  "maxActiveAsyncRunsPerSession": 4,
   "maxSubagentDepth": 1,
   "missions": {
     "enabled": true,
