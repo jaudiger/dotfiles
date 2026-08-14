@@ -1,6 +1,15 @@
 {
+  "autofix": {
+    "enabled": false
+  },
+  "opengrep": {
+    "enabled": false
+  },
   "actionableWarnings": {
     "enabled": true,
-    "includeLspCodeActions": true
+    "includeLspCodeActions": true,
+    "autoFix": {
+      "enabled": false
+    }
   }
 }

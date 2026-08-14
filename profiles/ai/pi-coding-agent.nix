@@ -113,6 +113,10 @@ in
             source = ../../config/pi/packages/pi-lens-config.json;
             target = ".pi-lens/config.json";
           };
+          "piLensLspConfig" = {
+            source = ../../config/pi/packages/pi-lens-lsp.json;
+            target = ".pi-lens/lsp.json";
+          };
           "piSubagentsConfig" = {
             source = ../../config/pi/packages/pi-subagents.json;
             target = ".pi/agent/extensions/subagent/config.json";
