@@ -6,6 +6,10 @@
   },
   "fleetView": true,
   "inlineToolDisplay": "summary",
+  "mainWindowRenderer": {
+    "horizontalSpacing": 0,
+    "compactResultMaxLines": 4
+  },
   "maxActiveAsyncRunsPerSession": 4,
   "maxSubagentDepth": 1,
   "missions": {
