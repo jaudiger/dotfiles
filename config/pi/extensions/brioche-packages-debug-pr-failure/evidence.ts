@@ -1,5 +1,6 @@
 import { execFile } from "node:child_process";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
 import { asObject, packageFromFiles, text, workflowRunId } from "./parsing.js";
@@ -73,7 +74,7 @@ export async function prepareContext(
   pr: string,
   cwd: string,
 ): Promise<PreparedContext> {
-  const directory = await mkdtemp(join(cwd, ".brioche-debug-pr-failure-"));
+  const directory = await mkdtemp(join(tmpdir(), "brioche-debug-pr-failure-"));
   try {
     const queryResult = await ghJson(
       [
