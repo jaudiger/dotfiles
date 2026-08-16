@@ -41,6 +41,9 @@
               (subpath "/Users/jaudiger/.npm")
               (subpath "/var/folders")
               (subpath (param "PWD")))
+            (allow mach-lookup
+              ; Allow TLS clients to use macOS trustd for certificate verification.
+              (global-name "com.apple.trustd.agent"))
             (allow process-exec
               (subpath "/bin")
               (subpath "/nix/store")
