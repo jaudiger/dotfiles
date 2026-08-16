@@ -2,6 +2,7 @@ import type {
   ExtensionAPI,
   ExtensionContext,
 } from "@earendil-works/pi-coding-agent";
+import { registerSubagentCapabilityCeiling } from "pi-subagents/capability-ceiling";
 import {
   asyncCompletionEvent,
   completionArtifactPaths,
@@ -288,22 +289,37 @@ export function registerSubmitPackage(pi: ExtensionAPI): void {
         await discoverCompletionEvent();
         spawning += 1;
         try {
-          const rpc = await sendRpc(pi, "spawn", {
-            cwd: ctx.cwd,
-            context: "fresh",
-            agent: "researcher",
-            task: researcherTask(prepared, ctx.cwd),
-            reads: [prepared.projectPath, ...evidenceLogPaths(prepared)],
-            writes: [],
-            writeAccess: "none",
-            intercomBridge: { mode: "off" },
-            mission: {
-              title: `Research Brioche package ${prepared.packageName}`,
-              objective: `Return strict JSON metadata for ${prepared.packageName}. The evidence directory is temporary and remains available until submission processing finishes.`,
+          const capabilityCeiling = registerSubagentCapabilityCeiling({
+            sessionId: ctx.sessionManager.getSessionId(),
+            source: "brioche-packages-submit-package",
+            ceiling: {
+              allowedTools: [
+                "read",
+                "web_search",
+                "fetch_content",
+                "get_search_content",
+              ],
             },
-            permissions: { write: false },
-            async: true,
-          } as Json);
+          });
+          let rpc: Json;
+          try {
+            rpc = await sendRpc(pi, "spawn", {
+              cwd: ctx.cwd,
+              context: "fresh",
+              agent: "researcher",
+              task: researcherTask(prepared, ctx.cwd),
+              reads: [prepared.projectPath, ...evidenceLogPaths(prepared)],
+              output: false,
+              intercomBridge: { mode: "off" },
+              mission: {
+                title: `Research Brioche package ${prepared.packageName}`,
+                objective: `Return strict JSON metadata for ${prepared.packageName}. The evidence directory is temporary and remains available until submission processing finishes.`,
+              },
+              async: true,
+            } as Json);
+          } finally {
+            capabilityCeiling.dispose();
+          }
           const runId = spawnedRunId(rpc);
           if (!runId)
             throw new Error("Researcher started without a run identifier.");
