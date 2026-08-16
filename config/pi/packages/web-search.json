@@ -1,9 +1,9 @@
 {
   "commands": {
-    "websearch": { "enabled": false },
     "curator": { "enabled": false },
+    "google-account": { "enabled": false },
     "search": { "enabled": false },
-    "google-account": { "enabled": false }
+    "websearch": { "enabled": false }
   },
   "image": {
     "enabled": false
@@ -13,14 +13,14 @@
     "enabled": false
   },
   "searchRouting": {
-    "providers": ["openai", "exa", "duckduckgo"],
-    "fallbackOn": ["transient", "quota", "network"]
+    "fallbackOn": ["transient", "quota", "network"],
+    "providers": ["openai", "duckduckgo"]
   },
   "tools": {
-    "webSearch": { "enabled": true },
-    "sourceCheck": { "enabled": false },
     "fetchContent": { "enabled": true },
-    "getSearchContent": { "enabled": true }
+    "getSearchContent": { "enabled": true },
+    "sourceCheck": { "enabled": false },
+    "webSearch": { "enabled": true }
   },
   "video": {
     "enabled": false
