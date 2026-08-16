@@ -51,13 +51,11 @@ in
             ../../config/pi/extensions/protected-paths
           ];
           packages = [
-            "npm:pi-lens"
             "npm:pi-subagents"
             "npm:pi-web-access"
           ];
           quietStartup = true;
           showCacheMissNotices = true;
-          skills = [ ../../config/agents/skills ];
           subagents = {
             agentOverrides = {
               delegate = {
@@ -120,14 +118,6 @@ in
         ];
 
         file = {
-          "piLensConfig" = {
-            source = ../../config/pi/packages/pi-lens-config.json;
-            target = ".pi-lens/config.json";
-          };
-          "piLensLspConfig" = {
-            source = ../../config/pi/packages/pi-lens-lsp.json;
-            target = ".pi-lens/lsp.json";
-          };
           "piSubagentsConfig" = {
             source = ../../config/pi/packages/pi-subagents.json;
             target = ".pi/agent/extensions/subagent/config.json";
