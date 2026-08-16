@@ -13,7 +13,7 @@ import { researcherTask, scoutTask } from "./tasks.js";
 import type { Json, PendingRun, PreparedReview } from "./types.js";
 import { object, string } from "./utils.js";
 
-export default function registerDependabotReview(pi: ExtensionAPI) {
+export default function registerBriochePackagesBotReview(pi: ExtensionAPI) {
   const pending = new Map<string, PendingRun>();
   const earlyCompletions = new Map<string, unknown>();
   const processing = new Set<string>();
@@ -25,7 +25,7 @@ export default function registerDependabotReview(pi: ExtensionAPI) {
   const report = (content: string, details: Json = {}, triggerTurn = false) => {
     pi.sendMessage(
       {
-        customType: "github-dependabot-review",
+        customType: "brioche-packages-bot-review",
         content,
         details,
         display: true,
@@ -58,7 +58,7 @@ export default function registerDependabotReview(pi: ExtensionAPI) {
     spawning += 1;
     const capability = registerSubagentCapabilityCeiling({
       sessionId: review.sessionId,
-      source: "github-dependabot-review",
+      source: "brioche-packages-bot-review",
       ceiling: { allowedTools: ["read", "grep", "find", "ls"] },
     });
     try {
@@ -78,9 +78,9 @@ export default function registerDependabotReview(pi: ExtensionAPI) {
         output: false,
         intercomBridge: { mode: "off" },
         mission: {
-          title: `Scout repository usage for Dependabot PR ${review.number}`,
+          title: `Scout Brioche build recipe for package update PR ${review.number}`,
           objective:
-            "Compare changed dependency usage with the researcher release report.",
+            "Determine whether the affected build recipe needs adaptation for the new release.",
         },
         async: true,
       });
@@ -123,7 +123,7 @@ export default function registerDependabotReview(pi: ExtensionAPI) {
       )
     ) {
       report(
-        `Dependabot researcher failed for PR ${item.review.number}. Evidence retained at ${item.review.directory}.`,
+        `Brioche package update researcher failed for PR ${item.review.number}. Evidence retained at ${item.review.directory}.`,
         { runId: id, reportPath },
         true,
       );
@@ -132,12 +132,12 @@ export default function registerDependabotReview(pi: ExtensionAPI) {
     try {
       await spawnScout(item.review, reportPath);
       report(
-        `Dependabot researcher completed for PR ${item.review.number}; repository scout started.`,
+        `Brioche package update researcher completed for PR ${item.review.number}; repository scout started.`,
         { runId: id, reportPath },
       );
     } catch (error) {
       report(
-        `Could not start the Dependabot repository scout: ${error instanceof Error ? error.message : String(error)}`,
+        `Could not start the Brioche package update repository scout: ${error instanceof Error ? error.message : String(error)}`,
         { runId: id, reportPath },
       );
     }
@@ -155,14 +155,14 @@ export default function registerDependabotReview(pi: ExtensionAPI) {
       )
     ) {
       report(
-        `Dependabot repository scout failed for PR ${item.review.number}. Evidence retained at ${item.review.directory}.`,
+        `Brioche package update repository scout failed for PR ${item.review.number}. Evidence retained at ${item.review.directory}.`,
         { runId: id, reportPath },
         true,
       );
       return;
     }
     report(
-      `Dependabot review evidence is ready for PR ${item.review.number}. Read the researcher and scout reports, the PR description, diff, and status checks from ${item.review.directory}. Summarize the evidence and classify the recommendation as safe to merge, follow-up needed, wait, or cannot recommend. Ask the end user to explicitly choose merge, checkout, wait, or follow-up. Do not execute any PR mutation based only on the recommendation.`,
+      `Brioche package bot review evidence is ready for PR ${item.review.number}. Read the researcher and scout reports, the PR description, diff, and status checks from ${item.review.directory}. Summarize the release notes and build recipe evidence, then classify the recommendation as safe to merge, follow-up needed, wait, or cannot recommend. Ask the end user to explicitly choose merge, checkout, wait, or follow-up. Do not execute any PR mutation based only on the recommendation.`,
       {
         pr: item.review.number,
         directory: item.review.directory,
@@ -190,7 +190,7 @@ export default function registerDependabotReview(pi: ExtensionAPI) {
     )
       .catch((error: unknown) => {
         report(
-          `Dependabot review run ${id} failed: ${error instanceof Error ? error.message : String(error)}`,
+          `Brioche package bot review run ${id} failed: ${error instanceof Error ? error.message : String(error)}`,
           { runId: id, directory: item.review.directory },
         );
       })
@@ -210,7 +210,7 @@ export default function registerDependabotReview(pi: ExtensionAPI) {
   const spawnResearcher = async (review: PreparedReview) => {
     const capability = registerSubagentCapabilityCeiling({
       sessionId: review.sessionId,
-      source: "github-dependabot-review",
+      source: "brioche-packages-bot-review",
       ceiling: {
         allowedTools: [
           "read",
@@ -236,9 +236,9 @@ export default function registerDependabotReview(pi: ExtensionAPI) {
         output: false,
         intercomBridge: { mode: "off" },
         mission: {
-          title: `Research Dependabot PR ${review.number}`,
+          title: `Research release notes for Brioche package PR ${review.number}`,
           objective:
-            "Identify changed direct dependencies and authoritative release-note risks.",
+            "Determine whether release changes require adaptation of the build recipe.",
         },
         async: true,
       });
@@ -264,14 +264,17 @@ export default function registerDependabotReview(pi: ExtensionAPI) {
     }
   };
 
-  pi.registerCommand("github:dependabot-review", {
-    description: "Review the first open Dependabot pull request",
+  pi.registerCommand("brioche-packages:bot-review", {
+    description: "Review the first open Brioche package update pull request",
     handler: async (_args, ctx) => {
       if (shuttingDown) return;
       await stopReview();
       let review: PreparedReview;
       try {
-        ctx.ui.notify("Preparing Dependabot pull request evidence...", "info");
+        ctx.ui.notify(
+          "Preparing Brioche package update pull request evidence...",
+          "info",
+        );
         review = await prepareReview(
           ctx.cwd,
           ctx.sessionManager.getSessionId(),
@@ -287,7 +290,7 @@ export default function registerDependabotReview(pi: ExtensionAPI) {
         }
         const pullRequest = object(review.metadata.pullRequest);
         ctx.ui.notify(
-          `Started read-only Dependabot review for ${string(pullRequest.url)}.`,
+          `Started read-only Brioche package bot review for ${string(pullRequest.url)}.`,
           "info",
         );
       } catch (error) {
@@ -301,10 +304,10 @@ export default function registerDependabotReview(pi: ExtensionAPI) {
   });
 
   pi.registerTool({
-    name: "github_dependabot_review_execute",
-    label: "Dependabot Review Execute",
+    name: "brioche_packages_bot_review_execute",
+    label: "Brioche package bot review execute",
     description:
-      "Execute an explicitly user-selected Dependabot review action.",
+      "Execute an explicitly user-selected Brioche package bot review action.",
     parameters: Type.Object({
       action: Type.Union([
         Type.Literal("merge"),
@@ -316,10 +319,12 @@ export default function registerDependabotReview(pi: ExtensionAPI) {
     async execute(_id, params, _signal, _onUpdate, ctx) {
       if (!active)
         return {
-          content: [{ type: "text", text: "No active Dependabot review." }],
+          content: [
+            { type: "text", text: "No active Brioche package bot review." },
+          ],
         };
       if (!["merge", "checkout", "wait", "follow-up"].includes(params.action))
-        throw new Error("Invalid Dependabot review action.");
+        throw new Error("Invalid Brioche package bot review action.");
       if (params.action === "wait")
         return {
           content: [
@@ -361,7 +366,7 @@ export default function registerDependabotReview(pi: ExtensionAPI) {
         block: true,
         terminate: true,
         reason:
-          "A Dependabot review is active. Use github_dependabot_review_execute after explicit user action selection.",
+          "A Brioche package bot review is active. Use brioche_packages_bot_review_execute after explicit user action selection.",
       };
   });
 

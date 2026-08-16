@@ -41,6 +41,7 @@ in
           enableInstallTelemetry = false;
           externalEditor = "nvim";
           extensions = [
+            ../../config/pi/extensions/brioche-packages-bot-review
             ../../config/pi/extensions/brioche-packages-debug-pr-failure
             ../../config/pi/extensions/brioche-packages-discover-package
             ../../config/pi/extensions/brioche-packages-submit-package
