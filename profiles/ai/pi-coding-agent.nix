@@ -23,6 +23,15 @@ in
       programs.pi-coding-agent = {
         enable = true;
 
+        package = pkgs.symlinkJoin {
+          name = "pi-coding-agent";
+          paths = [ pkgs.pi-coding-agent ];
+          nativeBuildInputs = [ pkgs.makeWrapper ];
+          postBuild = ''
+            wrapProgram "$out/bin/pi" --set NODE_PATH "${host.homeDirectory}/.pi/agent/npm/node_modules"
+          '';
+        };
+
         context = lib.concatMapStringsSep "\n" (name: builtins.readFile (rulesDir + "/${name}")) ruleFiles;
 
         settings = {
