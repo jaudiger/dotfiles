@@ -44,6 +44,7 @@ in
             ../../config/pi/extensions/brioche-packages-debug-pr-failure
             ../../config/pi/extensions/brioche-packages-discover-package
             ../../config/pi/extensions/brioche-packages-submit-package
+            ../../config/pi/extensions/github-dependabot-review
             ../../config/pi/extensions/sandbox-bash
             ../../config/pi/extensions/notifications
             ../../config/pi/extensions/project-trust
