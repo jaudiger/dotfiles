@@ -77,6 +77,8 @@ const packageUpdateAuthorLogins = [
   "package-update-bot",
   "app/package-update-bot",
 ];
+const pullRequestFields =
+  "number,title,body,author,state,isDraft,url,headRefName,headRefOid,baseRefName,reviewDecision,createdAt,updatedAt";
 
 function packageUpdateAuthor(value: Json): boolean {
   const author = object(value.author);
@@ -134,37 +136,79 @@ function isLiveUpdateDiff(diff: string): boolean {
 export async function prepareReview(
   cwd: string,
   sessionId: string,
+  requestedPullRequest?: string,
 ): Promise<PreparedReview> {
   const directory = await mkdtemp(
     join(tmpdir(), "pi-brioche-packages-bot-review-"),
   );
   try {
     await ensureRepository(cwd);
-    const listed = await ghJson(
-      [
-        "pr",
-        "list",
-        "--state",
-        "open",
-        "--limit",
-        "100",
-        "--search",
-        "review:none author:package-update-bot[bot]",
-        "--repo",
-        repository,
-        "--json",
-        "number,title,body,author,state,isDraft,url,headRefName,headRefOid,baseRefName,reviewDecision,createdAt,updatedAt",
-      ],
-      cwd,
-    );
-    const candidates = Array.isArray(listed) ? listed : [];
-    const metadata = candidates.find(
-      (candidate) =>
-        liveUpdatePullRequest(candidate) && prNumber(candidate.number),
-    );
-    if (!metadata) {
+    const requested = requestedPullRequest?.trim();
+    let metadata: Json | undefined;
+    if (requested) {
+      metadata = object(
+        await ghJson(
+          [
+            "pr",
+            "view",
+            requested,
+            "--repo",
+            repository,
+            "--json",
+            pullRequestFields,
+          ],
+          cwd,
+        ),
+      );
+    } else {
+      const listed = await ghJson(
+        [
+          "search",
+          "prs",
+          "--state",
+          "open",
+          "--review",
+          "none",
+          "--app",
+          "package-update-bot",
+          "--repo",
+          repository,
+          "--limit",
+          "100",
+          "--json",
+          "number,title,author,state,isDraft,url",
+        ],
+        cwd,
+      );
+      const candidates = Array.isArray(listed) ? listed : [];
+      const candidate = candidates.find(
+        (item) =>
+          liveUpdatePullRequest(item) &&
+          prNumber(item.number) &&
+          string(item.url),
+      );
+      if (candidate) {
+        metadata = object(
+          await ghJson(
+            [
+              "pr",
+              "view",
+              string(candidate.url),
+              "--repo",
+              repository,
+              "--json",
+              pullRequestFields,
+            ],
+            cwd,
+          ),
+        );
+      }
+    }
+    if (!metadata || !liveUpdatePullRequest(metadata)) {
       throw new Error(
-        "No open Brioche package update pull request without a review was found in the current repository.",
+        requested
+          ? `PR ${requested} is not an open Brioche package live update pull request.`
+          : "No open Brioche package update pull request without a review was found in the current repository.",
       );
     }
     const pr = prNumber(metadata.number);
@@ -178,10 +222,12 @@ export async function prepareReview(
       ["pr", "diff", String(pr), "--repo", repository],
       cwd,
     );
-    if (diff.exitCode !== 0 || !diff.output)
+    if (diff.exitCode !== 0 || !diff.output) {
+      const detail = diff.output.trim().slice(-2000);
       throw new Error(
-        `Could not retrieve the diff for Brioche package update PR ${pr} (exit code ${diff.exitCode}).`,
+        `Could not retrieve the diff for Brioche package update PR ${pr} (exit code ${diff.exitCode})${detail ? `: ${detail}` : "."}`,
       );
+    }
     if (!isLiveUpdateDiff(diff.output))
       throw new Error(
         `PR ${pr} is not a single Brioche package live update of project.bri and brioche.lock.`,

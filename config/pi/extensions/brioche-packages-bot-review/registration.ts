@@ -265,8 +265,10 @@ export default function registerBriochePackagesBotReview(pi: ExtensionAPI) {
   };
 
   pi.registerCommand("brioche-packages:bot-review", {
-    description: "Review the first open Brioche package update pull request",
-    handler: async (_args, ctx) => {
+    description:
+      "Review the first open Brioche package update pull request or a specified PR URL",
+    handler: async (args, ctx) => {
+      const requestedPullRequest = args.trim() || undefined;
       if (shuttingDown) return;
       await stopReview();
       let review: PreparedReview;
@@ -278,6 +280,7 @@ export default function registerBriochePackagesBotReview(pi: ExtensionAPI) {
         review = await prepareReview(
           ctx.cwd,
           ctx.sessionManager.getSessionId(),
+          requestedPullRequest,
         );
         active = review;
         const event = await discoverCompletion(pi);

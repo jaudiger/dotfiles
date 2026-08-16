@@ -265,8 +265,10 @@ export default function registerDependabotReview(pi: ExtensionAPI) {
   };
 
   pi.registerCommand("github:dependabot-review", {
-    description: "Review the first open Dependabot pull request",
-    handler: async (_args, ctx) => {
+    description:
+      "Review the first open Dependabot pull request or a specified PR URL",
+    handler: async (args, ctx) => {
+      const requestedPullRequest = args.trim() || undefined;
       if (shuttingDown) return;
       await stopReview();
       let review: PreparedReview;
@@ -275,6 +277,7 @@ export default function registerDependabotReview(pi: ExtensionAPI) {
         review = await prepareReview(
           ctx.cwd,
           ctx.sessionManager.getSessionId(),
+          requestedPullRequest,
         );
         active = review;
         const event = await discoverCompletion(pi);

@@ -71,6 +71,45 @@ function prNumber(value: unknown): number | undefined {
   return number(value);
 }
 
+function repositoryFromUrl(value: unknown): string | undefined {
+  const url = string(value);
+  const match = url.match(
+    /^https:\/\/github\.com\/([^/]+\/[^/]+)\/pull\/\d+$/,
+  );
+  return match?.[1];
+}
+
+const pullRequestFields =
+  "number,title,body,author,state,isDraft,url,headRefName,headRefOid,baseRefName,reviewDecision,createdAt,updatedAt";
+
+async function dependabotSearchScope(cwd: string): Promise<string[]> {
+  const account = object(await ghJson(["api", "user"], cwd));
+  const login = string(account.login);
+  if (!login) throw new Error("GitHub returned no authenticated user.");
+  const organizationOutput = await successful(
+    "gh",
+    ["api", "user/orgs?per_page=100", "--paginate", "--jq", ".[].login"],
+    cwd,
+  );
+  const organizations = organizationOutput
+    .split("\n")
+    .map((organization) => organization.trim())
+    .filter(Boolean);
+  const scopes = [
+    `user:${login}`,
+    ...organizations.map((organization) => `org:${organization}`),
+  ];
+  return scopes.length === 1
+    ? scopes
+    : [
+        "(",
+        ...scopes.flatMap((scope, index) =>
+          index === 0 ? [scope] : ["OR", scope],
+        ),
+        ")",
+      ];
+}
+
 function dependabotAuthor(value: Json): boolean {
   const author = object(value.author);
   return ["app/dependabot", "dependabot[bot]", "dependabot"].includes(
@@ -87,42 +126,81 @@ function openDependabot(value: Json): boolean {
 export async function prepareReview(
   cwd: string,
   sessionId: string,
+  requestedPullRequest?: string,
 ): Promise<PreparedReview> {
   const directory = await mkdtemp(join(tmpdir(), "pi-dependabot-review-"));
   try {
-    const listed = await ghJson(
-      [
-        "pr",
-        "list",
-        "--state",
-        "open",
-        "--limit",
-        "100",
-        "--search",
-        "review:none author:app/dependabot",
-        "--json",
-        "number,title,body,author,state,isDraft,url,headRefName,headRefOid,baseRefName,reviewDecision,createdAt,updatedAt",
-      ],
-      cwd,
-    );
-    const candidates = Array.isArray(listed) ? listed : [];
-    const metadata = candidates.find(
-      (candidate) => openDependabot(candidate) && prNumber(candidate.number),
-    );
-    if (!metadata) {
+    const requested = requestedPullRequest?.trim();
+    let metadata: Json | undefined;
+    if (requested) {
+      metadata = object(
+        await ghJson(
+          ["pr", "view", requested, "--json", pullRequestFields],
+          cwd,
+        ),
+      );
+    } else {
+      const searchScope = await dependabotSearchScope(cwd);
+      const listed = await ghJson(
+        [
+          "search",
+          "prs",
+          "--state",
+          "open",
+          "--review",
+          "none",
+          "--app",
+          "dependabot",
+          "--limit",
+          "100",
+          "--json",
+          "number,author,state,isDraft,url",
+          "--",
+          ...searchScope,
+        ],
+        cwd,
+      );
+      const candidates = Array.isArray(listed) ? listed : [];
+      const candidate = candidates.find(
+        (item) => prNumber(item.number) && string(item.url),
+      );
+      if (candidate) {
+        metadata = object(
+          await ghJson(
+            ["pr", "view", string(candidate.url), "--json", pullRequestFields],
+            cwd,
+          ),
+        );
+      }
+    }
+    if (!metadata || !openDependabot(metadata)) {
       throw new Error(
-        "No open Dependabot pull request without a review was found in the current repository.",
+        requested
+          ? `PR ${requested} is not an open Dependabot pull request.`
+          : "No open Dependabot pull request without a review was found across the searched repositories.",
       );
     }
     const pr = prNumber(metadata.number);
     if (!pr) throw new Error("Dependabot pull request had no valid number.");
-
-    const diff = await capture("gh", ["pr", "diff", String(pr)], cwd);
-    if (diff.exitCode !== 0 || !diff.output)
+    const pullRequestRepository = repositoryFromUrl(metadata.url);
+    if (!pullRequestRepository)
+      throw new Error("Dependabot pull request had no valid GitHub URL.");
+    const diff = await capture(
+      "gh",
+      ["pr", "diff", String(pr), "--repo", pullRequestRepository],
+      cwd,
+    );
+    if (diff.exitCode !== 0 || !diff.output) {
+      const detail = diff.output.trim().slice(-2000);
       throw new Error(
-        `Could not retrieve the diff for Dependabot PR ${pr} (exit code ${diff.exitCode}).`,
+        `Could not retrieve the diff for Dependabot PR ${pr} (exit code ${diff.exitCode})${detail ? `: ${detail}` : "."}`,
       );
-    const checks = await capture("gh", ["pr", "checks", String(pr)], cwd);
+    }
+    const checks = await capture(
+      "gh",
+      ["pr", "checks", String(pr), "--repo", pullRequestRepository],
+      cwd,
+    );
     const enriched = {
       pullRequest: metadata,
       statusChecksExitCode: checks.exitCode,
@@ -151,7 +229,14 @@ export async function prepareReview(
       `${checks.exitCode}\n`,
       { mode: 0o600 },
     );
-    return { directory, number: pr, metadata: enriched, cwd, sessionId };
+    return {
+      directory,
+      number: pr,
+      repository: pullRequestRepository,
+      metadata: enriched,
+      cwd,
+      sessionId,
+    };
   } catch (error) {
     await rm(directory, { recursive: true, force: true });
     throw error;
@@ -186,6 +271,8 @@ async function refreshedMetadata(
       "pr",
       "view",
       String(review.number),
+      "--repo",
+      review.repository,
       "--json",
       "number,author,state,isDraft,title,url,headRefName,headRefOid,baseRefName,reviewDecision,mergeable,mergeStateStatus",
     ],
@@ -242,6 +329,8 @@ async function requiredChecks(review: PreparedReview): Promise<string> {
       "pr",
       "checks",
       String(review.number),
+      "--repo",
+      review.repository,
       "--required",
       "--json",
       "name,state,bucket,link",
@@ -286,6 +375,8 @@ export async function mergeReview(
       "pr",
       "review",
       String(review.number),
+      "--repo",
+      review.repository,
       "--approve",
       "--body",
       "Looks good to me 🚀",
@@ -299,6 +390,8 @@ export async function mergeReview(
         "pr",
         "merge",
         String(review.number),
+        "--repo",
+        review.repository,
         "--squash",
         "--delete-branch",
         "--match-head-commit",

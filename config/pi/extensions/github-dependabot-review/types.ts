@@ -5,6 +5,7 @@ export type CommandResult = { output: string; exitCode: number };
 export type PreparedReview = {
   directory: string;
   number: number;
+  repository: string;
   metadata: Json;
   cwd: string;
   sessionId: string;
