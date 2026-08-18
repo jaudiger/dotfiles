@@ -9,9 +9,13 @@ import {
 const usage =
   "Usage: /brioche-packages:discover-package [homebrew|nixpkgs|arch|all] [count]";
 
-function metadataValue(result: DiscoveryResult, key: string): string {
+function metadataValue(
+  result: DiscoveryResult,
+  key: string,
+  fallback = "[]",
+): string {
   const value = result.metadata[key];
-  return typeof value === "string" ? value : JSON.stringify(value ?? "[]");
+  return typeof value === "string" ? value : JSON.stringify(value ?? fallback);
 }
 
 export default function (pi: ExtensionAPI) {
@@ -39,12 +43,12 @@ export default function (pi: ExtensionAPI) {
       }
 
       temporaryDirectories.add(result.directory);
-      const failedSources = metadataValue(result, "failed_sources");
+      const failed = metadataValue(result, "failed", "{}");
       const excludedCount = metadataValue(result, "excluded_count");
       pi.sendMessage(
         {
           customType: "brioche-packages-discovery",
-          content: `Package discovery completed with ${result.packageCount} candidates. Read ${result.outputPath} for the complete JSON output before responding. Discovery metadata: excluded_count=${excludedCount}, failed_sources=${failedSources}. The command was run once with --exclude-defaults; do not run it again. Review the candidates, gather complementary information with the researcher subagent when useful, and present the result as a concise markdown table with package, source, type, confidence, version, and description. Mention failed sources or other limitations after the table.`,
+          content: `Package discovery completed with ${result.packageCount} candidates. Read ${result.outputPath} for the complete JSON output before responding. Discovery metadata: excluded_count=${excludedCount}, failed=${failed}. The command was run once with --exclude-defaults; do not run it again. Review the candidates, gather complementary information with the researcher subagent when useful, and present the result as a concise markdown table with package, source, candidate recipe type, candidate recipe build dependencies, version, and description. Mention failed sources, their issue messages, or other limitations after the table.`,
           details: {
             directory: result.directory,
             outputPath: result.outputPath,
