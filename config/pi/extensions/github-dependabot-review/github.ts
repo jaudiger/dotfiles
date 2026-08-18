@@ -73,9 +73,7 @@ function prNumber(value: unknown): number | undefined {
 
 function repositoryFromUrl(value: unknown): string | undefined {
   const url = string(value);
-  const match = url.match(
-    /^https:\/\/github\.com\/([^/]+\/[^/]+)\/pull\/\d+$/,
-  );
+  const match = url.match(/^https:\/\/github\.com\/([^/]+\/[^/]+)\/pull\/\d+$/);
   return match?.[1];
 }
 
