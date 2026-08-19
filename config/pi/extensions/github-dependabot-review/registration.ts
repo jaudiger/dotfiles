@@ -8,7 +8,14 @@ import {
 import { Type } from "typebox";
 import { registerSubagentCapabilityCeiling } from "pi-subagents/capability-ceiling";
 import { checkoutReview, mergeReview, prepareReview } from "./github.js";
-import { discoverCompletion, completion, runId, sendRpc } from "./rpc.js";
+import {
+  discoverCompletion,
+  completion,
+  processTerminalRunId,
+  processTerminalState,
+  runId,
+  sendRpc,
+} from "./rpc.js";
 import { researcherTask, scoutTask } from "./tasks.js";
 import type { Json, PendingRun, PreparedReview } from "./types.js";
 import { object, string } from "./utils.js";
@@ -17,10 +24,47 @@ export default function registerDependabotReview(pi: ExtensionAPI) {
   const pending = new Map<string, PendingRun>();
   const earlyCompletions = new Map<string, unknown>();
   const processing = new Set<string>();
+  const processingPromises = new Set<Promise<void>>();
+  const retainedDirectories = new Set<string>();
   const subscribed = new Set<string>();
   let active: PreparedReview | undefined;
   let spawning = 0;
   let shuttingDown = false;
+  const terminalStates = new Map<string, string>();
+  const terminalWaiters = new Map<string, Set<(observed: boolean) => void>>();
+
+  const waitForProcessTerminal = (id: string): Promise<boolean> => {
+    const state = terminalStates.get(id);
+    if (state === "observed") return Promise.resolve(true);
+    if (state === "unknown") return Promise.resolve(false);
+    return new Promise((resolve) => {
+      const waiters = terminalWaiters.get(id) ?? new Set();
+      let settled = false;
+      const finish = (observed: boolean) => {
+        if (settled) return;
+        settled = true;
+        waiters.delete(finish);
+        if (waiters.size === 0) terminalWaiters.delete(id);
+        clearTimeout(timeout);
+        resolve(observed);
+      };
+      const timeout = setTimeout(() => finish(false), 5_000);
+      waiters.add(finish);
+      terminalWaiters.set(id, waiters);
+    });
+  };
+
+  const stopAndConfirm = async (id: string): Promise<boolean> => {
+    try {
+      await sendRpc(pi, "stop", { runId: id });
+    } catch {
+      return waitForProcessTerminal(id);
+    }
+    return waitForProcessTerminal(id);
+  };
+
+  const singleChildWorkflow = (agent: string, task: string) =>
+    `return runs.run("main", ${JSON.stringify({ agent, task, output: false })})`;
 
   const report = (content: string, details: Json = {}, triggerTurn = false) => {
     pi.sendMessage(
@@ -40,17 +84,15 @@ export default function registerDependabotReview(pi: ExtensionAPI) {
     pending.clear();
     earlyCompletions.clear();
     active = undefined;
-    await Promise.all(
-      runs.map(async (id) => {
-        try {
-          await sendRpc(pi, "stop", { runId: id });
-        } catch {
-          return undefined;
-        }
-        return undefined;
-      }),
-    );
-    if (directory) await rm(directory, { recursive: true, force: true });
+    const stopped = await Promise.all(runs.map(stopAndConfirm));
+    await Promise.all(processingPromises);
+    if (
+      directory &&
+      !retainedDirectories.has(directory) &&
+      spawning === 0 &&
+      (runs.length === 0 || stopped.every(Boolean))
+    )
+      await rm(directory, { recursive: true, force: true });
   };
 
   const spawnScout = async (review: PreparedReview, reportPath: string) => {
@@ -59,14 +101,19 @@ export default function registerDependabotReview(pi: ExtensionAPI) {
     const capability = registerSubagentCapabilityCeiling({
       sessionId: review.sessionId,
       source: "github-dependabot-review",
-      ceiling: { allowedTools: ["read", "grep", "find", "ls"] },
+      ceiling: {
+        allowedAgents: ["scout"],
+        allowedTools: ["read", "grep", "find", "ls"],
+      },
     });
     try {
       const rpc = await sendRpc(pi, "spawn", {
         cwd: review.cwd,
         context: "fresh",
-        agent: "scout",
-        task: scoutTask(review, reportPath),
+        workflowScript: singleChildWorkflow(
+          "scout",
+          scoutTask(review, reportPath),
+        ),
         reads: [
           join(review.directory, "pr-metadata.json"),
           join(review.directory, "pr-description.md"),
@@ -75,7 +122,6 @@ export default function registerDependabotReview(pi: ExtensionAPI) {
           reportPath,
           review.cwd,
         ],
-        output: false,
         intercomBridge: { mode: "off" },
         mission: {
           title: `Scout repository usage for Dependabot PR ${review.number}`,
@@ -88,11 +134,9 @@ export default function registerDependabotReview(pi: ExtensionAPI) {
       if (!id) throw new Error("Scout started without a run identifier.");
       if (shuttingDown || active?.directory !== review.directory) {
         earlyCompletions.delete(id);
-        try {
-          await sendRpc(pi, "stop", { runId: id });
-        } catch {
-          return;
-        }
+        if (await stopAndConfirm(id))
+          await rm(review.directory, { recursive: true, force: true });
+        else retainedDirectories.add(review.directory);
         return;
       }
       pending.set(id, { kind: "scout", review });
@@ -183,7 +227,7 @@ export default function registerDependabotReview(pi: ExtensionAPI) {
     if (!item) return;
     processing.add(id);
     pending.delete(id);
-    void (
+    const promise = (
       item.kind === "researcher"
         ? finishResearcher(id, item, raw)
         : finishScout(id, item, raw)
@@ -195,6 +239,11 @@ export default function registerDependabotReview(pi: ExtensionAPI) {
         );
       })
       .finally(() => processing.delete(id));
+    processingPromises.add(promise);
+    void promise.then(
+      () => processingPromises.delete(promise),
+      () => processingPromises.delete(promise),
+    );
   };
 
   const subscribeCompletion = (event: string) => {
@@ -207,11 +256,25 @@ export default function registerDependabotReview(pi: ExtensionAPI) {
     });
   };
 
+  const subscribeProcessTerminal = (event: string) => {
+    if (subscribed.has(event)) return;
+    subscribed.add(event);
+    pi.events.on(event, (raw) => {
+      const id = processTerminalRunId(raw);
+      const state = processTerminalState(raw);
+      if (!id || !state) return;
+      terminalStates.set(id, state);
+      const waiters = terminalWaiters.get(id);
+      if (waiters) for (const finish of waiters) finish(state === "observed");
+    });
+  };
+
   const spawnResearcher = async (review: PreparedReview) => {
     const capability = registerSubagentCapabilityCeiling({
       sessionId: review.sessionId,
       source: "github-dependabot-review",
       ceiling: {
+        allowedAgents: ["researcher"],
         allowedTools: [
           "read",
           "web_search",
@@ -224,8 +287,10 @@ export default function registerDependabotReview(pi: ExtensionAPI) {
       const rpc = await sendRpc(pi, "spawn", {
         cwd: review.cwd,
         context: "fresh",
-        agent: "researcher",
-        task: researcherTask(review),
+        workflowScript: singleChildWorkflow(
+          "researcher",
+          researcherTask(review),
+        ),
         reads: [
           join(review.directory, "pr-metadata.json"),
           join(review.directory, "pr-description.md"),
@@ -233,7 +298,6 @@ export default function registerDependabotReview(pi: ExtensionAPI) {
           join(review.directory, "status-checks.txt"),
           review.cwd,
         ],
-        output: false,
         intercomBridge: { mode: "off" },
         mission: {
           title: `Research Dependabot PR ${review.number}`,
@@ -246,11 +310,9 @@ export default function registerDependabotReview(pi: ExtensionAPI) {
       if (!id) throw new Error("Researcher started without a run identifier.");
       if (shuttingDown || active?.directory !== review.directory) {
         earlyCompletions.delete(id);
-        try {
-          await sendRpc(pi, "stop", { runId: id });
-        } catch {
-          return;
-        }
+        if (await stopAndConfirm(id))
+          await rm(review.directory, { recursive: true, force: true });
+        else retainedDirectories.add(review.directory);
         return;
       }
       pending.set(id, { kind: "researcher", review });
@@ -280,8 +342,9 @@ export default function registerDependabotReview(pi: ExtensionAPI) {
           requestedPullRequest,
         );
         active = review;
-        const event = await discoverCompletion(pi);
-        subscribeCompletion(event);
+        const events = await discoverCompletion(pi);
+        subscribeCompletion(events.asyncComplete);
+        subscribeProcessTerminal(events.processTerminal);
         spawning += 1;
         try {
           await spawnResearcher(review);
@@ -371,20 +434,18 @@ export default function registerDependabotReview(pi: ExtensionAPI) {
   pi.on("session_shutdown", async () => {
     shuttingDown = true;
     const runs = [...pending.keys()];
-    await Promise.all(
-      runs.map(async (id) => {
-        try {
-          await sendRpc(pi, "stop", { runId: id });
-        } catch {
-          return undefined;
-        }
-        return undefined;
-      }),
-    );
+    const stopped = await Promise.all(runs.map(stopAndConfirm));
+    await Promise.all(processingPromises);
     pending.clear();
     earlyCompletions.clear();
     processing.clear();
-    if (active) await rm(active.directory, { recursive: true, force: true });
+    if (
+      active &&
+      !retainedDirectories.has(active.directory) &&
+      spawning === 0 &&
+      (runs.length === 0 || stopped.every(Boolean))
+    )
+      await rm(active.directory, { recursive: true, force: true });
     active = undefined;
   });
 }

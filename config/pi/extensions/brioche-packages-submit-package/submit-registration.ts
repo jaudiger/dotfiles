@@ -10,6 +10,9 @@ import {
   completionStatus,
   completionSuccess,
   completionText,
+  processTerminalEvent,
+  processTerminalRunId,
+  processTerminalState,
   sendRpc,
   spawnedRunId,
 } from "./rpc.js";
@@ -115,10 +118,46 @@ export function registerSubmitPackage(pi: ExtensionAPI): void {
   const pending = new Map<string, PendingSubmission>();
   const earlyCompletions = new Map<string, unknown>();
   const processingRuns = new Set<string>();
+  const processingPromises = new Set<Promise<void>>();
   const subscribedEvents = new Set<string>();
   let spawning = 0;
   let activeDirectory: string | undefined;
   let shuttingDown = false;
+  const terminalStates = new Map<string, string>();
+  const terminalWaiters = new Map<string, Set<(observed: boolean) => void>>();
+
+  const waitForProcessTerminal = (id: string): Promise<boolean> => {
+    const state = terminalStates.get(id);
+    if (state === "observed") return Promise.resolve(true);
+    if (state === "unknown") return Promise.resolve(false);
+    return new Promise((resolve) => {
+      const waiters = terminalWaiters.get(id) ?? new Set();
+      let settled = false;
+      const finish = (observed: boolean) => {
+        if (settled) return;
+        settled = true;
+        waiters.delete(finish);
+        if (waiters.size === 0) terminalWaiters.delete(id);
+        clearTimeout(timeout);
+        resolve(observed);
+      };
+      const timeout = setTimeout(() => finish(false), 5_000);
+      waiters.add(finish);
+      terminalWaiters.set(id, waiters);
+    });
+  };
+
+  const stopAndConfirm = async (id: string): Promise<boolean> => {
+    try {
+      await sendRpc(pi, "stop", { runId: id });
+    } catch {
+      return waitForProcessTerminal(id);
+    }
+    return waitForProcessTerminal(id);
+  };
+
+  const singleChildWorkflow = (agent: string, task: string) =>
+    `return runs.run("main", ${JSON.stringify({ agent, task, output: false })})`;
 
   const report = (content: string, details: Json = {}) => {
     pi.sendMessage(
@@ -194,7 +233,10 @@ export function registerSubmitPackage(pi: ExtensionAPI): void {
       processingRuns.delete(runId);
       if (activeDirectory === item.prepared.directory)
         activeDirectory = undefined;
-      if (!retainDirectory)
+      if (
+        !retainDirectory &&
+        (!shuttingDown || terminalStates.get(runId) === "observed")
+      )
         await removeSubmissionDirectory(item.prepared.directory);
     }
   };
@@ -202,7 +244,12 @@ export function registerSubmitPackage(pi: ExtensionAPI): void {
   const startCompletion = (runId: string, payload: unknown) => {
     if (processingRuns.has(runId) || !pending.has(runId)) return;
     processingRuns.add(runId);
-    void complete(payload);
+    const promise = complete(payload);
+    processingPromises.add(promise);
+    void promise.then(
+      () => processingPromises.delete(promise),
+      () => processingPromises.delete(promise),
+    );
   };
 
   const subscribeToCompletion = (event: string) => {
@@ -218,14 +265,29 @@ export function registerSubmitPackage(pi: ExtensionAPI): void {
     });
   };
 
+  const subscribeToProcessTerminal = (event: string) => {
+    if (subscribedEvents.has(event)) return;
+    subscribedEvents.add(event);
+    pi.events.on(event, (payload) => {
+      const runId = processTerminalRunId(payload);
+      const state = processTerminalState(payload);
+      if (!runId || !state) return;
+      terminalStates.set(runId, state);
+      const waiters = terminalWaiters.get(runId);
+      if (waiters) for (const finish of waiters) finish(state === "observed");
+    });
+  };
+
   const discoverCompletionEvent = async () => {
     const ping = await sendRpc(pi, "ping", {});
     const event = asyncCompletionEvent(ping);
-    if (!event)
+    const terminalEvent = processTerminalEvent(ping);
+    if (!event || !terminalEvent)
       throw new Error(
-        "Subagent RPC ping did not advertise an async completion event.",
+        "Subagent RPC ping did not advertise the required completion events.",
       );
     subscribeToCompletion(event);
+    subscribeToProcessTerminal(terminalEvent);
   };
 
   pi.registerCommand("brioche-packages:submit-package", {
@@ -293,6 +355,7 @@ export function registerSubmitPackage(pi: ExtensionAPI): void {
             sessionId: ctx.sessionManager.getSessionId(),
             source: "brioche-packages-submit-package",
             ceiling: {
+              allowedAgents: ["researcher"],
               allowedTools: [
                 "read",
                 "web_search",
@@ -306,10 +369,11 @@ export function registerSubmitPackage(pi: ExtensionAPI): void {
             rpc = await sendRpc(pi, "spawn", {
               cwd: ctx.cwd,
               context: "fresh",
-              agent: "researcher",
-              task: researcherTask(prepared, ctx.cwd),
+              workflowScript: singleChildWorkflow(
+                "researcher",
+                researcherTask(prepared, ctx.cwd),
+              ),
               reads: [prepared.projectPath, ...evidenceLogPaths(prepared)],
-              output: false,
               intercomBridge: { mode: "off" },
               mission: {
                 title: `Research Brioche package ${prepared.packageName}`,
@@ -323,6 +387,11 @@ export function registerSubmitPackage(pi: ExtensionAPI): void {
           const runId = spawnedRunId(rpc);
           if (!runId)
             throw new Error("Researcher started without a run identifier.");
+          if (shuttingDown) {
+            if (await stopAndConfirm(runId))
+              await removeSubmissionDirectory(prepared.directory);
+            return;
+          }
           pending.set(runId, {
             prepared,
             packageRepository: ctx.cwd,
@@ -352,11 +421,27 @@ export function registerSubmitPackage(pi: ExtensionAPI): void {
 
   pi.on("session_shutdown", async () => {
     shuttingDown = true;
+    const entries = [...pending.entries()];
     const directories = new Set<string>();
     if (activeDirectory) directories.add(activeDirectory);
     for (const item of pending.values())
       directories.add(item.prepared.directory);
-    await Promise.all([...directories].map(removeSubmissionDirectory));
+    const stopped = await Promise.all(
+      entries.map(async ([runId, item]) => ({
+        directory: item.prepared.directory,
+        stopped: await stopAndConfirm(runId),
+      })),
+    );
+    await Promise.all(processingPromises);
+    if (spawning === 0) {
+      const safeDirectories = new Set(
+        stopped.filter((item) => item.stopped).map((item) => item.directory),
+      );
+      for (const directory of directories) {
+        if (entries.length === 0 || safeDirectories.has(directory))
+          await removeSubmissionDirectory(directory);
+      }
+    }
     pending.clear();
     earlyCompletions.clear();
     processingRuns.clear();

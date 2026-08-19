@@ -70,14 +70,29 @@ export function sendRpc(
   });
 }
 
-export async function discoverCompletion(pi: ExtensionAPI): Promise<string> {
+export async function discoverCompletion(
+  pi: ExtensionAPI,
+): Promise<{ asyncComplete: string; processTerminal: string }> {
   const ping = await sendRpc(pi, "ping", {});
-  const event = string(object(object(ping).events).asyncComplete);
-  if (!event)
+  const events = object(ping).events;
+  const asyncComplete = string(object(events).asyncComplete);
+  const processTerminal = string(object(events).processTerminal);
+  if (!asyncComplete || !processTerminal)
     throw new Error(
-      "Subagent RPC did not advertise an async completion event.",
+      "Subagent RPC did not advertise the required completion events.",
     );
-  return event;
+  return { asyncComplete, processTerminal };
+}
+
+export function processTerminalRunId(value: unknown): string {
+  const data = object(value);
+  const terminal = object(data.processTerminal);
+  return string(data.runId) || string(terminal.runId);
+}
+
+export function processTerminalState(value: unknown): string {
+  const data = object(value);
+  return string(data.state) || string(object(data.processTerminal).state);
 }
 
 export function runId(value: unknown): string {

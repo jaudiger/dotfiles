@@ -237,9 +237,11 @@ export function rpcErrorMessage(error: unknown): string {
 }
 
 export function processTerminalRunId(payload: unknown): string {
-  return text(asObject(payload).runId);
+  const data = asObject(payload);
+  return text(data.runId) || text(asObject(data.processTerminal).runId);
 }
 
 export function processTerminalState(payload: unknown): string {
-  return text(asObject(payload).state);
+  const data = asObject(payload);
+  return text(data.state) || text(asObject(data.processTerminal).state);
 }

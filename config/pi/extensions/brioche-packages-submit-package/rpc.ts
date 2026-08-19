@@ -63,6 +63,21 @@ export function asyncCompletionEvent(payload: unknown): string {
   return text(asObject(asObject(payload).events).asyncComplete);
 }
 
+export function processTerminalEvent(payload: unknown): string {
+  return text(asObject(asObject(payload).events).processTerminal);
+}
+
+export function processTerminalRunId(payload: unknown): string {
+  const data = asObject(payload);
+  const terminal = asObject(data.processTerminal);
+  return text(data.runId) || text(terminal.runId);
+}
+
+export function processTerminalState(payload: unknown): string {
+  const data = asObject(payload);
+  return text(data.state) || text(asObject(data.processTerminal).state);
+}
+
 export function spawnedRunId(payload: unknown): string {
   const details = asObject(asObject(payload).details);
   return text(details.runId) || text(details.asyncId);

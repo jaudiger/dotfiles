@@ -31,6 +31,9 @@ const briocheSourceRepository =
 const briocheRuntimeUtilsRepository =
   "/Users/jaudiger/Development/git-repositories/brioche-dev/brioche-runtime-utils";
 
+const singleChildWorkflow = (agent: string, task: string) =>
+  `return runs.run("main", ${JSON.stringify({ agent, task })})`;
+
 export function registerDebugPrFailure(pi: ExtensionAPI) {
   const pending = new Map<string, PendingRun>();
   const earlyCompletions = new Map<string, unknown>();
@@ -174,6 +177,7 @@ Investigate Brioche package PR ${pr} for package ${packageName}. Evidence direct
             sessionId: ctx.sessionManager.getSessionId(),
             source: "brioche-packages-debug-pr-failure",
             ceiling: {
+              allowedAgents: ["oracle"],
               allowedTools: ["read", "grep", "find", "ls"],
             },
           });
@@ -182,8 +186,7 @@ Investigate Brioche package PR ${pr} for package ${packageName}. Evidence direct
             rpc = await sendRpc(pi, "spawn", {
               cwd: ctx.cwd,
               context: "fresh",
-              agent: "oracle",
-              task,
+              workflowScript: singleChildWorkflow("oracle", task),
               reads: [
                 join(prepared.directory, "metadata.json"),
                 join(prepared.directory, "pr.diff"),
@@ -204,6 +207,16 @@ Investigate Brioche package PR ${pr} for package ${packageName}. Evidence direct
           const runId = spawnedRunId(rpc);
           if (!runId)
             throw new Error("Subagent started without a run identifier.");
+          if (shuttingDown) {
+            try {
+              await sendRpc(pi, "stop", { runId });
+            } catch {
+              // The run may have reached a terminal state before shutdown.
+            }
+            if (await waitForProcessTerminal(runId))
+              await removeDirectory(prepared.directory);
+            return;
+          }
           pending.set(runId, { directory: prepared.directory, pr });
           const completion = earlyCompletions.get(runId);
           if (completion) {
