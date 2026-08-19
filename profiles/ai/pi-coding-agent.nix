@@ -119,6 +119,10 @@ in
         ];
 
         file = {
+          "piPromptTemplates" = {
+            source = ../../config/pi/prompts;
+            target = ".pi/agent/prompts";
+          };
           "piSubagentsConfig" = {
             source = ../../config/pi/packages/pi-subagents.json;
             target = ".pi/agent/extensions/subagent/config.json";
