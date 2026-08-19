@@ -127,6 +127,7 @@ in
           ];
         };
         format_on_save = "modifications";
+        fullscreen_mode = "simple";
         git = {
           inline_blame = {
             min_column = 120;
