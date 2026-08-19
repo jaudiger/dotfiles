@@ -1,14 +1,22 @@
+import { realpathSync } from "node:fs";
 import { homedir } from "node:os";
-import { isAbsolute, join, relative, resolve, sep } from "node:path";
+import { isAbsolute, join, relative, sep } from "node:path";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 
 const trustedProjectRoot = join(homedir(), "Development");
 
 function isTrustedProject(projectPath: string): boolean {
-  const relativePath = relative(
-    resolve(trustedProjectRoot),
-    resolve(projectPath),
-  );
+  let trustedRoot: string;
+  let resolvedProject: string;
+
+  try {
+    trustedRoot = realpathSync(trustedProjectRoot);
+    resolvedProject = realpathSync(projectPath);
+  } catch {
+    return false;
+  }
+
+  const relativePath = relative(trustedRoot, resolvedProject);
   return (
     relativePath === "" ||
     (!relativePath.startsWith(`..${sep}`) &&
@@ -20,6 +28,6 @@ function isTrustedProject(projectPath: string): boolean {
 export default function (pi: ExtensionAPI) {
   pi.on("project_trust", (event) => {
     if (!isTrustedProject(event.cwd)) return;
-    return { trusted: "yes", remember: false };
+    return { trusted: "yes", remember: true };
   });
 }
