@@ -7,7 +7,14 @@ import {
 } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
 import { registerSubagentCapabilityCeiling } from "pi-subagents/capability-ceiling";
-import { checkoutReview, mergeReview, prepareReview } from "./github.js";
+import {
+  checkoutReview,
+  fetchReviewDiff,
+  listCandidates,
+  mergeReview,
+  prepareReview,
+} from "./github.js";
+import { pickReview } from "./review-picker.js";
 import {
   discoverCompletion,
   completion,
@@ -320,13 +327,26 @@ export default function registerDependabotReview(pi: ExtensionAPI) {
 
   pi.registerCommand("github:dependabot-review", {
     description:
-      "Review the first open Dependabot pull request or a specified PR URL",
+      "Select an open Dependabot pull request or use a specified PR URL",
     handler: async (args, ctx) => {
-      const requestedPullRequest = args.trim() || undefined;
+      let requestedPullRequest = args.trim() || undefined;
       if (shuttingDown) return;
       await stopReview();
       let review: PreparedReview;
       try {
+        if (!requestedPullRequest) {
+          ctx.ui.notify("Loading Dependabot pull requests...", "info");
+          const candidates = await listCandidates(ctx.cwd);
+          if (candidates.length === 0)
+            throw new Error(
+              "No open Dependabot pull request without a review was found across the searched repositories.",
+            );
+          const selected = await pickReview(ctx, candidates, (candidate) =>
+            fetchReviewDiff(candidate, ctx.cwd),
+          );
+          if (!selected) return;
+          requestedPullRequest = selected.url;
+        }
         ctx.ui.notify("Preparing Dependabot pull request evidence...", "info");
         review = await prepareReview(
           ctx.cwd,

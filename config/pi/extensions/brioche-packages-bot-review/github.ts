@@ -3,9 +3,10 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
+import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
+import type { ReviewCandidate } from "./review-picker.js";
 import type { CommandResult, Json, PreparedReview } from "./types.js";
 import { number, object, string } from "./utils.js";
-import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 
 const execFileAsync = promisify(execFile);
 const maxBuffer = 40 * 1024 * 1024;
@@ -66,6 +67,36 @@ async function ghJson(args: string[], cwd: string): Promise<Json | Json[]> {
   } catch {
     throw new Error(`gh ${args.join(" ")} returned invalid JSON.`);
   }
+}
+
+function githubRepositoryFromRemote(value: string): string | undefined {
+  const normalized = value.trim().replace(/\.git$/, "");
+  return normalized.match(/github\.com[/:]([^/\s]+\/[^/\s]+)$/)?.[1];
+}
+
+async function remoteForRepository(
+  cwd: string,
+  expectedRepository: string,
+): Promise<string> {
+  const remotes = (await successful("git", ["remote"], cwd))
+    .split(/\s+/)
+    .filter(Boolean);
+  for (const remote of remotes) {
+    const urls = await successful(
+      "git",
+      ["remote", "get-url", "--all", remote],
+      cwd,
+    );
+    if (
+      urls
+        .split("\n")
+        .some((url) => githubRepositoryFromRemote(url) === expectedRepository)
+    )
+      return remote;
+  }
+  throw new Error(
+    `No Git remote for ${expectedRepository} is configured in the current checkout.`,
+  );
 }
 
 function prNumber(value: unknown): number | undefined {
@@ -133,6 +164,67 @@ function isLiveUpdateDiff(diff: string): boolean {
   );
 }
 
+export async function listCandidates(cwd: string): Promise<ReviewCandidate[]> {
+  await ensureRepository(cwd);
+  const listed = await ghJson(
+    [
+      "search",
+      "prs",
+      "--state",
+      "open",
+      "--review",
+      "none",
+      "--app",
+      "package-update-bot",
+      "--repo",
+      repository,
+      "--limit",
+      "1000",
+      "--json",
+      "number,title,author,state,isDraft,url",
+    ],
+    cwd,
+  );
+  const candidates = Array.isArray(listed) ? listed : [];
+  return candidates.flatMap((item) => {
+    if (!liveUpdatePullRequest(item)) return [];
+    const pr = prNumber(item.number);
+    const url = string(item.url);
+    if (!pr || !url) return [];
+    return [
+      {
+        number: pr,
+        title: string(item.title) || `Pull request #${pr}`,
+        url,
+        author: string(object(item.author).login),
+        repository,
+      },
+    ];
+  });
+}
+
+export async function fetchReviewDiff(
+  candidate: ReviewCandidate,
+  cwd: string,
+): Promise<string> {
+  const diff = await capture(
+    "gh",
+    ["pr", "diff", String(candidate.number), "--repo", repository],
+    cwd,
+  );
+  if (diff.exitCode !== 0 || !diff.output) {
+    const detail = diff.output.trim().slice(-2000);
+    throw new Error(
+      `Could not retrieve the diff for Brioche package update PR ${candidate.number} (exit code ${diff.exitCode})${detail ? `: ${detail}` : "."}`,
+    );
+  }
+  if (!isLiveUpdateDiff(diff.output))
+    throw new Error(
+      `PR ${candidate.number} is not a single Brioche package live update of project.bri and brioche.lock.`,
+    );
+  return diff.output;
+}
+
 export async function prepareReview(
   cwd: string,
   sessionId: string,
@@ -161,39 +253,14 @@ export async function prepareReview(
         ),
       );
     } else {
-      const listed = await ghJson(
-        [
-          "search",
-          "prs",
-          "--state",
-          "open",
-          "--review",
-          "none",
-          "--app",
-          "package-update-bot",
-          "--repo",
-          repository,
-          "--limit",
-          "100",
-          "--json",
-          "number,title,author,state,isDraft,url",
-        ],
-        cwd,
-      );
-      const candidates = Array.isArray(listed) ? listed : [];
-      const candidate = candidates.find(
-        (item) =>
-          liveUpdatePullRequest(item) &&
-          prNumber(item.number) &&
-          string(item.url),
-      );
+      const candidate = (await listCandidates(cwd))[0];
       if (candidate) {
         metadata = object(
           await ghJson(
             [
               "pr",
               "view",
-              string(candidate.url),
+              candidate.url,
               "--repo",
               repository,
               "--json",
@@ -217,21 +284,10 @@ export async function prepareReview(
         "Brioche package update pull request had no valid number.",
       );
 
-    const diff = await capture(
-      "gh",
-      ["pr", "diff", String(pr), "--repo", repository],
+    const diff = await fetchReviewDiff(
+      { number: pr, title: string(metadata.title), url: string(metadata.url) },
       cwd,
     );
-    if (diff.exitCode !== 0 || !diff.output) {
-      const detail = diff.output.trim().slice(-2000);
-      throw new Error(
-        `Could not retrieve the diff for Brioche package update PR ${pr} (exit code ${diff.exitCode})${detail ? `: ${detail}` : "."}`,
-      );
-    }
-    if (!isLiveUpdateDiff(diff.output))
-      throw new Error(
-        `PR ${pr} is not a single Brioche package live update of project.bri and brioche.lock.`,
-      );
     const checks = await capture(
       "gh",
       ["pr", "checks", String(pr), "--repo", repository],
@@ -254,7 +310,7 @@ export async function prepareReview(
         mode: 0o600,
       },
     );
-    await writeFile(join(directory, "diff.patch"), diff.output, {
+    await writeFile(join(directory, "diff.patch"), diff, {
       mode: 0o600,
     });
     await writeFile(join(directory, "status-checks.txt"), checks.output, {
@@ -463,11 +519,7 @@ export async function checkoutReview(
   );
   if (finalStatus.trim())
     throw new Error("The worktree became dirty; checkout was not performed.");
-  const remotes = (await successful("git", ["remote"], review.cwd))
-    .split(/\s+/)
-    .filter(Boolean);
-  const remote = remotes[0];
-  if (!remote) throw new Error("No Git remote is configured for checkout.");
+  const remote = await remoteForRepository(review.cwd, repository);
   await successful(
     "git",
     ["fetch", "--no-tags", remote, `pull/${review.number}/head`],

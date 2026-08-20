@@ -3,9 +3,10 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
+import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
+import type { ReviewCandidate } from "./review-picker.js";
 import type { CommandResult, Json, PreparedReview } from "./types.js";
 import { number, object, string } from "./utils.js";
-import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 
 const execFileAsync = promisify(execFile);
 const maxBuffer = 40 * 1024 * 1024;
@@ -67,6 +68,36 @@ async function ghJson(args: string[], cwd: string): Promise<Json | Json[]> {
   }
 }
 
+function githubRepositoryFromRemote(value: string): string | undefined {
+  const normalized = value.trim().replace(/\.git$/, "");
+  return normalized.match(/github\.com[/:]([^/\s]+\/[^/\s]+)$/)?.[1];
+}
+
+async function remoteForRepository(
+  cwd: string,
+  expectedRepository: string,
+): Promise<string> {
+  const remotes = (await successful("git", ["remote"], cwd))
+    .split(/\s+/)
+    .filter(Boolean);
+  for (const remote of remotes) {
+    const urls = await successful(
+      "git",
+      ["remote", "get-url", "--all", remote],
+      cwd,
+    );
+    if (
+      urls
+        .split("\n")
+        .some((url) => githubRepositoryFromRemote(url) === expectedRepository)
+    )
+      return remote;
+  }
+  throw new Error(
+    `No Git remote for ${expectedRepository} is configured in the current checkout.`,
+  );
+}
+
 function prNumber(value: unknown): number | undefined {
   return number(value);
 }
@@ -121,6 +152,67 @@ function openDependabot(value: Json): boolean {
   );
 }
 
+export async function listCandidates(cwd: string): Promise<ReviewCandidate[]> {
+  const searchScope = await dependabotSearchScope(cwd);
+  const listed = await ghJson(
+    [
+      "search",
+      "prs",
+      "--state",
+      "open",
+      "--review",
+      "none",
+      "--app",
+      "dependabot",
+      "--limit",
+      "1000",
+      "--json",
+      "number,title,author,state,isDraft,url",
+      "--",
+      ...searchScope,
+    ],
+    cwd,
+  );
+  const candidates = Array.isArray(listed) ? listed : [];
+  return candidates.flatMap((item) => {
+    if (!openDependabot(item)) return [];
+    const pr = prNumber(item.number);
+    const url = string(item.url);
+    const repository = repositoryFromUrl(url);
+    if (!pr || !url || !repository) return [];
+    return [
+      {
+        number: pr,
+        title: string(item.title) || `Pull request #${pr}`,
+        url,
+        author: string(object(item.author).login),
+        repository,
+      },
+    ];
+  });
+}
+
+export async function fetchReviewDiff(
+  candidate: ReviewCandidate,
+  cwd: string,
+): Promise<string> {
+  const repository = candidate.repository ?? repositoryFromUrl(candidate.url);
+  if (!repository)
+    throw new Error("Dependabot pull request had no valid GitHub URL.");
+  const diff = await capture(
+    "gh",
+    ["pr", "diff", String(candidate.number), "--repo", repository],
+    cwd,
+  );
+  if (diff.exitCode !== 0 || !diff.output) {
+    const detail = diff.output.trim().slice(-2000);
+    throw new Error(
+      `Could not retrieve the diff for Dependabot PR ${candidate.number} (exit code ${diff.exitCode})${detail ? `: ${detail}` : "."}`,
+    );
+  }
+  return diff.output;
+}
+
 export async function prepareReview(
   cwd: string,
   sessionId: string,
@@ -138,34 +230,11 @@ export async function prepareReview(
         ),
       );
     } else {
-      const searchScope = await dependabotSearchScope(cwd);
-      const listed = await ghJson(
-        [
-          "search",
-          "prs",
-          "--state",
-          "open",
-          "--review",
-          "none",
-          "--app",
-          "dependabot",
-          "--limit",
-          "100",
-          "--json",
-          "number,author,state,isDraft,url",
-          "--",
-          ...searchScope,
-        ],
-        cwd,
-      );
-      const candidates = Array.isArray(listed) ? listed : [];
-      const candidate = candidates.find(
-        (item) => prNumber(item.number) && string(item.url),
-      );
+      const candidate = (await listCandidates(cwd))[0];
       if (candidate) {
         metadata = object(
           await ghJson(
-            ["pr", "view", string(candidate.url), "--json", pullRequestFields],
+            ["pr", "view", candidate.url, "--json", pullRequestFields],
             cwd,
           ),
         );
@@ -183,17 +252,15 @@ export async function prepareReview(
     const pullRequestRepository = repositoryFromUrl(metadata.url);
     if (!pullRequestRepository)
       throw new Error("Dependabot pull request had no valid GitHub URL.");
-    const diff = await capture(
-      "gh",
-      ["pr", "diff", String(pr), "--repo", pullRequestRepository],
+    const diff = await fetchReviewDiff(
+      {
+        number: pr,
+        title: string(metadata.title),
+        url: string(metadata.url),
+        repository: pullRequestRepository,
+      },
       cwd,
     );
-    if (diff.exitCode !== 0 || !diff.output) {
-      const detail = diff.output.trim().slice(-2000);
-      throw new Error(
-        `Could not retrieve the diff for Dependabot PR ${pr} (exit code ${diff.exitCode})${detail ? `: ${detail}` : "."}`,
-      );
-    }
     const checks = await capture(
       "gh",
       ["pr", "checks", String(pr), "--repo", pullRequestRepository],
@@ -216,7 +283,7 @@ export async function prepareReview(
         mode: 0o600,
       },
     );
-    await writeFile(join(directory, "diff.patch"), diff.output, {
+    await writeFile(join(directory, "diff.patch"), diff, {
       mode: 0o600,
     });
     await writeFile(join(directory, "status-checks.txt"), checks.output, {
@@ -431,11 +498,7 @@ export async function checkoutReview(
   );
   if (finalStatus.trim())
     throw new Error("The worktree became dirty; checkout was not performed.");
-  const remotes = (await successful("git", ["remote"], review.cwd))
-    .split(/\s+/)
-    .filter(Boolean);
-  const remote = remotes[0];
-  if (!remote) throw new Error("No Git remote is configured for checkout.");
+  const remote = await remoteForRepository(review.cwd, review.repository);
   await successful(
     "git",
     ["fetch", "--no-tags", remote, `pull/${review.number}/head`],
