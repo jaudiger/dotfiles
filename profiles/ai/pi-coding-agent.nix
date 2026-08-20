@@ -52,8 +52,8 @@ in
             ../../config/pi/extensions/protected-paths
           ];
           packages = [
-            "npm:pi-subagents"
-            "npm:pi-web-access"
+            "npm:pi-subagents@0.52.1"
+            "npm:pi-web-access@0.24.0"
           ];
           quietStartup = true;
           showCacheMissNotices = true;
