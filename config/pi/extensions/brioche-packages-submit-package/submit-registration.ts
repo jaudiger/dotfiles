@@ -375,10 +375,7 @@ export function registerSubmitPackage(pi: ExtensionAPI): void {
               ),
               reads: [prepared.projectPath, ...evidenceLogPaths(prepared)],
               intercomBridge: { mode: "off" },
-              mission: {
-                title: `Research Brioche package ${prepared.packageName}`,
-                objective: `Return strict JSON metadata for ${prepared.packageName}. The evidence directory is temporary and remains available until submission processing finishes.`,
-              },
+              mission: false,
               async: true,
             } as Json);
           } finally {

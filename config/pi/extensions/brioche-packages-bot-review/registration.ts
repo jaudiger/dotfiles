@@ -123,11 +123,7 @@ export default function registerBriochePackagesBotReview(pi: ExtensionAPI) {
           review.cwd,
         ],
         intercomBridge: { mode: "off" },
-        mission: {
-          title: `Scout Brioche build recipe for package update PR ${review.number}`,
-          objective:
-            "Determine whether the affected build recipe needs adaptation for the new release.",
-        },
+        mission: false,
         async: true,
       });
       const id = runId(rpc);
@@ -299,11 +295,7 @@ export default function registerBriochePackagesBotReview(pi: ExtensionAPI) {
           review.cwd,
         ],
         intercomBridge: { mode: "off" },
-        mission: {
-          title: `Research release notes for Brioche package PR ${review.number}`,
-          objective:
-            "Determine whether release changes require adaptation of the build recipe.",
-        },
+        mission: false,
         async: true,
       });
       const id = runId(rpc);

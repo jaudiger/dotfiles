@@ -1,3 +1,4 @@
+import * as crypto from "node:crypto";
 import { type ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import type { Json, RpcCompletion } from "./types.js";
 import { object, string } from "./utils.js";
@@ -33,7 +34,7 @@ export function sendRpc(
   method: string,
   params: Json,
 ): Promise<Json> {
-  const requestId = `github-dependabot-review-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  const requestId = `github-dependabot-review-${crypto.randomUUID()}`;
   const replyEvent = `${rpcReplyPrefix}${requestId}`;
   return new Promise((resolve, reject) => {
     let settled = false;

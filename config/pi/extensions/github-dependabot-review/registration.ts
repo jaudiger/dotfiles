@@ -123,11 +123,7 @@ export default function registerDependabotReview(pi: ExtensionAPI) {
           review.cwd,
         ],
         intercomBridge: { mode: "off" },
-        mission: {
-          title: `Scout repository usage for Dependabot PR ${review.number}`,
-          objective:
-            "Compare changed dependency usage with the researcher release report.",
-        },
+        mission: false,
         async: true,
       });
       const id = runId(rpc);
@@ -299,11 +295,7 @@ export default function registerDependabotReview(pi: ExtensionAPI) {
           review.cwd,
         ],
         intercomBridge: { mode: "off" },
-        mission: {
-          title: `Research Dependabot PR ${review.number}`,
-          objective:
-            "Identify changed direct dependencies and authoritative release-note risks.",
-        },
+        mission: false,
         async: true,
       });
       const id = runId(rpc);

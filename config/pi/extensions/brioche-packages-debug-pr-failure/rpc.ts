@@ -1,3 +1,4 @@
+import * as crypto from "node:crypto";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { asObject, text } from "./parsing.js";
 import type { Json } from "./types.js";
@@ -20,7 +21,7 @@ export function sendRpc(
   method: string,
   params: Json,
 ): Promise<Json> {
-  const requestId = `brioche-debug-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  const requestId = `brioche-debug-${crypto.randomUUID()}`;
   return new Promise((resolve, reject) => {
     const replyEvent = `${rpcReplyPrefix}${requestId}`;
     let unsubscribe: (() => void) | void;

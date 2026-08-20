@@ -195,10 +195,7 @@ Investigate Brioche package PR ${pr} for package ${packageName}. Evidence direct
                 briocheRuntimeUtilsRepository,
               ],
               intercomBridge: { mode: "off" },
-              mission: {
-                title: `Brioche PR ${pr} merge queue failure investigation`,
-                objective: `Determine the root cause of the merge queue failure for PR ${pr}. Use the prepared metadata and decoded logs during this run. The evidence directory is temporary and cleanup is attempted after completion, so mission state must not treat it as durable evidence.`,
-              },
+              mission: false,
               async: true,
             });
           } finally {
