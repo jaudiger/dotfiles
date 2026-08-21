@@ -9,6 +9,7 @@ import { Type } from "typebox";
 import { registerSubagentCapabilityCeiling } from "pi-subagents/capability-ceiling";
 import {
   checkoutReview,
+  fetchReviewDetails,
   fetchReviewDiff,
   listCandidates,
   mergeReview,
@@ -24,7 +25,12 @@ import {
   sendRpc,
 } from "./rpc.js";
 import { researcherTask, scoutTask } from "./tasks.js";
-import type { Json, PendingRun, PreparedReview } from "./types.js";
+import type {
+  Json,
+  PendingRun,
+  PreparedReview,
+  ReviewContext,
+} from "./types.js";
 import { object, string } from "./utils.js";
 
 export default function registerDependabotReview(pi: ExtensionAPI) {
@@ -34,7 +40,11 @@ export default function registerDependabotReview(pi: ExtensionAPI) {
   const processingPromises = new Set<Promise<void>>();
   const retainedDirectories = new Set<string>();
   const subscribed = new Set<string>();
-  let active: PreparedReview | undefined;
+  let active: ReviewContext | undefined;
+
+  const isActiveReview = (review: PreparedReview): boolean =>
+    active?.reviews.some((item) => item.directory === review.directory) ??
+    false;
   let spawning = 0;
   let shuttingDown = false;
   const terminalStates = new Map<string, string>();
@@ -87,23 +97,23 @@ export default function registerDependabotReview(pi: ExtensionAPI) {
 
   const stopReview = async () => {
     const runs = [...pending.keys()];
-    const directory = active?.directory;
+    const directories = active?.reviews.map((review) => review.directory) ?? [];
     pending.clear();
     earlyCompletions.clear();
     active = undefined;
     const stopped = await Promise.all(runs.map(stopAndConfirm));
     await Promise.all(processingPromises);
-    if (
-      directory &&
-      !retainedDirectories.has(directory) &&
-      spawning === 0 &&
-      (runs.length === 0 || stopped.every(Boolean))
-    )
-      await rm(directory, { recursive: true, force: true });
+    if (spawning === 0 && (runs.length === 0 || stopped.every(Boolean))) {
+      await Promise.all(
+        directories
+          .filter((directory) => !retainedDirectories.has(directory))
+          .map((directory) => rm(directory, { recursive: true, force: true })),
+      );
+    }
   };
 
   const spawnScout = async (review: PreparedReview, reportPath: string) => {
-    if (shuttingDown || active?.directory !== review.directory) return;
+    if (shuttingDown || !isActiveReview(review)) return;
     spawning += 1;
     const capability = registerSubagentCapabilityCeiling({
       sessionId: review.sessionId,
@@ -135,7 +145,7 @@ export default function registerDependabotReview(pi: ExtensionAPI) {
       });
       const id = runId(rpc);
       if (!id) throw new Error("Scout started without a run identifier.");
-      if (shuttingDown || active?.directory !== review.directory) {
+      if (shuttingDown || !isActiveReview(review)) {
         earlyCompletions.delete(id);
         if (await stopAndConfirm(id))
           await rm(review.directory, { recursive: true, force: true });
@@ -162,7 +172,7 @@ export default function registerDependabotReview(pi: ExtensionAPI) {
     const result = completion(raw);
     const reportPath = join(item.review.directory, "researcher-report.md");
     await writeFile(reportPath, `${result.output}\n`, { mode: 0o600 });
-    if (shuttingDown || active?.directory !== item.review.directory) return;
+    if (shuttingDown || !isActiveReview(item.review)) return;
     if (
       result.success === false ||
       ["failed", "error", "cancelled", "canceled"].includes(
@@ -194,7 +204,7 @@ export default function registerDependabotReview(pi: ExtensionAPI) {
     const result = completion(raw);
     const reportPath = join(item.review.directory, "scout-report.md");
     await writeFile(reportPath, `${result.output}\n`, { mode: 0o600 });
-    if (shuttingDown || active?.directory !== item.review.directory) return;
+    if (shuttingDown || !isActiveReview(item.review)) return;
     if (
       result.success === false ||
       ["failed", "error", "cancelled", "canceled"].includes(
@@ -307,7 +317,7 @@ export default function registerDependabotReview(pi: ExtensionAPI) {
       });
       const id = runId(rpc);
       if (!id) throw new Error("Researcher started without a run identifier.");
-      if (shuttingDown || active?.directory !== review.directory) {
+      if (shuttingDown || !isActiveReview(review)) {
         earlyCompletions.delete(id);
         if (await stopAndConfirm(id))
           await rm(review.directory, { recursive: true, force: true });
@@ -329,10 +339,10 @@ export default function registerDependabotReview(pi: ExtensionAPI) {
     description:
       "Select an open Dependabot pull request or use a specified PR URL",
     handler: async (args, ctx) => {
-      let requestedPullRequest = args.trim() || undefined;
+      const requestedPullRequest = args.trim() || undefined;
       if (shuttingDown) return;
       await stopReview();
-      let review: PreparedReview;
+      let requests: string[] = [];
       try {
         if (!requestedPullRequest) {
           ctx.ui.notify("Loading Dependabot pull requests...", "info");
@@ -341,35 +351,57 @@ export default function registerDependabotReview(pi: ExtensionAPI) {
             throw new Error(
               "No open Dependabot pull request without a review was found across the searched repositories.",
             );
-          const selected = await pickReview(ctx, candidates, (candidate) =>
-            fetchReviewDiff(candidate, ctx.cwd),
+          const selected = await pickReview(
+            ctx,
+            candidates,
+            (candidate) => fetchReviewDiff(candidate, ctx.cwd),
+            (candidate) => fetchReviewDetails(candidate, ctx.cwd),
+            false,
           );
-          if (!selected) return;
-          requestedPullRequest = selected.url;
+          if (!selected || selected.length === 0) return;
+          requests = selected.map((candidate) => candidate.url);
+        } else {
+          requests = [requestedPullRequest];
         }
-        ctx.ui.notify("Preparing Dependabot pull request evidence...", "info");
-        review = await prepareReview(
-          ctx.cwd,
-          ctx.sessionManager.getSessionId(),
-          requestedPullRequest,
+
+        ctx.ui.notify(
+          `Preparing Dependabot evidence for ${requests.length} pull request${requests.length === 1 ? "" : "s"}...`,
+          "info",
         );
-        active = review;
+        const reviews: PreparedReview[] = [];
+        for (const request of requests) {
+          const review = await prepareReview(
+            ctx.cwd,
+            ctx.sessionManager.getSessionId(),
+            request,
+          );
+          reviews.push(review);
+          active = { reviews: [...reviews] };
+        }
         const events = await discoverCompletion(pi);
         subscribeCompletion(events.asyncComplete);
         subscribeProcessTerminal(events.processTerminal);
         spawning += 1;
         try {
-          await spawnResearcher(review);
+          const results = await Promise.allSettled(
+            reviews.map((review) => spawnResearcher(review)),
+          );
+          const failure = results.find(
+            (result) => result.status === "rejected",
+          );
+          if (failure?.status === "rejected") throw failure.reason;
         } finally {
           spawning -= 1;
         }
-        const pullRequest = object(review.metadata.pullRequest);
+        const urls = reviews.map((review) =>
+          string(object(review.metadata.pullRequest).url),
+        );
         ctx.ui.notify(
-          `Started read-only Dependabot review for ${string(pullRequest.url)}.`,
+          `Started read-only Dependabot review for ${urls.join(", ")}.`,
           "info",
         );
       } catch (error) {
-        active = undefined;
+        await stopReview();
         ctx.ui.notify(
           error instanceof Error ? error.message : String(error),
           "error",
@@ -418,8 +450,8 @@ export default function registerDependabotReview(pi: ExtensionAPI) {
         };
       const text =
         params.action === "merge"
-          ? await mergeReview(active, ctx)
-          : await checkoutReview(active, ctx);
+          ? await mergeReview(active.reviews, ctx)
+          : await checkoutReview(active.reviews, ctx);
       return { content: [{ type: "text", text }] };
     },
   });
@@ -453,11 +485,15 @@ export default function registerDependabotReview(pi: ExtensionAPI) {
     processing.clear();
     if (
       active &&
-      !retainedDirectories.has(active.directory) &&
       spawning === 0 &&
       (runs.length === 0 || stopped.every(Boolean))
     )
-      await rm(active.directory, { recursive: true, force: true });
+      await Promise.all(
+        active.reviews
+          .map((review) => review.directory)
+          .filter((directory) => !retainedDirectories.has(directory))
+          .map((directory) => rm(directory, { recursive: true, force: true })),
+      );
     active = undefined;
   });
 }

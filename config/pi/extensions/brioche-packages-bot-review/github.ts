@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
-import type { ReviewCandidate } from "./review-picker.js";
+import type { ReviewCandidate, ReviewDetails } from "./review-picker.js";
 import type { CommandResult, Json, PreparedReview } from "./types.js";
 import { number, object, string } from "./utils.js";
 
@@ -110,6 +110,8 @@ const packageUpdateAuthorLogins = [
 ];
 const pullRequestFields =
   "number,title,body,author,state,isDraft,url,headRefName,headRefOid,baseRefName,reviewDecision,createdAt,updatedAt";
+const detailFields =
+  "number,title,author,state,isDraft,url,reviewDecision,mergeStateStatus,mergeable,statusCheckRollup";
 
 function packageUpdateAuthor(value: Json): boolean {
   const author = object(value.author);
@@ -223,6 +225,177 @@ export async function fetchReviewDiff(
       `PR ${candidate.number} is not a single Brioche package live update of project.bri and brioche.lock.`,
     );
   return diff.output;
+}
+
+type QueueDetails = {
+  state?: string;
+  position?: number;
+  removalReason?: string;
+  workflowUrl?: string;
+};
+
+function formatDetailLabel(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (character) => character.toUpperCase());
+}
+
+function checkSummary(value: unknown): string {
+  const checks = Array.isArray(value) ? value : [];
+  if (checks.length === 0) return "no checks";
+  const states = checks.map((check) => {
+    const item = object(check);
+    return string(item.conclusion || item.status || item.state).toUpperCase();
+  });
+  if (
+    states.some((state) =>
+      [
+        "FAILURE",
+        "ERROR",
+        "FAIL",
+        "CANCELLED",
+        "ACTION_REQUIRED",
+        "TIMED_OUT",
+        "STALE",
+      ].includes(state),
+    )
+  )
+    return "failure";
+  if (
+    states.some((state) =>
+      [
+        "PENDING",
+        "EXPECTED",
+        "QUEUED",
+        "IN_PROGRESS",
+        "WAITING",
+        "REQUESTED",
+        "COMPLETED",
+        "",
+      ].includes(state),
+    )
+  )
+    return "pending";
+  return "success";
+}
+
+function reviewDecision(value: unknown): string {
+  const decision = string(value).toUpperCase();
+  if (decision === "APPROVED") return "approved";
+  if (decision === "CHANGES_REQUESTED") return "changes requested";
+  if (decision === "REVIEW_REQUIRED") return "review required";
+  return "not requested";
+}
+
+async function fetchQueueDetails(
+  pullRequestNumber: number,
+  cwd: string,
+): Promise<QueueDetails> {
+  const query = `query($owner:String!,$name:String!,$number:Int!) {
+    repository(owner:$owner, name:$name) {
+      pullRequest(number:$number) {
+        mergeQueueEntry { state position }
+        timelineItems(last:1, itemTypes:[REMOVED_FROM_MERGE_QUEUE_EVENT]) {
+          nodes {
+            ... on RemovedFromMergeQueueEvent {
+              reason
+              beforeCommit {
+                checkSuites(last:1) {
+                  nodes { workflowRun { url } }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }`;
+  const result = object(
+    await ghJson(
+      [
+        "api",
+        "graphql",
+        "-f",
+        `query=${query}`,
+        "-F",
+        "owner=brioche-dev",
+        "-F",
+        "name=brioche-packages",
+        "-F",
+        `number=${pullRequestNumber}`,
+      ],
+      cwd,
+    ),
+  );
+  const pullRequest = object(object(result.data).repository).pullRequest;
+  const data = object(pullRequest);
+  const queue = object(data.mergeQueueEntry);
+  const timelineNodes = object(data.timelineItems).nodes;
+  const removal = Array.isArray(timelineNodes) ? object(timelineNodes[0]) : {};
+  const suites = object(object(removal.beforeCommit).checkSuites).nodes;
+  const workflow = Array.isArray(suites)
+    ? string(object(object(suites[0]).workflowRun).url)
+    : "";
+  return {
+    state: string(queue.state) || undefined,
+    position: number(queue.position),
+    removalReason: string(removal.reason)
+      ? formatDetailLabel(string(removal.reason))
+      : undefined,
+    workflowUrl: workflow || undefined,
+  };
+}
+
+export async function fetchReviewDetails(
+  candidate: ReviewCandidate,
+  cwd: string,
+): Promise<ReviewDetails> {
+  const metadata = object(
+    await ghJson(
+      [
+        "pr",
+        "view",
+        String(candidate.number),
+        "--repo",
+        repository,
+        "--json",
+        detailFields,
+      ],
+      cwd,
+    ),
+  );
+  let queue: QueueDetails = {};
+  try {
+    queue = await fetchQueueDetails(candidate.number, cwd);
+  } catch {
+    queue = {};
+  }
+  const mergeState = string(
+    metadata.mergeStateStatus || metadata.mergeable,
+  ).toUpperCase();
+  const status = queue.state
+    ? `in merge queue (${formatDetailLabel(queue.state)})`
+    : mergeState === "CLEAN" || mergeState === "MERGEABLE"
+      ? "ready to merge"
+      : mergeState === "DIRTY" || mergeState === "CONFLICTING"
+        ? "merge conflict"
+        : string(metadata.state).toLowerCase() || "unknown";
+  return {
+    number: number(metadata.number) ?? candidate.number,
+    title: string(metadata.title) || candidate.title,
+    author: string(object(metadata.author).login) || candidate.author,
+    repository,
+    isDraft: metadata.isDraft === true,
+    status,
+    checkSummary: checkSummary(metadata.statusCheckRollup),
+    reviewDecision: reviewDecision(metadata.reviewDecision),
+    url: string(metadata.url) || candidate.url,
+    mergeQueueState: queue.state ? formatDetailLabel(queue.state) : undefined,
+    mergeQueuePosition: queue.position,
+    queueRemovalReason: queue.removalReason,
+    queueWorkflowUrl: queue.workflowUrl,
+  };
 }
 
 export async function prepareReview(
@@ -425,7 +598,7 @@ async function requiredChecks(review: PreparedReview): Promise<string> {
   );
 }
 
-export async function mergeReview(
+async function mergeSingleReview(
   review: PreparedReview,
   ctx: ExtensionContext,
 ): Promise<string> {
@@ -493,7 +666,97 @@ export async function mergeReview(
   return `Approved and squash-merged PR ${string(metadata.url)}.`;
 }
 
-export async function checkoutReview(
+export async function mergeReview(
+  reviews: PreparedReview[],
+  ctx: ExtensionContext,
+): Promise<string> {
+  if (reviews.length === 0)
+    throw new Error("No pull requests were selected for merging.");
+  if (reviews.length === 1) return mergeSingleReview(reviews[0]!, ctx);
+
+  const initial = await Promise.all(
+    reviews.map(async (review) => {
+      const metadata = await refreshedMetadata(review, true);
+      const head = assertReviewedHead(review, metadata);
+      const checks = await requiredChecks(review);
+      if (!statusSuccessful(checks))
+        throw new Error(
+          `Required checks are not all successful for PR ${review.number}; no review or merge was performed.`,
+        );
+      return { head, review };
+    }),
+  );
+  if (
+    !ctx.hasUI ||
+    !(await ctx.ui.confirm(
+      "Merge Brioche package update pull requests?",
+      `Approve and squash-merge PRs ${reviews.map((review) => review.number).join(", ")}?`,
+    ))
+  )
+    return "Merge cancelled. No pull request mutation was performed.";
+
+  const current = await Promise.all(
+    reviews.map(async (review) => {
+      const metadata = await refreshedMetadata(review, true);
+      const head = assertReviewedHead(review, metadata);
+      const checks = await requiredChecks(review);
+      if (!statusSuccessful(checks))
+        throw new Error(
+          `Required checks changed before merging PR ${review.number}; no review or merge was performed.`,
+        );
+      return { head, metadata, review };
+    }),
+  );
+  for (let index = 0; index < current.length; index += 1) {
+    if (initial[index]!.head !== current[index]!.head)
+      throw new Error(
+        "A pull request head changed while waiting for confirmation; no mutation was performed.",
+      );
+  }
+
+  const mergedUrls: string[] = [];
+  for (const item of current) {
+    await successful(
+      "gh",
+      [
+        "pr",
+        "review",
+        String(item.review.number),
+        "--repo",
+        repository,
+        "--approve",
+        "--body",
+        "Looks good to me 🚀",
+      ],
+      item.review.cwd,
+    );
+    try {
+      await successful(
+        "gh",
+        [
+          "pr",
+          "merge",
+          String(item.review.number),
+          "--repo",
+          repository,
+          "--squash",
+          "--delete-branch",
+          "--match-head-commit",
+          item.head,
+        ],
+        item.review.cwd,
+      );
+    } catch (error) {
+      throw new Error(
+        `PR ${item.review.number} was approved, but the merge failed: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
+    mergedUrls.push(string(item.metadata.url));
+  }
+  return `Approved and squash-merged ${mergedUrls.join(", ")}.`;
+}
+
+async function checkoutSingleReview(
   review: PreparedReview,
   ctx: ExtensionContext,
 ): Promise<string> {
@@ -534,4 +797,15 @@ export async function checkoutReview(
     );
   await successful("git", ["checkout", "--detach", currentHead], review.cwd);
   return `Checked out reviewed Brioche package update PR ${review.number} at ${currentHead}.`;
+}
+
+export async function checkoutReview(
+  reviews: PreparedReview[],
+  ctx: ExtensionContext,
+): Promise<string> {
+  if (reviews.length !== 1)
+    throw new Error(
+      "Checkout supports exactly one selected pull request because it changes the current worktree.",
+    );
+  return checkoutSingleReview(reviews[0]!, ctx);
 }

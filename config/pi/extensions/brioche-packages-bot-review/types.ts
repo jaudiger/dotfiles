@@ -10,6 +10,10 @@ export type PreparedReview = {
   sessionId: string;
 };
 
+export type ReviewContext = {
+  reviews: PreparedReview[];
+};
+
 export type PendingRun = {
   kind: "researcher" | "scout";
   review: PreparedReview;
