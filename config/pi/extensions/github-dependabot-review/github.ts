@@ -16,6 +16,7 @@ import type {
 import { number, object, string } from "./utils.js";
 
 const execFileAsync = promisify(execFile);
+const networkRetryDelays = [1000, 2000];
 const maxBuffer = 40 * 1024 * 1024;
 type MutationProgress = (message: string) => void;
 
@@ -54,15 +55,65 @@ async function successful(
   command: string,
   args: string[],
   cwd: string,
+  progress: MutationProgress = () => {},
+  description = `${command} ${args.join(" ")}`,
 ): Promise<string> {
-  const result = await capture(command, args, cwd);
-  if (result.exitCode !== 0) {
+  for (let attempt = 0; ; attempt += 1) {
+    const result = await capture(command, args, cwd);
+    if (result.exitCode === 0) return result.output;
     const detail = result.output.trim().slice(-2000);
-    throw new Error(
+    const failure = new Error(
       `${command} ${args.join(" ")} failed with exit code ${result.exitCode}${detail ? `: ${detail}` : "."}`,
     );
+    const delay =
+      command === "gh" && shouldRetryGhCall(args, failure)
+        ? networkRetryDelays[attempt]
+        : undefined;
+    if (delay === undefined) throw failure;
+    progress(
+      `${description} hit a network failure; retrying in ${delay / 1000}s (${attempt + 2}/${networkRetryDelays.length + 1})`,
+    );
+    await new Promise((resolve) => setTimeout(resolve, delay));
   }
-  return result.output;
+}
+
+function networkFailureKind(error: unknown): "safe" | "ambiguous" | undefined {
+  const message = errorMessage(error).toLowerCase();
+  if (
+    message.includes("tls handshake timeout") ||
+    message.includes("temporary failure in name resolution") ||
+    message.includes("no such host") ||
+    message.includes("connection refused") ||
+    message.includes("network is unreachable") ||
+    (message.includes("dial tcp") && message.includes("i/o timeout"))
+  )
+    return "safe";
+  if (
+    message.includes("i/o timeout") ||
+    message.includes("context deadline exceeded") ||
+    message.includes("connection reset by peer") ||
+    message.includes("unexpected eof")
+  )
+    return "ambiguous";
+  return undefined;
+}
+
+function readOnlyGhCall(args: string[]): boolean {
+  if (args[0] === "api") {
+    const methodIndex = args.indexOf("--method");
+    return methodIndex === -1 || args[methodIndex + 1]?.toUpperCase() === "GET";
+  }
+  if (args[0] === "repo" && args[1] === "clone") return false;
+  if (args[0] === "pr")
+    return !["comment", "review", "edit", "merge", "close", "create"].includes(
+      args[1] ?? "",
+    );
+  return true;
+}
+
+function shouldRetryGhCall(args: string[], error: unknown): boolean {
+  const kind = networkFailureKind(error);
+  return kind === "safe" || (kind === "ambiguous" && readOnlyGhCall(args));
 }
 
 async function ghJson(args: string[], cwd: string): Promise<Json | Json[]> {
@@ -868,7 +919,13 @@ async function mergePreparedReview(
   ];
   let queued = false;
   try {
-    await successful("gh", mergeArgs, review.cwd);
+    await successful(
+      "gh",
+      mergeArgs,
+      review.cwd,
+      progress,
+      `PR #${review.number}: merge request`,
+    );
   } catch (error) {
     const message = errorMessage(error);
     const normalizedMessage = message.toLowerCase();
@@ -886,6 +943,8 @@ async function mergePreparedReview(
         "gh",
         mergeArgs.filter((argument) => argument !== "--delete-branch"),
         review.cwd,
+        progress,
+        `PR #${review.number}: merge queue request`,
       );
     } catch (retryError) {
       throw new Error(
