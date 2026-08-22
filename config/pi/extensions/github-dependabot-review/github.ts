@@ -4,12 +4,20 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
-import type { ReviewCandidate, ReviewDetails } from "./review-picker.js";
-import type { CommandResult, Json, PreparedReview } from "./types.js";
+import type {
+  PullRequestSnapshot,
+  ReviewCandidate,
+  ReviewDetails,
+  CommandResult,
+  Json,
+  MutationTarget,
+  PreparedReview,
+} from "./types.js";
 import { number, object, string } from "./utils.js";
 
 const execFileAsync = promisify(execFile);
 const maxBuffer = 40 * 1024 * 1024;
+type MutationProgress = (message: string) => void;
 
 function commandResult(value: unknown): CommandResult {
   const result = object(value);
@@ -109,7 +117,7 @@ function repositoryFromUrl(value: unknown): string | undefined {
 }
 
 const pullRequestFields =
-  "number,title,body,author,state,isDraft,url,headRefName,headRefOid,baseRefName,reviewDecision,createdAt,updatedAt";
+  "number,title,body,author,state,isDraft,url,headRefName,headRefOid,headRepository,baseRefName,reviewDecision,mergeable,mergeStateStatus,createdAt,updatedAt";
 const detailFields =
   "number,title,author,state,isDraft,url,reviewDecision,mergeStateStatus,mergeable,statusCheckRollup";
 
@@ -479,6 +487,7 @@ export async function prepareReview(
       number: pr,
       repository: pullRequestRepository,
       metadata: enriched,
+      snapshot: snapshotFromMetadata(metadata, pullRequestRepository),
       cwd,
       sessionId,
     };
@@ -486,6 +495,42 @@ export async function prepareReview(
     await rm(directory, { recursive: true, force: true });
     throw error;
   }
+}
+
+export async function prepareMutationTarget(
+  candidate: ReviewCandidate,
+  cwd: string,
+): Promise<MutationTarget> {
+  const candidateRepository =
+    candidate.repository ?? repositoryFromUrl(candidate.url);
+  if (!candidateRepository)
+    throw new Error("Dependabot pull request had no valid GitHub repository.");
+  const metadata = object(
+    await ghJson(
+      [
+        "pr",
+        "view",
+        String(candidate.number),
+        "--repo",
+        candidateRepository,
+        "--json",
+        pullRequestFields,
+      ],
+      cwd,
+    ),
+  );
+  if (!openDependabot(metadata))
+    throw new Error(
+      `PR ${candidate.number} is not an open Dependabot pull request.`,
+    );
+  const target: MutationTarget = {
+    number: candidate.number,
+    repository: candidateRepository,
+    snapshot: snapshotFromMetadata(metadata, candidateRepository),
+    cwd,
+  };
+  await requiredChecks(target);
+  return target;
 }
 
 function statusSuccessful(output: string): boolean {
@@ -496,10 +541,8 @@ function statusSuccessful(output: string): boolean {
       checks.length > 0 &&
       checks.every((check) => {
         const item = object(check);
-        return (
-          string(item.bucket).toLowerCase() === "pass" ||
-          string(item.state).toUpperCase() === "SUCCESS"
-        );
+        const bucket = string(item.bucket);
+        return bucket === "pass" || bucket === "skipping";
       })
     );
   } catch {
@@ -507,10 +550,36 @@ function statusSuccessful(output: string): boolean {
   }
 }
 
+function snapshotFromMetadata(
+  metadata: Json,
+  repository: string,
+): PullRequestSnapshot {
+  const pullRequestNumber = number(metadata.number);
+  if (pullRequestNumber === undefined)
+    throw new Error("GitHub returned a pull request without a number.");
+  return {
+    number: pullRequestNumber,
+    repository,
+    title: string(metadata.title),
+    url: string(metadata.url),
+    author: string(object(metadata.author).login) || undefined,
+    state: string(metadata.state),
+    isDraft: metadata.isDraft === true,
+    reviewDecision: string(metadata.reviewDecision),
+    mergeable: string(metadata.mergeable),
+    mergeStateStatus: string(metadata.mergeStateStatus),
+    headRefName: string(metadata.headRefName),
+    headRefOid: string(metadata.headRefOid),
+    headRepository:
+      string(object(metadata.headRepository).nameWithOwner) || undefined,
+    baseRefName: string(metadata.baseRefName),
+  };
+}
+
 async function refreshedMetadata(
-  review: PreparedReview,
+  review: MutationTarget,
   requireMergeable = false,
-): Promise<Json> {
+): Promise<PullRequestSnapshot> {
   const parsed = await ghJson(
     [
       "pr",
@@ -519,7 +588,7 @@ async function refreshedMetadata(
       "--repo",
       review.repository,
       "--json",
-      "number,author,state,isDraft,title,url,headRefName,headRefOid,baseRefName,reviewDecision,mergeable,mergeStateStatus",
+      "number,author,state,isDraft,title,url,headRefName,headRefOid,headRepository,baseRefName,reviewDecision,mergeable,mergeStateStatus",
     ],
     review.cwd,
   );
@@ -532,11 +601,11 @@ async function refreshedMetadata(
     throw new Error("The pull request is still a draft.");
   if (requireMergeable) {
     const mergeable = string(metadata.mergeable).toUpperCase();
-    if (mergeable === "CONFLICTING") {
+    if (mergeable !== "MERGEABLE") {
       const mergeState = string(metadata.mergeStateStatus).toUpperCase();
       const stateDetail = mergeState ? `; merge state ${mergeState}` : "";
       throw new Error(
-        `The pull request has merge conflicts (${mergeable}${stateDetail}).`,
+        `The pull request is not mergeable (${mergeable || "UNKNOWN"}${stateDetail}).`,
       );
     }
     const mergeState = string(metadata.mergeStateStatus).toUpperCase();
@@ -546,15 +615,45 @@ async function refreshedMetadata(
         `The pull request is blocked (${mergeState}; review decision ${reviewDecision || "UNKNOWN"}).`,
       );
   }
-  return metadata;
+  return snapshotFromMetadata(metadata, review.repository);
 }
 
-function reviewedHead(review: PreparedReview): string {
-  return string(object(review.metadata.pullRequest).headRefOid);
+export async function refreshReview(
+  review: MutationTarget,
+  requireMergeable = false,
+): Promise<PullRequestSnapshot> {
+  return refreshedMetadata(review, requireMergeable);
 }
 
-function assertReviewedHead(review: PreparedReview, metadata: Json): string {
-  const expected = reviewedHead(review);
+export async function refreshReviewState(
+  review: MutationTarget,
+): Promise<PullRequestSnapshot> {
+  const parsed = await ghJson(
+    [
+      "pr",
+      "view",
+      String(review.number),
+      "--repo",
+      review.repository,
+      "--json",
+      "number,author,state,isDraft,title,url,headRefName,headRefOid,headRepository,baseRefName,reviewDecision,mergeable,mergeStateStatus",
+    ],
+    review.cwd,
+  );
+  const metadata = Array.isArray(parsed) ? object(parsed[0]) : parsed;
+  return snapshotFromMetadata(metadata, review.repository);
+}
+
+function reviewedHead(review: MutationTarget): string {
+  return review.snapshot.headRefOid;
+}
+
+function assertReviewedHead(
+  review: MutationTarget,
+  metadata: PullRequestSnapshot,
+  expectedHead = reviewedHead(review),
+): string {
+  const expected = expectedHead;
   const actual = string(metadata.headRefOid);
   if (!expected || !actual)
     throw new Error(
@@ -567,7 +666,7 @@ function assertReviewedHead(review: PreparedReview, metadata: Json): string {
   return actual;
 }
 
-async function requiredChecks(review: PreparedReview): Promise<string> {
+async function requiredChecks(review: MutationTarget): Promise<string> {
   return successful(
     "gh",
     [
@@ -584,47 +683,92 @@ async function requiredChecks(review: PreparedReview): Promise<string> {
   );
 }
 
-async function mergeSingleReview(
-  review: PreparedReview,
-  ctx: ExtensionContext,
-): Promise<string> {
-  const initialMetadata = await refreshedMetadata(review, true);
-  const initialHead = assertReviewedHead(review, initialMetadata);
-  const initialChecks = await requiredChecks(review);
-  if (!statusSuccessful(initialChecks))
-    throw new Error(
-      "Required checks are not all successful; no review or merge was performed.",
-    );
-  if (
-    !ctx.hasUI ||
-    !(await ctx.ui.confirm(
-      "Merge Dependabot pull request?",
-      `Approve and squash-merge PR ${review.number}?`,
-    ))
-  )
-    return "Merge cancelled. No pull request mutation was performed.";
-  const metadata = await refreshedMetadata(review, true);
-  const currentHead = assertReviewedHead(review, metadata);
-  if (initialHead !== currentHead)
-    throw new Error(
-      "The pull request head changed while waiting for confirmation; no mutation was performed.",
-    );
-  const checks = await requiredChecks(review);
-  if (!statusSuccessful(checks))
-    throw new Error(
-      "Required checks changed before merge; no review or merge was performed.",
-    );
+async function authenticatedUser(cwd: string): Promise<string> {
+  const account = object(await ghJson(["api", "user"], cwd));
+  const login = string(account.login);
+  if (!login) throw new Error("GitHub returned no authenticated user.");
+  return login;
+}
+
+async function assignReview(
+  review: MutationTarget,
+  login: string,
+): Promise<void> {
   await successful(
     "gh",
     [
       "pr",
-      "review",
+      "edit",
       String(review.number),
       "--repo",
       review.repository,
-      "--approve",
+      "--add-assignee",
+      login,
+    ],
+    review.cwd,
+  );
+}
+
+async function approvalRecorded(
+  review: MutationTarget,
+  login: string,
+  expectedHead: string,
+): Promise<boolean> {
+  const parsed = await ghJson(
+    [
+      "api",
+      "--paginate",
+      "--slurp",
+      `repos/${review.repository}/pulls/${review.number}/reviews`,
+    ],
+    review.cwd,
+  );
+  const latest = new Map<
+    string,
+    { id: number; state: string; commit: string; submittedAt: string }
+  >();
+  const pages = Array.isArray(parsed) ? parsed : [];
+  for (const page of pages) {
+    if (!Array.isArray(page)) continue;
+    for (const raw of page) {
+      const item = object(raw);
+      const reviewer = string(object(item.user).login);
+      if (reviewer !== login) continue;
+      const id = number(item.id) ?? 0;
+      const submittedAt = string(item.submitted_at);
+      const previous = latest.get(reviewer);
+      if (
+        !previous ||
+        submittedAt > previous.submittedAt ||
+        (submittedAt === previous.submittedAt && id > previous.id)
+      )
+        latest.set(reviewer, {
+          id,
+          state: string(item.state),
+          commit: string(item.commit_id),
+          submittedAt,
+        });
+    }
+  }
+  const reviewRecord = latest.get(login);
+  return (
+    reviewRecord !== undefined &&
+    reviewRecord.state === "APPROVED" &&
+    reviewRecord.commit === expectedHead
+  );
+}
+
+async function commentAndApprove(review: MutationTarget): Promise<void> {
+  await successful(
+    "gh",
+    [
+      "pr",
+      "comment",
+      String(review.number),
+      "--repo",
+      review.repository,
       "--body",
-      "Looks good to me 🚀",
+      "Looks good to me",
     ],
     review.cwd,
   );
@@ -633,119 +777,555 @@ async function mergeSingleReview(
       "gh",
       [
         "pr",
-        "merge",
+        "review",
         String(review.number),
         "--repo",
         review.repository,
-        "--squash",
-        "--delete-branch",
-        "--match-head-commit",
-        currentHead,
+        "--approve",
       ],
       review.cwd,
     );
   } catch (error) {
     throw new Error(
-      `PR ${review.number} was approved, but the merge failed: ${error instanceof Error ? error.message : String(error)}`,
+      `The exact comment was added, but approval failed: ${error instanceof Error ? error.message : String(error)}`,
     );
   }
-  return `Approved and squash-merged PR ${string(metadata.url)}.`;
+}
+
+async function mergePreparedReview(
+  review: MutationTarget,
+  expectedHead: string,
+  login: string,
+  progress: MutationProgress,
+): Promise<string> {
+  progress(`PR #${review.number}: refreshing metadata and required checks`);
+  const [metadata, checks] = await Promise.all([
+    refreshedMetadata(review, true),
+    requiredChecks(review),
+  ]);
+  assertReviewedHead(review, metadata, expectedHead);
+  if (!statusSuccessful(checks))
+    throw new Error("Required checks are not all successful.");
+  review.snapshot = metadata;
+
+  progress(`PR #${review.number}: assigning reviewer`);
+  try {
+    await assignReview(review, login);
+  } catch (error) {
+    throw new Error(
+      `The authenticated user could not be assigned: ${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
+
+  let state = metadata;
+  let mergeHead = expectedHead;
+  let approved = false;
+  try {
+    approved = state.reviewDecision === "APPROVED";
+    if (!approved) {
+      progress(`PR #${review.number}: checking existing approval`);
+      approved = await approvalRecorded(review, login, expectedHead);
+    }
+    if (!approved) {
+      progress(`PR #${review.number}: requesting approval`);
+      await commentAndApprove(review);
+      approved = true;
+      state = await refreshReview(review, true);
+      assertReviewedHead(review, state, expectedHead);
+      review.snapshot = state;
+    }
+    mergeHead = assertReviewedHead(review, state, expectedHead);
+    if (
+      state.reviewDecision !== "APPROVED" &&
+      !(await approvalRecorded(review, login, expectedHead))
+    )
+      throw new Error(
+        "GitHub did not report the pull request as approved for its current head.",
+      );
+  } catch (error) {
+    if (approved)
+      throw new Error(
+        `The pull request was approved, but refreshing before merge failed: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    if (error instanceof Error && error.message.startsWith("The exact comment"))
+      throw error;
+    throw new Error(
+      `The authenticated user was assigned, but approval did not complete: ${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
+  review.snapshot = state;
+  progress(`PR #${review.number}: submitting merge`);
+  const mergeArgs = [
+    "pr",
+    "merge",
+    String(review.number),
+    "--repo",
+    review.repository,
+    "--squash",
+    "--delete-branch",
+    "--match-head-commit",
+    mergeHead,
+  ];
+  let queued = false;
+  try {
+    await successful("gh", mergeArgs, review.cwd);
+  } catch (error) {
+    const message = errorMessage(error);
+    const normalizedMessage = message.toLowerCase();
+    if (
+      !normalizedMessage.includes("cannot use") ||
+      !normalizedMessage.includes("--delete-branch") ||
+      !normalizedMessage.includes("merge queue enabled")
+    )
+      throw new Error(
+        `The pull request was approved or already approved, but the merge failed: ${message}`,
+      );
+    queued = true;
+    try {
+      await successful(
+        "gh",
+        mergeArgs.filter((argument) => argument !== "--delete-branch"),
+        review.cwd,
+      );
+    } catch (retryError) {
+      throw new Error(
+        `The pull request was approved or already approved, but the merge failed: ${errorMessage(retryError)}`,
+      );
+    }
+  }
+  try {
+    progress(`PR #${review.number}: verifying merge or queue state`);
+    state = await refreshReviewState(review);
+    assertReviewedHead(review, state, expectedHead);
+    const stateName = state.state.toUpperCase();
+    if (queued && stateName !== "MERGED") {
+      if (stateName !== "OPEN")
+        throw new Error(
+          `GitHub reported pull request state ${state.state || "UNKNOWN"} after queuing the merge.`,
+        );
+      const queue = await fetchQueueDetails(
+        review.repository,
+        review.number,
+        review.cwd,
+      );
+      if (!queue.state)
+        throw new Error(
+          "GitHub did not report the pull request in the merge queue.",
+        );
+      review.snapshot = state;
+      return `Queued PR ${string(state.url) || review.number} for merging.`;
+    }
+    if (stateName !== "MERGED")
+      throw new Error(
+        `GitHub reported pull request state ${state.state || "UNKNOWN"} after the merge command.`,
+      );
+    review.snapshot = state;
+  } catch (error) {
+    throw new Error(
+      `The merge command succeeded, but refreshing pull request state failed: ${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
+  return `Squash-merged PR ${string(state.url) || review.number}.`;
 }
 
 export async function mergeReview(
-  reviews: PreparedReview[],
+  reviews: MutationTarget[],
   ctx: ExtensionContext,
+  progress: MutationProgress = () => {},
 ): Promise<string> {
   if (reviews.length === 0)
     throw new Error("No pull requests were selected for merging.");
-  if (reviews.length === 1) return mergeSingleReview(reviews[0]!, ctx);
 
-  const initial = await Promise.all(
-    reviews.map(async (review) => {
-      const metadata = await refreshedMetadata(review, true);
-      const head = assertReviewedHead(review, metadata);
-      const checks = await requiredChecks(review);
-      if (!statusSuccessful(checks))
-        throw new Error(
-          `Required checks are not all successful for PR ${review.number}; no review or merge was performed.`,
-        );
-      return { head, review };
-    }),
-  );
+  const initialHeads = reviews.map((review) => review.snapshot.headRefOid);
   if (
     !ctx.hasUI ||
     !(await ctx.ui.confirm(
-      "Merge Dependabot pull requests?",
+      reviews.length === 1
+        ? "Merge Dependabot pull request?"
+        : "Merge Dependabot pull requests?",
       `Approve and squash-merge PRs ${reviews.map((review) => review.number).join(", ")}?`,
     ))
   )
     return "Merge cancelled. No pull request mutation was performed.";
 
-  const current = await Promise.all(
-    reviews.map(async (review) => {
-      const metadata = await refreshedMetadata(review, true);
-      const head = assertReviewedHead(review, metadata);
-      const checks = await requiredChecks(review);
-      if (!statusSuccessful(checks))
-        throw new Error(
-          `Required checks changed before merging PR ${review.number}; no review or merge was performed.`,
-        );
-      return { head, metadata, review };
-    }),
+  progress(
+    `Resolving the authenticated reviewer for ${reviews.length} pull requests`,
   );
-  for (let index = 0; index < current.length; index += 1) {
-    if (initial[index]!.head !== current[index]!.head)
-      throw new Error(
-        "A pull request head changed while waiting for confirmation; no mutation was performed.",
+  const login = await authenticatedUser(reviews[0]!.cwd);
+  const completed: string[] = [];
+  for (let index = 0; index < reviews.length; index += 1) {
+    const review = reviews[index]!;
+    try {
+      progress(`Merging PR #${review.number} (${index + 1}/${reviews.length})`);
+      completed.push(
+        await mergePreparedReview(
+          review,
+          initialHeads[index]!,
+          login,
+          progress,
+        ),
       );
+    } catch (error) {
+      const prior = completed.length
+        ? `Completed: ${completed.join("; ")}. `
+        : "No earlier pull request was mutated. ";
+      throw new Error(
+        `${prior}Stopped at PR ${review.number}. ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
   }
+  return completed.join(" ");
+}
 
-  const mergedUrls: string[] = [];
-  for (const item of current) {
+type SupersedeSource = {
+  review: MutationTarget;
+  head: string;
+  base: string;
+  branch: string;
+  sourceRepository: string;
+};
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+async function supersedeSource(
+  source: SupersedeSource,
+  supersedingUrl: string,
+  selectedNumbers: number[],
+  cwd: string,
+  progress: MutationProgress,
+): Promise<string[]> {
+  const failures: string[] = [];
+  const review = source.review;
+  const body = `This pull request is superseded by ${supersedingUrl}. The selected PRs ${selectedNumbers.map((number) => `#${number}`).join(", ")} were combined in the superseding pull request.`;
+  let commented = false;
+  let closed = false;
+  progress(
+    `PR #${source.review.number}: commenting on superseded pull request`,
+  );
+  try {
     await successful(
       "gh",
       [
         "pr",
-        "review",
-        String(item.review.number),
+        "comment",
+        String(review.number),
         "--repo",
-        item.review.repository,
-        "--approve",
+        review.repository,
         "--body",
-        "Looks good to me 🚀",
+        body,
       ],
-      item.review.cwd,
+      cwd,
     );
+    commented = true;
+  } catch (error) {
+    failures.push(`PR ${review.number} comment failed: ${errorMessage(error)}`);
+  }
+  progress(`PR #${source.review.number}: closing superseded pull request`);
+  try {
+    if (!commented)
+      throw new Error(
+        "The source PR was not closed because its comment failed.",
+      );
+    await successful(
+      "gh",
+      ["pr", "close", String(review.number), "--repo", review.repository],
+      cwd,
+    );
+    closed = true;
+  } catch (error) {
+    failures.push(`PR ${review.number} close failed: ${errorMessage(error)}`);
+  }
+  progress(`PR #${source.review.number}: deleting source branch safely`);
+  try {
+    if (!closed)
+      throw new Error(
+        "The source branch was retained because the PR stayed open.",
+      );
+    const readEndpoint = `repos/${source.sourceRepository}/git/ref/heads/${source.branch}`;
+    const deleteEndpoint = `repos/${source.sourceRepository}/git/refs/heads/${source.branch}`;
+    const response = await successful(
+      "gh",
+      ["api", "--include", readEndpoint, "--jq", ".object.sha"],
+      cwd,
+    );
+    const etag = response.match(/^\s*etag\s*:\s*(.+)$/im)?.[1]?.trim();
+    const responseParts = response.trim().split(/\s+/);
+    const currentHead = responseParts[responseParts.length - 1];
+    if (!etag)
+      throw new Error(
+        "GitHub returned no branch version for conditional deletion.",
+      );
+    if (currentHead !== source.head)
+      throw new Error(
+        "The source branch head changed; the source branch was not deleted.",
+      );
+    await successful(
+      "gh",
+      [
+        "api",
+        "--method",
+        "DELETE",
+        "--header",
+        `If-Match: ${etag}`,
+        deleteEndpoint,
+      ],
+      cwd,
+    );
+  } catch (error) {
+    failures.push(
+      `PR ${review.number} source branch cleanup failed: ${errorMessage(error)}`,
+    );
+  }
+  progress(`PR #${source.review.number}: refreshing cleanup state`);
+  try {
+    review.snapshot = await refreshReviewState(review);
+  } catch (error) {
+    failures.push(
+      `PR ${review.number} state refresh failed: ${errorMessage(error)}`,
+    );
+  }
+  return failures;
+}
+
+export async function supersedeReview(
+  reviews: MutationTarget[],
+  ctx: ExtensionContext,
+  progress: MutationProgress = () => {},
+): Promise<string> {
+  if (reviews.length < 2)
+    throw new Error(
+      "Superseding requires at least two selected pull requests.",
+    );
+
+  const initial: SupersedeSource[] = [];
+  for (let index = 0; index < reviews.length; index += 1) {
+    const review = reviews[index]!;
+    progress(
+      `Validating supersede source ${index + 1}/${reviews.length}: PR #${review.number}`,
+    );
+    const metadata = await refreshedMetadata(review);
+    const head = assertReviewedHead(review, metadata);
+    if (!statusSuccessful(await requiredChecks(review)))
+      throw new Error(
+        `Required source checks are not all successful for PR ${review.number}; no mutation was performed.`,
+      );
+    const base = metadata.baseRefName;
+    const branch = metadata.headRefName;
+    const sourceRepository = metadata.headRepository || review.repository;
+    if (!base || !branch || !sourceRepository)
+      throw new Error(
+        `PR ${review.number} is missing a source or base branch; no mutation was performed.`,
+      );
+    initial.push({ review, head, base, branch, sourceRepository });
+  }
+  const repository = initial[0]!.review.repository;
+  const base = initial[0]!.base;
+  if (
+    initial.some(
+      (source) =>
+        source.review.repository !== repository || source.base !== base,
+    )
+  )
+    throw new Error(
+      "Superseding requires selected pull requests from one repository and one base branch.",
+    );
+
+  if (
+    !ctx.hasUI ||
+    !(await ctx.ui.confirm(
+      "Supersede pull requests?",
+      `Combine PRs ${reviews.map((review) => review.number).join(", ")} into a new pull request?`,
+    ))
+  )
+    return "Superseding cancelled. No pull request mutation was performed.";
+
+  const selected: SupersedeSource[] = [];
+  for (let index = 0; index < initial.length; index += 1) {
+    const source = initial[index]!;
+    progress(
+      `Revalidating supersede source ${index + 1}/${initial.length}: PR #${source.review.number}`,
+    );
+    const metadata = await refreshedMetadata(source.review);
+    const currentHead = assertReviewedHead(source.review, metadata);
+    if (currentHead !== source.head || metadata.baseRefName !== base)
+      throw new Error(
+        "A selected pull request head or base branch changed while waiting for confirmation; no mutation was performed.",
+      );
+    if (!statusSuccessful(await requiredChecks(source.review)))
+      throw new Error(
+        "Required source checks changed while waiting for confirmation; no mutation was performed.",
+      );
+    source.review.snapshot = metadata;
+    selected.push(source);
+  }
+
+  progress("Cloning the repository for the superseding pull request...");
+  const workspace = await mkdtemp(join(tmpdir(), "pi-supersede-dependabot-"));
+  const checkout = join(workspace, "repository");
+  try {
+    await successful(
+      "gh",
+      ["repo", "clone", repository, checkout],
+      reviews[0]!.cwd,
+    );
+    await successful(
+      "git",
+      [
+        "fetch",
+        "--no-tags",
+        "origin",
+        `+refs/heads/${base}:refs/remotes/origin/${base}`,
+      ],
+      checkout,
+    );
+    await successful(
+      "git",
+      ["checkout", "--detach", `refs/remotes/origin/${base}`],
+      checkout,
+    );
+    const branch = `pi/supersede-${reviews.map((review) => review.number).join("-")}-${Date.now()}`;
+    await successful("git", ["switch", "--create", branch], checkout);
+
+    const applied = new Set<string>();
+    for (const source of selected) {
+      progress(`PR #${source.review.number}: fetching and applying commits...`);
+      const ref = `refs/remotes/origin/pi-pr-${source.review.number}`;
+      await successful(
+        "git",
+        [
+          "fetch",
+          "--no-tags",
+          "origin",
+          `+refs/pull/${source.review.number}/head:${ref}`,
+        ],
+        checkout,
+      );
+      const fetchedHead = (
+        await successful("git", ["rev-parse", ref], checkout)
+      ).trim();
+      if (fetchedHead !== source.head)
+        throw new Error(
+          `PR ${source.review.number} head changed while fetching; no mutation was performed.`,
+        );
+      const mergeCommits = (
+        await successful(
+          "git",
+          ["rev-list", "--merges", `refs/remotes/origin/${base}..${ref}`],
+          checkout,
+        )
+      ).trim();
+      if (mergeCommits)
+        throw new Error(
+          `PR ${source.review.number} contains merge commits; no mutation was performed.`,
+        );
+      const commits = (
+        await successful(
+          "git",
+          [
+            "rev-list",
+            "--reverse",
+            "--topo-order",
+            `refs/remotes/origin/${base}..${ref}`,
+          ],
+          checkout,
+        )
+      )
+        .split("\n")
+        .map((commit) => commit.trim())
+        .filter(Boolean);
+      for (const commit of commits) {
+        if (applied.has(commit)) continue;
+        await successful("git", ["cherry-pick", "--no-edit", commit], checkout);
+        applied.add(commit);
+      }
+    }
+
+    if (applied.size === 0)
+      throw new Error(
+        "The selected pull requests contain no unique commits to cherry-pick.",
+      );
+
+    progress("Pushing the combined branch...");
+    await successful(
+      "git",
+      ["push", "--set-upstream", "origin", branch],
+      checkout,
+    );
+    progress("Creating the superseding pull request...");
+    const created = object(
+      await ghJson(
+        [
+          "pr",
+          "create",
+          "--repo",
+          repository,
+          "--base",
+          base,
+          "--head",
+          branch,
+          "--title",
+          `Supersede pull requests ${reviews.map((review) => `#${review.number}`).join(", ")}`,
+          "--body",
+          `This pull request supersedes ${reviews.map((review) => `#${review.number}`).join(", ")}. It combines every unique commit from the selected pull requests in selection order.`,
+          "--json",
+          "number,url",
+        ],
+        checkout,
+      ),
+    );
+    const supersedingUrl = string(created.url);
+    const supersedingNumber = number(created.number);
+    if (!supersedingUrl || supersedingNumber === undefined)
+      throw new Error("GitHub did not return the superseding pull request.");
+    progress("Commenting on the superseding pull request...");
     try {
       await successful(
         "gh",
         [
           "pr",
-          "merge",
-          String(item.review.number),
+          "comment",
+          String(supersedingNumber),
           "--repo",
-          item.review.repository,
-          "--squash",
-          "--delete-branch",
-          "--match-head-commit",
-          item.head,
+          repository,
+          "--body",
+          `This pull request supersedes ${reviews.map((review) => `#${review.number}`).join(", ")}. It combines every unique commit from the selected pull requests in selection order.`,
         ],
-        item.review.cwd,
+        checkout,
       );
     } catch (error) {
       throw new Error(
-        `PR ${item.review.number} was approved, but the merge failed: ${error instanceof Error ? error.message : String(error)}`,
+        `Created superseding PR ${supersedingUrl}, but its comment failed: ${errorMessage(error)}`,
       );
     }
-    mergedUrls.push(string(item.metadata.url));
+
+    const failures: string[] = [];
+    for (const source of selected)
+      failures.push(
+        ...(await supersedeSource(
+          source,
+          supersedingUrl,
+          reviews.map((review) => review.number),
+          checkout,
+          progress,
+        )),
+      );
+    const result = `Created superseding PR ${supersedingUrl} from PRs ${reviews.map((review) => `#${review.number}`).join(", ")}.`;
+    return failures.length
+      ? `${result} Cleanup failures: ${failures.join("; ")}`
+      : result;
+  } finally {
+    await rm(workspace, { recursive: true, force: true });
   }
-  return `Approved and squash-merged ${mergedUrls.join(", ")}.`;
 }
 
 async function checkoutSingleReview(
-  review: PreparedReview,
+  review: MutationTarget,
   ctx: ExtensionContext,
+  progress: MutationProgress = () => {},
 ): Promise<string> {
+  progress(`PR #${review.number}: checking current metadata and worktree`);
   const initialMetadata = await refreshedMetadata(review);
   assertReviewedHead(review, initialMetadata);
   const status = await successful("git", ["status", "--porcelain"], review.cwd);
@@ -761,6 +1341,7 @@ async function checkoutSingleReview(
     return "Checkout cancelled. No repository mutation was performed.";
   const metadata = await refreshedMetadata(review);
   const currentHead = assertReviewedHead(review, metadata);
+  progress(`PR #${review.number}: verifying the worktree is still clean`);
   const finalStatus = await successful(
     "git",
     ["status", "--porcelain"],
@@ -768,6 +1349,7 @@ async function checkoutSingleReview(
   );
   if (finalStatus.trim())
     throw new Error("The worktree became dirty; checkout was not performed.");
+  progress(`PR #${review.number}: fetching the reviewed head`);
   const remote = await remoteForRepository(review.cwd, review.repository);
   await successful(
     "git",
@@ -781,17 +1363,19 @@ async function checkoutSingleReview(
     throw new Error(
       "The pull request head changed while fetching; checkout was not performed.",
     );
+  progress(`PR #${review.number}: checking out the reviewed head`);
   await successful("git", ["checkout", "--detach", currentHead], review.cwd);
   return `Checked out reviewed Dependabot PR ${review.number} at ${currentHead}.`;
 }
 
 export async function checkoutReview(
-  reviews: PreparedReview[],
+  reviews: MutationTarget[],
   ctx: ExtensionContext,
+  progress: MutationProgress = () => {},
 ): Promise<string> {
   if (reviews.length !== 1)
     throw new Error(
       "Checkout supports exactly one selected pull request because it changes the current worktree.",
     );
-  return checkoutSingleReview(reviews[0]!, ctx);
+  return checkoutSingleReview(reviews[0]!, ctx, progress);
 }

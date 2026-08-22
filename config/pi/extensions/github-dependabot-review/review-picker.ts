@@ -8,29 +8,12 @@ import {
   truncateToWidth,
 } from "@earendil-works/pi-tui";
 
-export type ReviewCandidate = {
-  number: number;
-  title: string;
-  url: string;
-  author?: string;
-  repository?: string;
-};
-
-export type ReviewDetails = {
-  number: number;
-  title: string;
-  author?: string;
-  repository?: string;
-  isDraft: boolean;
-  status: string;
-  checkSummary: string;
-  reviewDecision: string;
-  url: string;
-  mergeQueueState?: string;
-  mergeQueuePosition?: number;
-  queueRemovalReason?: string;
-  queueWorkflowUrl?: string;
-};
+import type {
+  PickerMode,
+  PickerSelection,
+  ReviewCandidate,
+  ReviewDetails,
+} from "./types.js";
 
 type ReviewPickerOptions = {
   tui: TUI;
@@ -40,7 +23,7 @@ type ReviewPickerOptions = {
   loadDiff: (candidate: ReviewCandidate) => Promise<string>;
   loadDetails: (candidate: ReviewCandidate) => Promise<ReviewDetails>;
   showQueuePosition: boolean;
-  done: (candidates: ReviewCandidate[] | null) => void;
+  done: (selection: PickerSelection | null) => void;
 };
 
 type PanelFocus = "list" | "diff";
@@ -65,12 +48,14 @@ export async function pickReview(
   loadDiff: (candidate: ReviewCandidate) => Promise<string>,
   loadDetails: (candidate: ReviewCandidate) => Promise<ReviewDetails>,
   showQueuePosition: boolean,
-): Promise<ReviewCandidate[] | null> {
+): Promise<PickerSelection | null> {
   if (ctx.mode !== "tui")
-    return candidates.length > 0 ? [candidates[0]!] : null;
+    return candidates.length > 0
+      ? { mode: "review", candidates: [candidates[0]!] }
+      : null;
   if (candidates.length === 0) return null;
 
-  return ctx.ui.custom<ReviewCandidate[] | null>(
+  return ctx.ui.custom<PickerSelection | null>(
     (tui, theme, keybindings, done) =>
       new ReviewPicker({
         tui,
@@ -104,13 +89,14 @@ class ReviewPicker implements Component {
     candidate: ReviewCandidate,
   ) => Promise<ReviewDetails>;
   private readonly showQueuePosition: boolean;
-  private readonly done: (candidates: ReviewCandidate[] | null) => void;
+  private readonly done: (selection: PickerSelection | null) => void;
   private readonly candidatesByUrl: Map<string, ReviewCandidate>;
   private readonly selector: SelectList;
   private readonly diffCache = new Map<string, string>();
   private readonly detailsCache = new Map<string, ReviewDetails>();
   private readonly selectedCandidates = new Set<string>();
   private selected: ReviewCandidate;
+  private mode: PickerMode = "review";
   private focus: PanelFocus = "list";
   private diffLines: string[] = [];
   private diffOffset = 0;
@@ -178,6 +164,13 @@ class ReviewPicker implements Component {
       return;
     }
 
+    if (data === "r" || data === "m" || data === "s") {
+      this.mode =
+        data === "r" ? "review" : data === "m" ? "merge" : "supersede";
+      this.tui.requestRender();
+      return;
+    }
+
     if (this.keybindings.matches(data, tab)) {
       this.focus = this.focus === "list" ? "diff" : "list";
       this.tui.requestRender();
@@ -235,7 +228,12 @@ class ReviewPicker implements Component {
     const detailLines = this.renderDetail(leftWidth, detailRows);
     const rightLines = this.renderDiff(rightWidth, bodyRows);
     const lines = [
-      truncateToWidth(this.theme.bold("Review pull requests"), width),
+      truncateToWidth(
+        this.theme.bold(
+          `Pull requests | mode: ${this.modeLabel()} | r review | m merge | s supersede`,
+        ),
+        width,
+      ),
     ];
 
     for (let index = 0; index < bodyRows; index += 1) {
@@ -269,7 +267,7 @@ class ReviewPicker implements Component {
       truncateToWidth(
         this.theme.fg(
           "dim",
-          `up/down move | tab switch | space toggle | enter start | esc cancel${this.selectedCandidates.size > 0 ? ` | ${this.selectedCandidates.size} selected` : ""}`,
+          `up/down move | tab switch | space toggle | enter execute | esc cancel${this.selectedCandidates.size > 0 ? ` | ${this.selectedCandidates.size} selected` : ""}`,
         ),
         width,
       ),
@@ -284,7 +282,11 @@ class ReviewPicker implements Component {
             this.selectedCandidates.has(candidate.url),
           )
         : [this.selected];
-    this.done(selected);
+    this.done({ mode: this.mode, candidates: selected });
+  }
+
+  private modeLabel(): string {
+    return this.mode[0].toUpperCase() + this.mode.slice(1);
   }
 
   private toggleSelection(): void {

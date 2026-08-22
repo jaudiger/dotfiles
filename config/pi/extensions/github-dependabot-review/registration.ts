@@ -13,7 +13,9 @@ import {
   fetchReviewDiff,
   listCandidates,
   mergeReview,
+  prepareMutationTarget,
   prepareReview,
+  supersedeReview,
 } from "./github.js";
 import { pickReview } from "./review-picker.js";
 import {
@@ -28,6 +30,8 @@ import { researcherTask, scoutTask } from "./tasks.js";
 import type {
   Json,
   PendingRun,
+  PickerMode,
+  ReviewCandidate,
   PreparedReview,
   ReviewContext,
 } from "./types.js";
@@ -41,6 +45,7 @@ export default function registerDependabotReview(pi: ExtensionAPI) {
   const retainedDirectories = new Set<string>();
   const subscribed = new Set<string>();
   let active: ReviewContext | undefined;
+  const statusKey = "github-dependabot-review";
 
   const isActiveReview = (review: PreparedReview): boolean =>
     active?.reviews.some((item) => item.directory === review.directory) ??
@@ -342,11 +347,20 @@ export default function registerDependabotReview(pi: ExtensionAPI) {
       const requestedPullRequest = args.trim() || undefined;
       if (shuttingDown) return;
       await stopReview();
+      const progress = (message: string) =>
+        ctx.ui.setStatus(statusKey, message);
       let requests: string[] = [];
+      let candidates: ReviewCandidate[] = [];
+      let pickerMode: PickerMode = "review";
       try {
+        progress(
+          requestedPullRequest
+            ? "Preparing the requested pull request..."
+            : "Loading Dependabot pull requests...",
+        );
         if (!requestedPullRequest) {
           ctx.ui.notify("Loading Dependabot pull requests...", "info");
-          const candidates = await listCandidates(ctx.cwd);
+          candidates = await listCandidates(ctx.cwd);
           if (candidates.length === 0)
             throw new Error(
               "No open Dependabot pull request without a review was found across the searched repositories.",
@@ -358,26 +372,74 @@ export default function registerDependabotReview(pi: ExtensionAPI) {
             (candidate) => fetchReviewDetails(candidate, ctx.cwd),
             false,
           );
-          if (!selected || selected.length === 0) return;
-          requests = selected.map((candidate) => candidate.url);
+          if (!selected || selected.candidates.length === 0) return;
+          pickerMode = selected.mode;
+          candidates = selected.candidates;
+          if (pickerMode !== "review") {
+            const action = pickerMode === "merge" ? "merge" : "supersede";
+            progress(
+              `Preparing ${candidates.length} pull request${candidates.length === 1 ? "" : "s"} for ${action}...`,
+            );
+            ctx.ui.notify(
+              `Loading fresh pull request metadata for ${candidates.length} selected pull request${candidates.length === 1 ? "" : "s"}...`,
+              "info",
+            );
+            const targets = await Promise.all(
+              candidates.map(async (candidate, index) => {
+                progress(
+                  `Preparing ${action} pull request ${index + 1} of ${candidates.length}: PR ${candidate.number}...`,
+                );
+                return prepareMutationTarget(candidate, ctx.cwd);
+              }),
+            );
+            const text =
+              pickerMode === "merge"
+                ? await mergeReview(targets, ctx, progress)
+                : await supersedeReview(targets, ctx, progress);
+            progress("Refreshing remaining pull requests...");
+            try {
+              candidates = await listCandidates(ctx.cwd);
+            } catch {
+              candidates = [];
+            }
+            ctx.ui.notify(text, "info");
+            return;
+          }
+          requests = candidates.map((candidate) => candidate.url);
         } else {
           requests = [requestedPullRequest];
         }
 
+        progress(
+          `Preparing evidence for ${requests.length} pull request${requests.length === 1 ? "" : "s"}...`,
+        );
         ctx.ui.notify(
           `Preparing Dependabot evidence for ${requests.length} pull request${requests.length === 1 ? "" : "s"}...`,
           "info",
         );
-        const reviews: PreparedReview[] = [];
-        for (const request of requests) {
+        const session: ReviewContext = {
+          candidates,
+          reviews: [],
+          generation: 0,
+          state: "preparing",
+        };
+        active = session;
+        for (let index = 0; index < requests.length; index += 1) {
+          const request = requests[index]!;
+          progress(`Preparing evidence ${index + 1} of ${requests.length}...`);
           const review = await prepareReview(
             ctx.cwd,
             ctx.sessionManager.getSessionId(),
             request,
           );
-          reviews.push(review);
-          active = { reviews: [...reviews] };
+          session.reviews = [...session.reviews, review];
+          session.generation += 1;
         }
+        session.state = "researching";
+        progress(
+          `Starting read-only research for ${session.reviews.length} pull request${session.reviews.length === 1 ? "" : "s"}...`,
+        );
+        const reviews = session.reviews;
         const events = await discoverCompletion(pi);
         subscribeCompletion(events.asyncComplete);
         subscribeProcessTerminal(events.processTerminal);
@@ -393,6 +455,9 @@ export default function registerDependabotReview(pi: ExtensionAPI) {
         } finally {
           spawning -= 1;
         }
+        progress(
+          "Read-only research started; waiting for researcher results...",
+        );
         const urls = reviews.map((review) =>
           string(object(review.metadata.pullRequest).url),
         );
@@ -406,6 +471,8 @@ export default function registerDependabotReview(pi: ExtensionAPI) {
           error instanceof Error ? error.message : String(error),
           "error",
         );
+      } finally {
+        ctx.ui.setStatus(statusKey, undefined);
       }
     },
   });
@@ -417,7 +484,6 @@ export default function registerDependabotReview(pi: ExtensionAPI) {
       "Execute an explicitly user-selected Dependabot review action.",
     parameters: Type.Object({
       action: Type.Union([
-        Type.Literal("merge"),
         Type.Literal("checkout"),
         Type.Literal("wait"),
         Type.Literal("follow-up"),
@@ -428,7 +494,7 @@ export default function registerDependabotReview(pi: ExtensionAPI) {
         return {
           content: [{ type: "text", text: "No active Dependabot review." }],
         };
-      if (!["merge", "checkout", "wait", "follow-up"].includes(params.action))
+      if (!["checkout", "wait", "follow-up"].includes(params.action))
         throw new Error("Invalid Dependabot review action.");
       if (params.action === "wait")
         return {
@@ -448,11 +514,28 @@ export default function registerDependabotReview(pi: ExtensionAPI) {
             },
           ],
         };
-      const text =
-        params.action === "merge"
-          ? await mergeReview(active.reviews, ctx)
-          : await checkoutReview(active.reviews, ctx);
-      return { content: [{ type: "text", text }] };
+      active.state = "mutating";
+      ctx.ui.setStatus(
+        statusKey,
+        `Checking out PR ${active.reviews[0]?.number ?? "selected pull request"}...`,
+      );
+      try {
+        const text = await checkoutReview(active.reviews, ctx, (message) =>
+          ctx.ui.setStatus(statusKey, message),
+        );
+        try {
+          ctx.ui.setStatus(statusKey, "Refreshing remaining pull requests...");
+          active.candidates = await listCandidates(ctx.cwd);
+          active.generation += 1;
+        } catch {
+          active.state = "stale";
+        }
+        return { content: [{ type: "text", text }] };
+      } finally {
+        active.generation += 1;
+        active.state = "stale";
+        ctx.ui.setStatus(statusKey, undefined);
+      }
     },
   });
 
@@ -460,10 +543,11 @@ export default function registerDependabotReview(pi: ExtensionAPI) {
     if (!active || !isToolCallEventType("bash", event)) return;
     const command = event.input.command;
     const bypassesReview =
-      /\bgh\b.*\bpr\s+(?:merge|review|checkout|close|comment|edit)\b/.test(
+      /\bgh\b.*\bpr\s+(?:merge|review|checkout|close|comment|edit|create)\b/.test(
         command,
       ) ||
-      /\bgit\b(?:\s+\S+)*\s+(?:checkout|switch|reset|merge|rebase|commit|push|pull|fetch)\b/.test(
+      /\bgh\b(?:\s+\S+)*\s+api\b/.test(command) ||
+      /\bgit\b(?:\s+\S+)*\s+(?:clone|checkout|switch|reset|merge|rebase|commit|cherry-pick|branch|push|pull|fetch)\b/.test(
         command,
       );
     if (bypassesReview)
