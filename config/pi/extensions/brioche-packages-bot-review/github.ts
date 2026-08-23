@@ -21,6 +21,11 @@ const repository = "brioche-dev/brioche-packages";
 const networkRetryDelays = [1000, 2000];
 type MutationProgress = (message: string) => void;
 
+function formatMutationResults(results: string[], heading: string): string {
+  if (results.length === 1) return results[0]!;
+  return `${heading}:\n${results.map((result) => `- ${result}`).join("\n")}`;
+}
+
 function commandResult(value: unknown): CommandResult {
   const result = object(value);
   const rawCode = result.code;
@@ -1040,14 +1045,14 @@ export async function mergeReview(
       );
     } catch (error) {
       const prior = completed.length
-        ? `Completed: ${completed.join("; ")}. `
+        ? `${completed.length === 1 ? `Completed: ${completed[0]}` : formatMutationResults(completed, "Completed")}\n`
         : "No earlier pull request was mutated. ";
       throw new Error(
         `${prior}Stopped at PR ${review.number}. ${error instanceof Error ? error.message : String(error)}`,
       );
     }
   }
-  return completed.join(" ");
+  return formatMutationResults(completed, "Completed pull request actions");
 }
 
 type SupersedeSource = {
@@ -1120,32 +1125,17 @@ async function supersedeSource(
     const deleteEndpoint = `repos/${source.sourceRepository}/git/refs/heads/${source.branch}`;
     const response = await successful(
       "gh",
-      ["api", "--include", readEndpoint, "--jq", ".object.sha"],
+      ["api", readEndpoint, "--jq", ".object.sha"],
       cwd,
     );
-    const etag = response.match(/^\s*etag\s*:\s*(.+)$/im)?.[1]?.trim();
-    const responseParts = response.trim().split(/\s+/);
-    const currentHead = responseParts[responseParts.length - 1];
-    if (!etag)
-      throw new Error(
-        "GitHub returned no branch version for conditional deletion.",
-      );
+    const currentHead = response.trim();
+    if (!currentHead)
+      throw new Error("GitHub returned no branch version for deletion.");
     if (currentHead !== source.head)
       throw new Error(
         "The source branch head changed; the source branch was not deleted.",
       );
-    await successful(
-      "gh",
-      [
-        "api",
-        "--method",
-        "DELETE",
-        "--header",
-        `If-Match: ${etag}`,
-        deleteEndpoint,
-      ],
-      cwd,
-    );
+    await successful("gh", ["api", "--method", "DELETE", deleteEndpoint], cwd);
   } catch (error) {
     failures.push(
       `PR ${review.number} source branch cleanup failed: ${errorMessage(error)}`,
@@ -1258,7 +1248,7 @@ export async function supersedeReview(
       ["checkout", "--detach", `refs/remotes/origin/${base}`],
       checkout,
     );
-    const branch = `pi/supersede-${reviews.map((review) => review.number).join("-")}-${Date.now()}`;
+    const branch = `supersede/prs-${Date.now()}`;
     await successful("git", ["switch", "--create", branch], checkout);
 
     const applied = new Set<string>();
@@ -1327,31 +1317,33 @@ export async function supersedeReview(
       checkout,
     );
     progress("Creating the superseding pull request...");
-    const created = object(
-      await ghJson(
-        [
-          "pr",
-          "create",
-          "--repo",
-          selectedRepository,
-          "--base",
-          base,
-          "--head",
-          branch,
-          "--title",
-          `Supersede pull requests ${reviews.map((review) => `#${review.number}`).join(", ")}`,
-          "--body",
-          `This pull request supersedes ${reviews.map((review) => `#${review.number}`).join(", ")}. It combines every unique commit from the selected pull requests in selection order.`,
-          "--json",
-          "number,url",
-        ],
-        checkout,
-      ),
+    const creationOutput = await successful(
+      "gh",
+      [
+        "pr",
+        "create",
+        "--repo",
+        selectedRepository,
+        "--base",
+        base,
+        "--head",
+        branch,
+        "--title",
+        `Supersede pull requests ${reviews.map((review) => `#${review.number}`).join(", ")}`,
+        "--body",
+        `This pull request supersedes ${reviews.map((review) => `#${review.number}`).join(", ")}. It combines every unique commit from the selected pull requests in selection order.`,
+      ],
+      checkout,
     );
-    const supersedingUrl = string(created.url);
-    const supersedingNumber = number(created.number);
-    if (!supersedingUrl || supersedingNumber === undefined)
-      throw new Error("GitHub did not return the superseding pull request.");
+    const createdMatch = creationOutput.match(
+      /https:\/\/[^/\s]+\/[^/\s]+\/[^/\s]+\/pull\/(\d+)/,
+    );
+    const supersedingNumber = Number(createdMatch?.[1]);
+    if (!createdMatch || !Number.isSafeInteger(supersedingNumber))
+      throw new Error(
+        "GitHub did not return the superseding pull request URL.",
+      );
+    const supersedingUrl = createdMatch[0];
     progress("Commenting on the superseding pull request...");
     try {
       await successful(

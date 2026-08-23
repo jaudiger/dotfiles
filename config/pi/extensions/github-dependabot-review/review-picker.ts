@@ -125,9 +125,7 @@ class ReviewPicker implements Component {
     const items = this.candidates.map((candidate) => ({
       value: candidate.url,
       label: `#${candidate.number} ${candidate.title}`,
-      description: candidate.author
-        ? `${candidate.author}${candidate.repository ? ` | ${candidate.repository}` : ""}`
-        : candidate.repository,
+      description: candidate.repository,
     }));
     this.selector = new SelectList(
       items,
