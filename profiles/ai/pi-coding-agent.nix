@@ -52,7 +52,7 @@ in
             ../../config/pi/extensions/sandbox-bash
           ];
           packages = [
-            "npm:pi-subagents@0.53.0"
+            "npm:pi-subagents@0.54.0"
             "npm:pi-web-access@0.24.2"
           ];
           quietStartup = true;
@@ -89,6 +89,14 @@ in
             modelScope = {
               allow = [ "openai-codex/gpt-5.*" ];
               enforce = true;
+              agents = {
+                delegate.allow = [ "openai-codex/gpt-5.6-luna" ];
+                oracle.allow = [ "openai-codex/gpt-5.6-terra" ];
+                researcher.allow = [ "openai-codex/gpt-5.6-terra" ];
+                reviewer.allow = [ "openai-codex/gpt-5.6-terra" ];
+                scout.allow = [ "openai-codex/gpt-5.6-luna" ];
+                worker.allow = [ "openai-codex/gpt-5.6-luna" ];
+              };
             };
           };
           thinkingBudgets = {

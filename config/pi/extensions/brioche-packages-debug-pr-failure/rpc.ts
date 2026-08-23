@@ -1,10 +1,5 @@
 import * as crypto from "node:crypto";
-import type {
-  ExtensionAPI,
-  ExtensionContext,
-} from "@earendil-works/pi-coding-agent";
-import { resolveSubagentLaunchContract } from "pi-subagents/preflight";
-import { resolveCurrentSubagentCapabilityCeiling } from "pi-subagents/capability-ceiling";
+import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { asObject, text } from "./parsing.js";
 import type { Json } from "./types.js";
 
@@ -79,39 +74,23 @@ export function spawnedRunId(payload: unknown): string {
 }
 
 type CompletionResult = {
-  summary?: string;
   output?: string;
-  finalOutput?: string;
-  error?: string;
-  artifactPath?: string;
-  sessionPath?: string;
-  sessionFile?: string;
-  savedOutputPath?: string;
   artifactPaths?: Json;
-  status?: string;
-  success?: boolean;
 };
 
 type Completion = {
   runId: string;
   summary?: string;
   output?: string;
-  finalOutput?: string;
   error?: string;
   state?: string;
   status?: string;
   success?: boolean;
   asyncDir?: string;
   sessionFile?: string;
-  artifactPath?: string;
-  savedOutputPath?: string;
   artifactPaths?: Json;
   results?: CompletionResult[];
 };
-
-function booleanValue(value: unknown): boolean | undefined {
-  return typeof value === "boolean" ? value : undefined;
-}
 
 function optionalObject(value: unknown): Json | undefined {
   const object = asObject(value);
@@ -123,17 +102,8 @@ function completionResult(value: unknown): CompletionResult | undefined {
     return undefined;
   const result = asObject(value);
   return {
-    summary: text(result.summary) || undefined,
     output: text(result.output) || undefined,
-    finalOutput: text(result.finalOutput) || undefined,
-    error: text(result.error) || undefined,
-    artifactPath: text(result.artifactPath) || undefined,
-    sessionPath: text(result.sessionPath) || undefined,
-    sessionFile: text(result.sessionFile) || undefined,
-    savedOutputPath: text(result.savedOutputPath) || undefined,
     artifactPaths: optionalObject(result.artifactPaths),
-    status: text(result.status) || text(result.state) || undefined,
-    success: booleanValue(result.success),
   };
 }
 
@@ -150,15 +120,12 @@ function completion(payload: unknown): Completion {
     runId: text(data.runId) || text(data.id),
     summary: text(data.summary) || undefined,
     output: text(data.output) || undefined,
-    finalOutput: text(data.finalOutput) || undefined,
     error: text(data.error) || undefined,
     state: text(data.state) || undefined,
     status: text(data.status) || undefined,
-    success: booleanValue(data.success),
+    success: typeof data.success === "boolean" ? data.success : undefined,
     asyncDir: text(data.asyncDir) || undefined,
     sessionFile: text(data.sessionFile) || undefined,
-    artifactPath: text(data.artifactPath) || undefined,
-    savedOutputPath: text(data.savedOutputPath) || undefined,
     artifactPaths: optionalObject(data.artifactPaths),
     results: completionResults(data.results),
   };
@@ -168,53 +135,36 @@ export function completionRunId(payload: unknown): string {
   return completion(payload).runId;
 }
 
-function resultText(result: CompletionResult): string {
-  return (
-    result.finalOutput || result.output || result.summary || result.error || ""
-  );
-}
-
 export function completionText(payload: unknown): string {
   const data = completion(payload);
   return (
-    data.finalOutput ||
     data.output ||
     data.summary ||
-    data.results?.map(resultText).filter(Boolean).join("\n\n") ||
+    data.results
+      ?.map((result) => result.output || "")
+      .filter(Boolean)
+      .join("\n\n") ||
     data.error ||
     ""
   );
 }
 
 function pathsFrom(value: unknown): string[] {
-  if (typeof value === "string" && value) return [value];
-  if (Array.isArray(value))
-    return value.filter(
-      (item): item is string => typeof item === "string" && Boolean(item),
-    );
   const object = asObject(value);
   return [
     text(object.outputPath),
-    text(object.artifactPath),
-    text(object.sessionPath),
+    text(object.transcriptPath),
     text(object.sessionFile),
-    text(object.savedOutputPath),
   ].filter(Boolean);
 }
 
 export function completionArtifactPaths(payload: unknown): string[] {
   const data = completion(payload);
   const paths = [
-    ...pathsFrom(data.artifactPath),
-    ...pathsFrom(data.savedOutputPath),
     ...pathsFrom(data.artifactPaths),
-    ...(data.results ?? []).flatMap((result) => [
-      ...pathsFrom(result.artifactPath),
-      ...pathsFrom(result.sessionPath),
-      ...pathsFrom(result.sessionFile),
-      ...pathsFrom(result.savedOutputPath),
-      ...pathsFrom(result.artifactPaths),
-    ]),
+    ...(data.results ?? []).flatMap((result) =>
+      pathsFrom(result.artifactPaths),
+    ),
   ];
   return [...new Set(paths)];
 }
@@ -250,59 +200,4 @@ export function processTerminalRunId(payload: unknown): string {
 export function processTerminalState(payload: unknown): string {
   const data = asObject(payload);
   return text(data.state) || text(asObject(data.processTerminal).state);
-}
-
-export async function preflightLaunch(
-  ctx: ExtensionContext,
-  agent: string,
-  task: string,
-): Promise<void> {
-  const availableModels =
-    typeof ctx.modelRegistry?.getAvailable === "function"
-      ? ctx.modelRegistry.getAvailable().map((model) => {
-          const value = model as unknown as {
-            provider: string;
-            id: string;
-            fullId?: string;
-            reasoning?: boolean;
-          };
-          return value;
-        })
-      : undefined;
-  const result = await resolveSubagentLaunchContract({
-    agent,
-    task,
-    context: "fresh",
-    cwd: ctx.cwd,
-    availableModels,
-    parentSessionFile: ctx.sessionManager.getSessionFile() ?? null,
-    artifactDir: "session",
-    capabilityCeiling: resolveCurrentSubagentCapabilityCeiling(
-      ctx.sessionManager.getSessionId() ?? undefined,
-    ),
-  });
-  if (!result.ok)
-    throw new Error(
-      `Subagent ${agent} launch preflight failed (${result.code}): ${result.message}`,
-    );
-}
-
-export type AsyncCapacity = { used: number; limit: number };
-
-export function asyncCapacity(value: unknown): AsyncCapacity {
-  return (value as { fleet: { topLevelAsyncCapacity: AsyncCapacity } }).fleet
-    .topLevelAsyncCapacity;
-}
-
-export function requireAsyncCapacity(
-  value: unknown,
-  requested: number,
-  label: string,
-): AsyncCapacity {
-  const capacity = asyncCapacity(value);
-  if (capacity.limit > 0 && capacity.used + requested > capacity.limit)
-    throw new Error(
-      `Cannot start ${label}: top-level async capacity is ${capacity.used}/${capacity.limit}; ${requested} run${requested === 1 ? "" : "s"} requested.`,
-    );
-  return capacity;
 }

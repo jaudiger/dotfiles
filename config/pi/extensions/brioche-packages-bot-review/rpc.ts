@@ -1,10 +1,5 @@
 import * as crypto from "node:crypto";
-import {
-  type ExtensionAPI,
-  type ExtensionContext,
-} from "@earendil-works/pi-coding-agent";
-import { resolveSubagentLaunchContract } from "pi-subagents/preflight";
-import { resolveCurrentSubagentCapabilityCeiling } from "pi-subagents/capability-ceiling";
+import { type ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import type { Json, RpcCompletion } from "./types.js";
 import { object, string } from "./utils.js";
 
@@ -13,18 +8,10 @@ const rpcReplyPrefix = "subagents:rpc:v1:reply:";
 
 export function completion(value: unknown): RpcCompletion {
   const data = object(value);
-  const results = Array.isArray(data.results) ? data.results : [];
-  const first = object(results[0]);
   return {
     runId: string(data.runId) || string(data.id),
-    output:
-      string(data.finalOutput) ||
-      string(data.output) ||
-      string(data.summary) ||
-      string(first.finalOutput) ||
-      string(first.output) ||
-      string(data.error),
-    status: string(data.status) || string(data.state) || string(first.status),
+    output: string(data.output) || string(data.summary) || string(data.error),
+    status: string(data.state) || string(data.status),
     success: typeof data.success === "boolean" ? data.success : undefined,
   };
 }
@@ -104,42 +91,6 @@ export function processTerminalState(value: unknown): string {
 export function runId(value: unknown): string {
   const details = object(object(value).details);
   return string(details.runId) || string(details.asyncId);
-}
-
-export async function preflightLaunch(
-  ctx: ExtensionContext,
-  agent: string,
-  task: string,
-): Promise<void> {
-  const availableModels =
-    typeof ctx.modelRegistry?.getAvailable === "function"
-      ? ctx.modelRegistry.getAvailable().map((model) => {
-          const value = model as unknown as {
-            provider: string;
-            id: string;
-            fullId?: string;
-            reasoning?: boolean;
-          };
-          return value;
-        })
-      : undefined;
-  const result = await resolveSubagentLaunchContract({
-    agent,
-    task,
-    context: "fresh",
-    cwd: ctx.cwd,
-    availableModels,
-    parentSessionFile: ctx.sessionManager.getSessionFile() ?? null,
-    artifactDir: "session",
-    capabilityCeiling: resolveCurrentSubagentCapabilityCeiling(
-      ctx.sessionManager.getSessionId() ?? undefined,
-    ),
-    output: false,
-  });
-  if (!result.ok)
-    throw new Error(
-      `Subagent ${agent} launch preflight failed (${result.code}): ${result.message}`,
-    );
 }
 
 export type AsyncCapacity = { used: number; limit: number };

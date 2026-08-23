@@ -18,8 +18,6 @@ import {
   completionText,
   processTerminalRunId,
   processTerminalState,
-  preflightLaunch,
-  requireAsyncCapacity,
   rpcErrorMessage,
   sendRpc,
   spawnedRunId,
@@ -36,6 +34,19 @@ const briocheRuntimeUtilsRepository =
 const singleChildWorkflow = (agent: string, task: string) =>
   `return runs.run("main", ${JSON.stringify({ agent, task })})`;
 
+function completionLabel(status: string, success: boolean | undefined): string {
+  const normalized = status.toLowerCase();
+  if (success === false || ["failed", "error"].includes(normalized))
+    return "Investigation failed";
+  if (["cancelled", "canceled"].includes(normalized))
+    return "Investigation cancelled";
+  if (["timed_out", "timeout"].includes(normalized))
+    return "Investigation timed out";
+  if (["stopped", "interrupted"].includes(normalized))
+    return "Investigation stopped";
+  return "Investigation completed";
+}
+
 export function registerDebugPrFailure(pi: ExtensionAPI) {
   const pending = new Map<string, PendingRun>();
   const earlyCompletions = new Map<string, unknown>();
@@ -44,7 +55,6 @@ export function registerDebugPrFailure(pi: ExtensionAPI) {
   const terminalWaiters = new Map<string, Set<(observed: boolean) => void>>();
   let spawning = 0;
   let shuttingDown = false;
-  let currentContext: ExtensionContext | undefined;
 
   const waitForProcessTerminal = (runId: string): Promise<boolean> => {
     const state = terminalStates.get(runId);
@@ -79,6 +89,7 @@ export function registerDebugPrFailure(pi: ExtensionAPI) {
     const sessionFile = completionSessionFile(payload);
     const status = completionStatus(payload);
     const success = completionSuccess(payload);
+    const label = completionLabel(status, success);
     const cleanupSucceeded = await removeDirectory(item.directory);
     const cleanupNotice = cleanupSucceeded
       ? ""
@@ -89,7 +100,7 @@ export function registerDebugPrFailure(pi: ExtensionAPI) {
     pi.sendMessage(
       {
         customType: "brioche-debug-pr-failure",
-        content: `Investigation completed for PR ${item.pr}.\n\n${result || "The subagent returned no report."}${artifactNotice}${cleanupNotice}`,
+        content: `${label} for PR ${item.pr}.\n\n${result || "The subagent returned no report."}${artifactNotice}${cleanupNotice}`,
         details: {
           pr: item.pr,
           runId,
@@ -174,12 +185,6 @@ export function registerDebugPrFailure(pi: ExtensionAPI) {
 
 Investigate Brioche package PR ${pr} for package ${packageName}. Evidence directory: ${prepared.directory}. Package repository: ${ctx.cwd}. Brioche source repository: ${briocheSourceRepository}. Brioche runtime utilities repository: ${briocheRuntimeUtilsRepository}. Read decoded .log files when they contain process output or when the failed job log points to them. Consult manifest.txt only when needed to resolve missing or ambiguous evidence. Inspect the two source repositories when the logs identify a Brioche component, runtime utility, executable, or configuration path, and include the relevant source path and line range in your reasoning. This is an evidence-only investigation: do not use commands, do not download or decode artifacts, and do not apply a proposed fix. Return a concise evidence-based root cause, failure classification, and proposed fix for the parent agent.`;
         await discoverCompletionEvent();
-        requireAsyncCapacity(
-          await sendRpc(pi, "status", {}),
-          1,
-          `the Brioche PR failure investigation for PR ${pr}`,
-        );
-        currentContext = ctx;
         spawning += 1;
         try {
           const capabilityCeiling = registerSubagentCapabilityCeiling({
@@ -192,11 +197,6 @@ Investigate Brioche package PR ${pr} for package ${packageName}. Evidence direct
           });
           let rpc: Json;
           try {
-            if (!currentContext)
-              throw new Error(
-                "No active extension context for debug preflight.",
-              );
-            await preflightLaunch(currentContext, "oracle", task);
             rpc = await sendRpc(pi, "spawn", {
               cwd: ctx.cwd,
               context: "fresh",
@@ -266,6 +266,5 @@ Investigate Brioche package PR ${pr} for package ${packageName}. Evidence direct
     );
     pending.clear();
     earlyCompletions.clear();
-    currentContext = undefined;
   });
 }
