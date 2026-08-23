@@ -85,9 +85,6 @@ export default function registerDependabotReview(pi: ExtensionAPI) {
     return waitForProcessTerminal(id);
   };
 
-  const singleChildWorkflow = (agent: string, task: string) =>
-    `return runs.run("main", ${JSON.stringify({ agent, task, output: false })})`;
-
   const report = (content: string, details: Json = {}, triggerTurn = false) => {
     pi.sendMessage(
       {
@@ -133,7 +130,9 @@ export default function registerDependabotReview(pi: ExtensionAPI) {
       const rpc = await sendRpc(pi, "spawn", {
         cwd: review.cwd,
         context: "fresh",
-        workflowScript: singleChildWorkflow("scout", task),
+        agent: "scout",
+        task,
+        output: false,
         reads: [
           join(review.directory, "pr-metadata.json"),
           join(review.directory, "pr-description.md"),
@@ -304,7 +303,9 @@ export default function registerDependabotReview(pi: ExtensionAPI) {
       const rpc = await sendRpc(pi, "spawn", {
         cwd: review.cwd,
         context: "fresh",
-        workflowScript: singleChildWorkflow("researcher", task),
+        agent: "researcher",
+        task,
+        output: false,
         reads: [
           join(review.directory, "pr-metadata.json"),
           join(review.directory, "pr-description.md"),

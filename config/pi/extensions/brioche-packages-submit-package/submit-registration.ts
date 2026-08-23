@@ -156,9 +156,6 @@ export function registerSubmitPackage(pi: ExtensionAPI): void {
     return waitForProcessTerminal(id);
   };
 
-  const singleChildWorkflow = (agent: string, task: string) =>
-    `return runs.run("main", ${JSON.stringify({ agent, task, output: false })})`;
-
   const report = (content: string, details: Json = {}) => {
     pi.sendMessage(
       {
@@ -370,7 +367,9 @@ export function registerSubmitPackage(pi: ExtensionAPI): void {
             rpc = await sendRpc(pi, "spawn", {
               cwd: ctx.cwd,
               context: "fresh",
-              workflowScript: singleChildWorkflow("researcher", task),
+              agent: "researcher",
+              task,
+              output: false,
               reads: [prepared.projectPath, ...evidenceLogPaths(prepared)],
               intercomBridge: { mode: "off" },
               mission: false,

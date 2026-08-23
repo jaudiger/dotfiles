@@ -31,9 +31,6 @@ const briocheSourceRepository =
 const briocheRuntimeUtilsRepository =
   "/Users/jaudiger/Development/git-repositories/brioche-dev/brioche-runtime-utils";
 
-const singleChildWorkflow = (agent: string, task: string) =>
-  `return runs.run("main", ${JSON.stringify({ agent, task })})`;
-
 function completionLabel(status: string, success: boolean | undefined): string {
   const normalized = status.toLowerCase();
   if (success === false || ["failed", "error"].includes(normalized))
@@ -200,7 +197,8 @@ Investigate Brioche package PR ${pr} for package ${packageName}. Evidence direct
             rpc = await sendRpc(pi, "spawn", {
               cwd: ctx.cwd,
               context: "fresh",
-              workflowScript: singleChildWorkflow("oracle", task),
+              agent: "oracle",
+              task,
               reads: [
                 join(prepared.directory, "metadata.json"),
                 join(prepared.directory, "pr.diff"),
