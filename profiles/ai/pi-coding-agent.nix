@@ -53,7 +53,7 @@ in
           ];
           packages = [
             "npm:pi-subagents@0.52.1"
-            "npm:pi-web-access@0.24.0"
+            "npm:pi-web-access@0.24.2"
           ];
           quietStartup = true;
           showCacheMissNotices = true;

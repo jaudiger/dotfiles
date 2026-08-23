@@ -10,7 +10,9 @@
   },
   "maxInlineContentChars": 32768,
   "pdf": {
-    "enabled": false
+    "enabled": true,
+    "maxPages": 512,
+    "provider": "unpdf"
   },
   "searchRouting": {
     "fallbackOn": ["transient", "quota", "network"],
