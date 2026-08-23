@@ -15,6 +15,8 @@ import {
   processTerminalState,
   sendRpc,
   spawnedRunId,
+  preflightLaunch,
+  requireAsyncCapacity,
 } from "./rpc.js";
 import type { Json } from "./rpc.js";
 import {
@@ -123,6 +125,7 @@ export function registerSubmitPackage(pi: ExtensionAPI): void {
   let spawning = 0;
   let activeDirectory: string | undefined;
   let shuttingDown = false;
+  let currentContext: ExtensionContext | undefined;
   const terminalStates = new Map<string, string>();
   const terminalWaiters = new Map<string, Set<(observed: boolean) => void>>();
 
@@ -349,6 +352,12 @@ export function registerSubmitPackage(pi: ExtensionAPI): void {
 
       try {
         await discoverCompletionEvent();
+        requireAsyncCapacity(
+          await sendRpc(pi, "status", {}),
+          1,
+          `package research for ${packageName}`,
+        );
+        currentContext = ctx;
         spawning += 1;
         try {
           const capabilityCeiling = registerSubagentCapabilityCeiling({
@@ -366,13 +375,16 @@ export function registerSubmitPackage(pi: ExtensionAPI): void {
           });
           let rpc: Json;
           try {
+            if (!currentContext)
+              throw new Error(
+                "No active extension context for submit preflight.",
+              );
+            const task = researcherTask(prepared, ctx.cwd);
+            await preflightLaunch(currentContext, "researcher", task);
             rpc = await sendRpc(pi, "spawn", {
               cwd: ctx.cwd,
               context: "fresh",
-              workflowScript: singleChildWorkflow(
-                "researcher",
-                researcherTask(prepared, ctx.cwd),
-              ),
+              workflowScript: singleChildWorkflow("researcher", task),
               reads: [prepared.projectPath, ...evidenceLogPaths(prepared)],
               intercomBridge: { mode: "off" },
               mission: false,
@@ -443,5 +455,6 @@ export function registerSubmitPackage(pi: ExtensionAPI): void {
     earlyCompletions.clear();
     processingRuns.clear();
     activeDirectory = undefined;
+    currentContext = undefined;
   });
 }

@@ -52,7 +52,7 @@ in
             ../../config/pi/extensions/protected-paths
           ];
           packages = [
-            "npm:pi-subagents@0.52.1"
+            "npm:pi-subagents@0.53.0"
             "npm:pi-web-access@0.24.2"
           ];
           quietStartup = true;

@@ -25,6 +25,8 @@ import {
   processTerminalState,
   runId,
   sendRpc,
+  preflightLaunch,
+  requireAsyncCapacity,
 } from "./rpc.js";
 import { researcherTask, scoutTask } from "./tasks.js";
 import type {
@@ -52,6 +54,7 @@ export default function registerBriochePackagesBotReview(pi: ExtensionAPI) {
     false;
   let spawning = 0;
   let shuttingDown = false;
+  let currentContext: ExtensionContext | undefined;
   const terminalStates = new Map<string, string>();
   const terminalWaiters = new Map<string, Set<(observed: boolean) => void>>();
 
@@ -129,13 +132,14 @@ export default function registerBriochePackagesBotReview(pi: ExtensionAPI) {
       },
     });
     try {
+      const task = scoutTask(review, reportPath);
+      if (!currentContext)
+        throw new Error("No active extension context for scout preflight.");
+      await preflightLaunch(currentContext, "scout", task);
       const rpc = await sendRpc(pi, "spawn", {
         cwd: review.cwd,
         context: "fresh",
-        workflowScript: singleChildWorkflow(
-          "scout",
-          scoutTask(review, reportPath),
-        ),
+        workflowScript: singleChildWorkflow("scout", task),
         reads: [
           join(review.directory, "pr-metadata.json"),
           join(review.directory, "pr-description.md"),
@@ -302,13 +306,16 @@ export default function registerBriochePackagesBotReview(pi: ExtensionAPI) {
       },
     });
     try {
+      const task = researcherTask(review);
+      if (!currentContext)
+        throw new Error(
+          "No active extension context for researcher preflight.",
+        );
+      await preflightLaunch(currentContext, "researcher", task);
       const rpc = await sendRpc(pi, "spawn", {
         cwd: review.cwd,
         context: "fresh",
-        workflowScript: singleChildWorkflow(
-          "researcher",
-          researcherTask(review),
-        ),
+        workflowScript: singleChildWorkflow("researcher", task),
         reads: [
           join(review.directory, "pr-metadata.json"),
           join(review.directory, "pr-description.md"),
@@ -346,6 +353,7 @@ export default function registerBriochePackagesBotReview(pi: ExtensionAPI) {
     handler: async (args, ctx) => {
       const requestedPullRequest = args.trim() || undefined;
       if (shuttingDown) return;
+      currentContext = ctx;
       await stopReview();
       const progress = (message: string) =>
         ctx.ui.setStatus(statusKey, message);
@@ -446,6 +454,12 @@ export default function registerBriochePackagesBotReview(pi: ExtensionAPI) {
         const events = await discoverCompletion(pi);
         subscribeCompletion(events.asyncComplete);
         subscribeProcessTerminal(events.processTerminal);
+        const status = await sendRpc(pi, "status", {});
+        requireAsyncCapacity(
+          status,
+          reviews.length,
+          `the selected ${reviews.length} pull request${reviews.length === 1 ? "" : "s"}`,
+        );
         spawning += 1;
         try {
           const results = await Promise.allSettled(
@@ -584,5 +598,6 @@ export default function registerBriochePackagesBotReview(pi: ExtensionAPI) {
           .map((directory) => rm(directory, { recursive: true, force: true })),
       );
     active = undefined;
+    currentContext = undefined;
   });
 }

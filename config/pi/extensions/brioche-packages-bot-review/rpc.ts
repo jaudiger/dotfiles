@@ -1,5 +1,10 @@
 import * as crypto from "node:crypto";
-import { type ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import {
+  type ExtensionAPI,
+  type ExtensionContext,
+} from "@earendil-works/pi-coding-agent";
+import { resolveSubagentLaunchContract } from "pi-subagents/preflight";
+import { resolveCurrentSubagentCapabilityCeiling } from "pi-subagents/capability-ceiling";
 import type { Json, RpcCompletion } from "./types.js";
 import { object, string } from "./utils.js";
 
@@ -99,4 +104,60 @@ export function processTerminalState(value: unknown): string {
 export function runId(value: unknown): string {
   const details = object(object(value).details);
   return string(details.runId) || string(details.asyncId);
+}
+
+export async function preflightLaunch(
+  ctx: ExtensionContext,
+  agent: string,
+  task: string,
+): Promise<void> {
+  const availableModels =
+    typeof ctx.modelRegistry?.getAvailable === "function"
+      ? ctx.modelRegistry.getAvailable().map((model) => {
+          const value = model as unknown as {
+            provider: string;
+            id: string;
+            fullId?: string;
+            reasoning?: boolean;
+          };
+          return value;
+        })
+      : undefined;
+  const result = await resolveSubagentLaunchContract({
+    agent,
+    task,
+    context: "fresh",
+    cwd: ctx.cwd,
+    availableModels,
+    parentSessionFile: ctx.sessionManager.getSessionFile() ?? null,
+    artifactDir: "session",
+    capabilityCeiling: resolveCurrentSubagentCapabilityCeiling(
+      ctx.sessionManager.getSessionId() ?? undefined,
+    ),
+    output: false,
+  });
+  if (!result.ok)
+    throw new Error(
+      `Subagent ${agent} launch preflight failed (${result.code}): ${result.message}`,
+    );
+}
+
+export type AsyncCapacity = { used: number; limit: number };
+
+export function asyncCapacity(value: unknown): AsyncCapacity {
+  return (value as { fleet: { topLevelAsyncCapacity: AsyncCapacity } }).fleet
+    .topLevelAsyncCapacity;
+}
+
+export function requireAsyncCapacity(
+  value: unknown,
+  requested: number,
+  label: string,
+): AsyncCapacity {
+  const capacity = asyncCapacity(value);
+  if (capacity.limit > 0 && capacity.used + requested > capacity.limit)
+    throw new Error(
+      `Cannot start ${label}: top-level async capacity is ${capacity.used}/${capacity.limit}; ${requested} run${requested === 1 ? "" : "s"} requested.`,
+    );
+  return capacity;
 }

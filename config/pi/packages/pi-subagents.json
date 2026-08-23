@@ -4,6 +4,7 @@
   "completionBatch": {
     "enabled": true
   },
+  "resultScanLogging": "activity",
   "fleetView": true,
   "inlineToolDisplay": "summary",
   "mainWindowRenderer": {
