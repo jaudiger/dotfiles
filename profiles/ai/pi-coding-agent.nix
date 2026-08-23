@@ -46,10 +46,10 @@ in
             ../../config/pi/extensions/brioche-packages-discover-package
             ../../config/pi/extensions/brioche-packages-submit-package
             ../../config/pi/extensions/github-dependabot-review
-            ../../config/pi/extensions/sandbox-bash
             ../../config/pi/extensions/notifications
             ../../config/pi/extensions/project-trust
             ../../config/pi/extensions/protected-paths
+            ../../config/pi/extensions/sandbox-bash
           ];
           packages = [
             "npm:pi-subagents@0.53.0"
