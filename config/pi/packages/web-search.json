@@ -15,7 +15,13 @@
     "provider": "unpdf"
   },
   "searchRouting": {
-    "fallbackOn": ["transient", "quota", "network"],
+    "fallbackOn": [
+      "invalid-response",
+      "network",
+      "quota",
+      "transient",
+      "unsupported"
+    ],
     "providers": ["openai", "duckduckgo"]
   },
   "tools": {
