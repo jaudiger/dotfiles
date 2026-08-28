@@ -82,7 +82,7 @@ export type ReviewContext = {
 };
 
 export type PendingRun = {
-  kind: "researcher" | "scout";
+  kind: "workflow";
   review: PreparedReview;
 };
 

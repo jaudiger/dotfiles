@@ -334,11 +334,14 @@ async function runCommand(
   command: string,
   args: string[],
   cwd: string,
+  signal?: AbortSignal,
 ): Promise<string> {
+  if (signal?.aborted) throw new Error("Package submission was cancelled.");
   try {
     const result = await execFileAsync(command, args, {
       cwd,
       maxBuffer,
+      signal,
     });
     return commandOutput(result.stdout);
   } catch (error) {
@@ -494,17 +497,21 @@ function githubRepository(remote: string): string | undefined {
 async function verifyRepository(
   cwd: string,
   packagePath: string,
+  signal: AbortSignal,
 ): Promise<{ base: string; repository: string; branch: string }> {
+  const command = (name: string, args: string[]) =>
+    runCommand(name, args, cwd, signal);
   const repositoryRoot = await realpath(
-    (await runCommand("git", ["rev-parse", "--show-toplevel"], cwd)).trim(),
+    (await command("git", ["rev-parse", "--show-toplevel"])).trim(),
   );
   if (repositoryRoot !== (await realpath(cwd)))
     throw new Error("Package submission must run from the repository root.");
-  const status = await runCommand(
-    "git",
-    ["status", "--porcelain=v1", "--null", "--untracked-files=all"],
-    cwd,
-  );
+  const status = await command("git", [
+    "status",
+    "--porcelain=v1",
+    "--null",
+    "--untracked-files=all",
+  ]);
   const changedPaths = statusPaths(status).filter(
     (path, index, paths) => paths.indexOf(path) === index,
   );
@@ -514,15 +521,11 @@ async function verifyRepository(
         .filter((path) => !packageOnly([path], packagePath))
         .join(", ")}`,
     );
-  const branch = (
-    await runCommand("git", ["branch", "--show-current"], cwd)
-  ).trim();
+  const branch = (await command("git", ["branch", "--show-current"])).trim();
   if (!branch) throw new Error("Repository is in detached HEAD state.");
-  const remote = (
-    await runCommand("git", ["remote", "get-url", "origin"], cwd)
-  ).trim();
+  const remote = (await command("git", ["remote", "get-url", "origin"])).trim();
   const pushRemote = (
-    await runCommand("git", ["remote", "get-url", "--push", "origin"], cwd)
+    await command("git", ["remote", "get-url", "--push", "origin"])
   ).trim();
   const repository = githubRepository(remote);
   if (!repository || githubRepository(pushRemote) !== repository)
@@ -530,16 +533,12 @@ async function verifyRepository(
       "Origin fetch and push URLs must target the same GitHub repository.",
     );
   try {
-    await runCommand(
-      "git",
-      ["rev-parse", "--verify", "refs/remotes/origin/main"],
-      cwd,
-    );
+    await command("git", ["rev-parse", "--verify", "refs/remotes/origin/main"]);
   } catch {
     throw new Error("Repository origin has no main branch.");
   }
   try {
-    await runCommand("git", ["show-ref", "--verify", "refs/heads/main"], cwd);
+    await command("git", ["show-ref", "--verify", "refs/heads/main"]);
   } catch {
     throw new Error("Repository has no local main branch.");
   }
@@ -550,10 +549,14 @@ function branchName(packageName: string): string {
   return `add-${packageName}`;
 }
 
-async function gitRef(cwd: string, ref: string): Promise<string | undefined> {
+async function gitRef(
+  cwd: string,
+  ref: string,
+  signal: AbortSignal,
+): Promise<string | undefined> {
   try {
     return (
-      await runCommand("git", ["rev-parse", "--verify", ref], cwd)
+      await runCommand("git", ["rev-parse", "--verify", ref], cwd, signal)
     ).trim();
   } catch {
     return undefined;
@@ -563,12 +566,14 @@ async function gitRef(cwd: string, ref: string): Promise<string | undefined> {
 async function packageChanges(
   cwd: string,
   packagePath: string,
+  signal: AbortSignal,
 ): Promise<boolean> {
   try {
     await runCommand(
       "git",
       ["diff", "--quiet", "main", "--", packagePath],
       cwd,
+      signal,
     );
     return false;
   } catch {
@@ -580,8 +585,11 @@ async function startFromMain(
   cwd: string,
   packagePath: string,
   originalBranch: string,
+  signal: AbortSignal,
 ): Promise<void> {
-  await runCommand("git", ["fetch", "origin", "main"], cwd);
+  const command = (name: string, args: string[]) =>
+    runCommand(name, args, cwd, signal);
+  await command("git", ["fetch", "origin", "main"]);
   try {
     await runCommand(
       "git",
@@ -592,6 +600,7 @@ async function startFromMain(
         "refs/remotes/origin/main",
       ],
       cwd,
+      signal,
     );
   } catch {
     throw new Error("Local main is not at or behind origin/main.");
@@ -601,54 +610,47 @@ async function startFromMain(
     "git",
     ["status", "--porcelain=v1", "--null", "--untracked-files=all"],
     cwd,
+    signal,
   );
   const hasPackageChanges = statusPaths(status).some(
     (path) => path === packagePath || path.startsWith(`${packagePath}/`),
   );
-  const stashBefore = await gitRef(cwd, "refs/stash");
-  await runCommand(
-    "git",
-    [
-      "stash",
-      "push",
-      "--include-untracked",
-      "--message",
-      "brioche package submission",
-      "--",
-      packagePath,
-    ],
-    cwd,
-  );
-  const stashAfter = await gitRef(cwd, "refs/stash");
+  const stashBefore = await gitRef(cwd, "refs/stash", signal);
+  await command("git", [
+    "stash",
+    "push",
+    "--include-untracked",
+    "--message",
+    "brioche package submission",
+    "--",
+    packagePath,
+  ]);
+  const stashAfter = await gitRef(cwd, "refs/stash", signal);
   const stashed = stashBefore !== stashAfter;
   if (hasPackageChanges && !stashed)
     throw new Error("Could not safely stash uncommitted package changes.");
   if (
     originalBranch !== "main" &&
     !hasPackageChanges &&
-    (await packageChanges(cwd, packagePath))
+    (await packageChanges(cwd, packagePath, signal))
   )
     throw new Error(
       "Current branch has committed package changes; start submission from main.",
     );
 
-  await runCommand("git", ["switch", "main"], cwd);
-  await runCommand(
-    "git",
-    ["merge", "--ff-only", "refs/remotes/origin/main"],
-    cwd,
-  );
+  await command("git", ["switch", "main"]);
+  await command("git", ["merge", "--ff-only", "refs/remotes/origin/main"]);
   const mainRevision = (
-    await runCommand("git", ["rev-parse", "refs/heads/main"], cwd)
+    await command("git", ["rev-parse", "refs/heads/main"])
   ).trim();
   const originMainRevision = (
-    await runCommand("git", ["rev-parse", "refs/remotes/origin/main"], cwd)
+    await command("git", ["rev-parse", "refs/remotes/origin/main"])
   ).trim();
   if (mainRevision !== originMainRevision)
     throw new Error("Local main did not fast-forward to origin/main.");
   if (stashed) {
     try {
-      await runCommand("git", ["stash", "pop", "--index"], cwd);
+      await command("git", ["stash", "pop", "--index"]);
     } catch {
       throw new Error(
         "Could not restore the package changes after updating main. The changes remain in git stash, and the repository is on main.",
@@ -660,24 +662,25 @@ async function startFromMain(
 async function ensureBranchAvailable(
   branch: string,
   cwd: string,
+  signal: AbortSignal,
 ): Promise<void> {
+  const command = (name: string, args: string[]) =>
+    runCommand(name, args, cwd, signal);
   try {
-    await runCommand(
-      "git",
-      ["show-ref", "--verify", `refs/heads/${branch}`],
-      cwd,
-    );
+    await command("git", ["show-ref", "--verify", `refs/heads/${branch}`]);
     throw new Error(`Package branch already exists: ${branch}`);
   } catch (error) {
     if (error instanceof Error && error.message.startsWith("Package branch"))
       throw error;
   }
   try {
-    await runCommand(
-      "git",
-      ["ls-remote", "--exit-code", "--heads", "origin", branch],
-      cwd,
-    );
+    await command("git", [
+      "ls-remote",
+      "--exit-code",
+      "--heads",
+      "origin",
+      branch,
+    ]);
     throw new Error(`Remote package branch already exists: ${branch}`);
   } catch (error) {
     if (
@@ -749,6 +752,7 @@ export async function submitPreparedPackage(
   prepared: PreparedSubmission,
   metadata: ResearchMetadata,
   cwd: string,
+  signal: AbortSignal,
 ): Promise<{ branch: string; pullRequest: string }> {
   if (!prepared.success)
     throw new Error("Cannot submit a package with a failed preflight.");
@@ -760,14 +764,14 @@ export async function submitPreparedPackage(
   };
   try {
     const packagePath = `packages/${prepared.packageName}`;
-    const repository = await verifyRepository(cwd, packagePath);
+    const repository = await verifyRepository(cwd, packagePath, signal);
     const branch = branchName(prepared.packageName);
-    await startFromMain(cwd, packagePath, repository.branch);
-    await ensureBranchAvailable(branch, cwd);
-    await runCommand("git", ["switch", "-c", branch], cwd);
+    await startFromMain(cwd, packagePath, repository.branch, signal);
+    await ensureBranchAvailable(branch, cwd, signal);
+    await runCommand("git", ["switch", "-c", branch], cwd, signal);
     state.branch = branch;
     state.branchCreated = true;
-    await runCommand("git", ["add", "--", packagePath], cwd);
+    await runCommand("git", ["add", "--", packagePath], cwd, signal);
     const staged = (
       await runCommand(
         "git",
@@ -780,6 +784,7 @@ export async function submitPreparedPackage(
           "--find-copies",
         ],
         cwd,
+        signal,
       )
     )
       .split("\0")
@@ -792,9 +797,15 @@ export async function submitPreparedPackage(
       "git",
       ["commit", "-m", `feat(${prepared.packageName}): add package`],
       cwd,
+      signal,
     );
     state.commitCreated = true;
-    await runCommand("git", ["push", "--set-upstream", "origin", branch], cwd);
+    await runCommand(
+      "git",
+      ["push", "--set-upstream", "origin", branch],
+      cwd,
+      signal,
+    );
     state.pushSucceeded = true;
 
     const body = [
@@ -846,6 +857,7 @@ export async function submitPreparedPackage(
           bodyPath,
         ],
         cwd,
+        signal,
       )
     ).trim();
     state.pullRequestCreated = true;

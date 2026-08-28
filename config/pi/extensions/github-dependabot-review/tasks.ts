@@ -1,3 +1,4 @@
+import { join } from "node:path";
 import type { PreparedReview } from "./types.js";
 
 export function researcherTask(review: PreparedReview): string {
@@ -6,4 +7,47 @@ export function researcherTask(review: PreparedReview): string {
 
 export function scoutTask(review: PreparedReview, reportPath: string): string {
   return `Perform a read-only repository usage scout for Dependabot PR ${review.number}. Read the researcher report at ${reportPath}, the check records and any failed check logs referenced there, and the diff in ${review.directory}. Use the researcher report as the source for dependency research and do not reread the PR description. Analyze how each changed direct dependency is used in the repository. Use read, grep, find, and ls to locate relevant source files and tests, cite file paths and line ranges, identify affected code paths and tests, and assess whether repository evidence supports or contradicts the researcher's conclusions. Report repository-specific evidence, unsupported assumptions, and confidence. Use only read, grep, find, and ls tools. Do not edit files or run commands. Return a concise Markdown report.`;
+}
+
+export function workflowTask(review: PreparedReview): string {
+  const researcherReport = join(review.directory, "researcher-report.md");
+  const scoutReport = join(review.directory, "scout-report.md");
+  const researcherReads = [
+    join(review.directory, "pr-metadata.json"),
+    join(review.directory, "pr-description.md"),
+    join(review.directory, "diff.patch"),
+    review.cwd,
+  ];
+  const scoutReads = [
+    join(review.directory, "pr-metadata.json"),
+    join(review.directory, "diff.patch"),
+    researcherReport,
+    review.cwd,
+  ];
+  const handoff = {
+    status: "ready",
+    directory: review.directory,
+    researcherReport,
+    scoutReport,
+    instruction: `Read the researcher and scout reports, the diff, and status checks and logs from ${review.directory}. Treat the researcher report as the canonical dependency research. Summarize only repository and check evidence, resolve any discrepancies against the diff, and classify the recommendation as safe to merge, follow-up needed, wait, or cannot recommend. Ask the end user to explicitly choose checkout, wait, or follow-up. Do not execute any PR mutation based only on the recommendation.`,
+  };
+  return [
+    'await runs.run("researcher", {',
+    '  agent: "researcher",',
+    `  task: ${JSON.stringify(researcherTask(review))},`,
+    '  context: "fresh",',
+    `  reads: ${JSON.stringify(researcherReads)},`,
+    `  output: ${JSON.stringify(researcherReport)},`,
+    '  outputMode: "file-only",',
+    "});",
+    'await runs.run("scout", {',
+    '  agent: "scout",',
+    `  task: ${JSON.stringify(scoutTask(review, researcherReport))},`,
+    '  context: "fresh",',
+    `  reads: ${JSON.stringify(scoutReads)},`,
+    `  output: ${JSON.stringify(scoutReport)},`,
+    '  outputMode: "file-only",',
+    "});",
+    `return ${JSON.stringify(handoff)};`,
+  ].join("\n");
 }

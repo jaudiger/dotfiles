@@ -1,4 +1,4 @@
-import { rm, writeFile } from "node:fs/promises";
+import { rm } from "node:fs/promises";
 import { join } from "node:path";
 import {
   isToolCallEventType,
@@ -26,7 +26,7 @@ import {
   sendRpc,
   requireAsyncCapacity,
 } from "./rpc.js";
-import { researcherTask, scoutTask } from "./tasks.js";
+import { workflowTask } from "./tasks.js";
 import type {
   Json,
   PendingRun,
@@ -114,37 +114,37 @@ export default function registerDependabotReview(pi: ExtensionAPI) {
     }
   };
 
-  const spawnScout = async (review: PreparedReview, reportPath: string) => {
+  const spawnWorkflow = async (review: PreparedReview) => {
     if (shuttingDown || !isActiveReview(review)) return;
     spawning += 1;
     const capability = registerSubagentCapabilityCeiling({
       sessionId: review.sessionId,
       source: "github-dependabot-review",
       ceiling: {
-        allowedAgents: ["scout"],
-        allowedTools: ["read", "grep", "find", "ls"],
+        allowedAgents: ["researcher", "scout"],
+        allowedTools: [
+          "read",
+          "grep",
+          "find",
+          "ls",
+          "web_search",
+          "fetch_content",
+          "get_search_content",
+        ],
       },
     });
     try {
-      const task = scoutTask(review, reportPath);
       const rpc = await sendRpc(pi, "spawn", {
         cwd: review.cwd,
-        context: "fresh",
-        agent: "scout",
-        task,
+        workflowScript: workflowTask(review),
         output: false,
-        reads: [
-          join(review.directory, "pr-metadata.json"),
-          join(review.directory, "diff.patch"),
-          reportPath,
-          review.cwd,
-        ],
         intercomBridge: { mode: "off" },
         mission: false,
         async: true,
       });
       const id = runId(rpc);
-      if (!id) throw new Error("Scout started without a run identifier.");
+      if (!id)
+        throw new Error("Review workflow started without a run identifier.");
       if (shuttingDown || !isActiveReview(review)) {
         earlyCompletions.delete(id);
         if (await stopAndConfirm(id))
@@ -152,7 +152,7 @@ export default function registerDependabotReview(pi: ExtensionAPI) {
         else retainedDirectories.add(review.directory);
         return;
       }
-      pending.set(id, { kind: "scout", review });
+      pending.set(id, { kind: "workflow", review });
       const early = earlyCompletions.get(id);
       if (early) {
         earlyCompletions.delete(id);
@@ -164,14 +164,8 @@ export default function registerDependabotReview(pi: ExtensionAPI) {
     }
   };
 
-  const finishResearcher = async (
-    id: string,
-    item: PendingRun,
-    raw: unknown,
-  ) => {
+  const finishWorkflow = async (id: string, item: PendingRun, raw: unknown) => {
     const result = completion(raw);
-    const reportPath = join(item.review.directory, "researcher-report.md");
-    await writeFile(reportPath, `${result.output}\n`, { mode: 0o600 });
     if (shuttingDown || !isActiveReview(item.review)) return;
     if (
       result.success === false ||
@@ -180,57 +174,35 @@ export default function registerDependabotReview(pi: ExtensionAPI) {
       )
     ) {
       report(
-        `Dependabot researcher failed for PR ${item.review.number}. Evidence retained at ${item.review.directory}.`,
-        { runId: id, reportPath },
-        true,
+        `Dependabot review workflow failed for PR ${item.review.number}. Evidence retained at ${item.review.directory}.`,
+        {
+          runId: id,
+          directory: item.review.directory,
+          researcherReport: join(item.review.directory, "researcher-report.md"),
+          scoutReport: join(item.review.directory, "scout-report.md"),
+          status: result.status,
+        },
       );
       return;
     }
-    try {
-      await spawnScout(item.review, reportPath);
-      report(
-        `Dependabot researcher completed for PR ${item.review.number}; repository scout started.`,
-        { runId: id, reportPath },
-      );
-    } catch (error) {
-      report(
-        `Could not start the Dependabot repository scout: ${error instanceof Error ? error.message : String(error)}`,
-        { runId: id, reportPath },
-      );
-    }
-  };
-
-  const finishScout = async (id: string, item: PendingRun, raw: unknown) => {
-    const result = completion(raw);
-    const reportPath = join(item.review.directory, "scout-report.md");
-    await writeFile(reportPath, `${result.output}\n`, { mode: 0o600 });
-    if (shuttingDown || !isActiveReview(item.review)) return;
     if (
-      result.success === false ||
-      ["failed", "error", "cancelled", "canceled"].includes(
-        result.status.toLowerCase(),
+      active?.reviews.some(
+        (review) => review.directory === item.review.directory,
       )
-    ) {
-      report(
-        `Dependabot repository scout failed for PR ${item.review.number}. Evidence retained at ${item.review.directory}.`,
-        { runId: id, reportPath },
-        true,
-      );
-      return;
-    }
+    )
+      active.state = "ready";
     report(
       `Dependabot review evidence is ready for PR ${item.review.number}. Read the researcher and scout reports, the diff, and status checks and logs from ${item.review.directory}. Treat the researcher report as the canonical dependency research. Summarize only repository and check evidence, resolve any discrepancies against the diff, and classify the recommendation as safe to merge, follow-up needed, wait, or cannot recommend. Ask the end user to explicitly choose checkout, wait, or follow-up. Do not execute any PR mutation based only on the recommendation.`,
       {
         pr: item.review.number,
         directory: item.review.directory,
         researcherReport: join(item.review.directory, "researcher-report.md"),
-        scoutReport: reportPath,
+        scoutReport: join(item.review.directory, "scout-report.md"),
         statusChecks: join(item.review.directory, "pr-metadata.json"),
         diff: join(item.review.directory, "diff.patch"),
-        scoutRunId: id,
-        scoutStatus: result.status,
+        workflowRunId: id,
+        workflowStatus: result.status,
       },
-      true,
     );
   };
 
@@ -240,11 +212,7 @@ export default function registerDependabotReview(pi: ExtensionAPI) {
     if (!item) return;
     processing.add(id);
     pending.delete(id);
-    const promise = (
-      item.kind === "researcher"
-        ? finishResearcher(id, item, raw)
-        : finishScout(id, item, raw)
-    )
+    const promise = finishWorkflow(id, item, raw)
       .catch((error: unknown) => {
         report(
           `Dependabot review run ${id} failed: ${error instanceof Error ? error.message : String(error)}`,
@@ -282,58 +250,6 @@ export default function registerDependabotReview(pi: ExtensionAPI) {
     });
   };
 
-  const spawnResearcher = async (review: PreparedReview) => {
-    const capability = registerSubagentCapabilityCeiling({
-      sessionId: review.sessionId,
-      source: "github-dependabot-review",
-      ceiling: {
-        allowedAgents: ["researcher"],
-        allowedTools: [
-          "read",
-          "web_search",
-          "fetch_content",
-          "get_search_content",
-        ],
-      },
-    });
-    try {
-      const task = researcherTask(review);
-      const rpc = await sendRpc(pi, "spawn", {
-        cwd: review.cwd,
-        context: "fresh",
-        agent: "researcher",
-        task,
-        output: false,
-        reads: [
-          join(review.directory, "pr-metadata.json"),
-          join(review.directory, "pr-description.md"),
-          join(review.directory, "diff.patch"),
-          review.cwd,
-        ],
-        intercomBridge: { mode: "off" },
-        mission: false,
-        async: true,
-      });
-      const id = runId(rpc);
-      if (!id) throw new Error("Researcher started without a run identifier.");
-      if (shuttingDown || !isActiveReview(review)) {
-        earlyCompletions.delete(id);
-        if (await stopAndConfirm(id))
-          await rm(review.directory, { recursive: true, force: true });
-        else retainedDirectories.add(review.directory);
-        return;
-      }
-      pending.set(id, { kind: "researcher", review });
-      const early = earlyCompletions.get(id);
-      if (early) {
-        earlyCompletions.delete(id);
-        startCompletion(id, early);
-      }
-    } finally {
-      capability.dispose();
-    }
-  };
-
   pi.registerCommand("github:dependabot-review", {
     description:
       "Select an open Dependabot pull request or use a specified PR URL",
@@ -341,6 +257,7 @@ export default function registerDependabotReview(pi: ExtensionAPI) {
       const requestedPullRequest = args.trim() || undefined;
       if (shuttingDown) return;
       await stopReview();
+      if (shuttingDown) return;
       const progress = (message: string) =>
         ctx.ui.setStatus(statusKey, message);
       let requests: string[] = [];
@@ -367,6 +284,7 @@ export default function registerDependabotReview(pi: ExtensionAPI) {
             false,
           );
           if (!selected || selected.candidates.length === 0) return;
+          if (shuttingDown) return;
           pickerMode = selected.mode;
           candidates = selected.candidates;
           if (pickerMode !== "review") {
@@ -386,6 +304,7 @@ export default function registerDependabotReview(pi: ExtensionAPI) {
                 return prepareMutationTarget(candidate, ctx.cwd);
               }),
             );
+            if (shuttingDown) return;
             const text =
               pickerMode === "merge"
                 ? await mergeReview(targets, ctx, progress)
@@ -426,8 +345,17 @@ export default function registerDependabotReview(pi: ExtensionAPI) {
             ctx.sessionManager.getSessionId(),
             request,
           );
+          if (shuttingDown) {
+            await rm(review.directory, { recursive: true, force: true });
+            await stopReview();
+            return;
+          }
           session.reviews = [...session.reviews, review];
           session.generation += 1;
+        }
+        if (shuttingDown) {
+          await stopReview();
+          return;
         }
         session.state = "researching";
         progress(
@@ -435,9 +363,17 @@ export default function registerDependabotReview(pi: ExtensionAPI) {
         );
         const reviews = session.reviews;
         const events = await discoverCompletion(pi);
+        if (shuttingDown) {
+          await stopReview();
+          return;
+        }
         subscribeCompletion(events.asyncComplete);
         subscribeProcessTerminal(events.processTerminal);
         const status = await sendRpc(pi, "status", {});
+        if (shuttingDown) {
+          await stopReview();
+          return;
+        }
         requireAsyncCapacity(
           status,
           reviews.length,
@@ -446,7 +382,7 @@ export default function registerDependabotReview(pi: ExtensionAPI) {
         spawning += 1;
         try {
           const results = await Promise.allSettled(
-            reviews.map((review) => spawnResearcher(review)),
+            reviews.map((review) => spawnWorkflow(review)),
           );
           const failure = results.find(
             (result) => result.status === "rejected",
@@ -455,6 +391,7 @@ export default function registerDependabotReview(pi: ExtensionAPI) {
         } finally {
           spawning -= 1;
         }
+        if (shuttingDown) return;
         progress(
           "Read-only research started; waiting for researcher results...",
         );

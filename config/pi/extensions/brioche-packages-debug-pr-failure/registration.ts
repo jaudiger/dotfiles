@@ -122,7 +122,7 @@ export function registerDebugPrFailure(pi: ExtensionAPI) {
         },
         display: true,
       },
-      { triggerTurn: true, deliverAs: "followUp" },
+      { triggerTurn: false, deliverAs: "followUp" },
     );
   };
 
@@ -186,15 +186,24 @@ export function registerDebugPrFailure(pi: ExtensionAPI) {
         );
         return;
       }
+      if (shuttingDown) return;
       let prepared: PreparedContext | undefined;
       try {
         ctx.ui.notify(`Preparing failure artifacts for PR ${pr}...`, "info");
         prepared = await prepareContext(pr, briochePackagesRepository);
+        if (shuttingDown) {
+          await removeDirectory(prepared.directory);
+          return;
+        }
         const packageName = text(prepared.metadata.package) || "unknown";
         const task = `${investigationInstructions}
 
 Investigate Brioche package PR ${pr} for package ${packageName}. Evidence directory: ${prepared.directory}. Package repository: ${briochePackagesRepository}. Brioche source repository: ${briocheSourceRepository}. Brioche runtime utilities repository: ${briocheRuntimeUtilsRepository}. Read decoded .log files when they contain process output or when the failed job log points to them. Consult manifest.txt only when needed to resolve missing or ambiguous evidence. Inspect the two source repositories when the logs identify a Brioche component, runtime utility, executable, or configuration path, and include the relevant source path and line range in your reasoning. This is an evidence-only investigation: do not use commands, do not download or decode artifacts, and do not apply a proposed fix. Return a concise evidence-based root cause, failure classification, and proposed fix for the parent agent.`;
         await discoverCompletionEvent();
+        if (shuttingDown) {
+          await removeDirectory(prepared.directory);
+          return;
+        }
         spawning += 1;
         try {
           const capabilityCeiling = registerSubagentCapabilityCeiling({
@@ -207,6 +216,10 @@ Investigate Brioche package PR ${pr} for package ${packageName}. Evidence direct
           });
           let rpc: Json;
           try {
+            if (shuttingDown) {
+              await removeDirectory(prepared.directory);
+              return;
+            }
             rpc = await sendRpc(pi, "spawn", {
               cwd: briochePackagesRepository,
               context: "fresh",
