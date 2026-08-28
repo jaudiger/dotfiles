@@ -360,7 +360,7 @@ export default function registerBriochePackagesBotReview(pi: ExtensionAPI) {
           candidates = await listCandidates();
           if (candidates.length === 0)
             throw new Error(
-              "No open Brioche package update pull request without a review was found in the current repository.",
+              "No open Brioche package update pull request was found in the current repository.",
             );
           const selected = await pickReview(
             ctx,

@@ -357,7 +357,7 @@ export default function registerDependabotReview(pi: ExtensionAPI) {
           candidates = await listCandidates(ctx.cwd);
           if (candidates.length === 0)
             throw new Error(
-              "No open Dependabot pull request without a review was found across the searched repositories.",
+              "No open Dependabot pull request was found across the searched repositories.",
             );
           const selected = await pickReview(
             ctx,

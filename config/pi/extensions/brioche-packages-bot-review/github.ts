@@ -375,8 +375,7 @@ function isLiveUpdateDiff(diff: string): boolean {
     paths.length > 0 &&
     recipeFiles.length === paths.length &&
     recipes.size === 1 &&
-    files.has("project.bri") &&
-    files.has("brioche.lock")
+    (files.has("project.bri") || files.has("brioche.lock"))
   );
 }
 
@@ -388,8 +387,6 @@ export async function listCandidates(): Promise<ReviewCandidate[]> {
       "prs",
       "--state",
       "open",
-      "--review",
-      "none",
       "--app",
       "package-update-bot",
       "--repo",
@@ -436,7 +433,7 @@ export async function fetchReviewDiff(
   }
   if (!isLiveUpdateDiff(diff.output))
     throw new Error(
-      `PR ${candidate.number} is not a single Brioche package live update of project.bri and brioche.lock.`,
+      `PR ${candidate.number} is not a single Brioche package live update of project.bri and/or brioche.lock.`,
     );
   return diff.output;
 }
@@ -662,7 +659,7 @@ export async function prepareReview(
       throw new Error(
         requested
           ? `PR ${requested} is not an open Brioche package live update pull request.`
-          : "No open Brioche package update pull request without a review was found in the current repository.",
+          : "No open Brioche package update pull request was found in the current repository.",
       );
     }
     const pr = prNumber(metadata.number);

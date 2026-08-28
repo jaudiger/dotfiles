@@ -374,8 +374,6 @@ export async function listCandidates(cwd: string): Promise<ReviewCandidate[]> {
       "prs",
       "--state",
       "open",
-      "--review",
-      "none",
       "--app",
       "dependabot",
       "--limit",
@@ -640,7 +638,7 @@ export async function prepareReview(
       throw new Error(
         requested
           ? `PR ${requested} is not an open Dependabot pull request.`
-          : "No open Dependabot pull request without a review was found across the searched repositories.",
+          : "No open Dependabot pull request was found across the searched repositories.",
       );
     }
     const pr = prNumber(metadata.number);
