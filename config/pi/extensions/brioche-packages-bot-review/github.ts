@@ -19,6 +19,7 @@ const execFileAsync = promisify(execFile);
 const maxBuffer = 40 * 1024 * 1024;
 const repository = "brioche-dev/brioche-packages";
 const networkRetryDelays = [1000, 2000];
+const mergeStateRetryDelays = [1000, 2000, 4000, 8000];
 type MutationProgress = (message: string) => void;
 
 function formatMutationResults(results: string[], heading: string): string {
@@ -652,51 +653,71 @@ function snapshotFromMetadata(
 async function refreshedMetadata(
   review: MutationTarget,
   requireMergeable = false,
+  progress: MutationProgress = () => {},
 ): Promise<PullRequestSnapshot> {
-  await ensureRepository(review.cwd);
-  const parsed = await ghJson(
-    [
-      "pr",
-      "view",
-      String(review.number),
-      "--repo",
-      repository,
-      "--json",
-      "number,author,state,isDraft,title,url,headRefName,headRefOid,headRepository,baseRefName,reviewDecision,mergeable,mergeStateStatus",
-    ],
-    review.cwd,
-  );
-  const metadata = Array.isArray(parsed) ? object(parsed[0]) : parsed;
-  if (!openPackageUpdate(metadata))
-    throw new Error(
-      "The pull request is no longer open and Brioche package update-authored.",
+  for (let attempt = 0; ; attempt += 1) {
+    await ensureRepository(review.cwd);
+    const parsed = await ghJson(
+      [
+        "pr",
+        "view",
+        String(review.number),
+        "--repo",
+        repository,
+        "--json",
+        "number,author,state,isDraft,title,url,headRefName,headRefOid,headRepository,baseRefName,reviewDecision,mergeable,mergeStateStatus",
+      ],
+      review.cwd,
     );
-  if (metadata.isDraft === true)
-    throw new Error("The pull request is still a draft.");
-  if (requireMergeable) {
-    const mergeable = string(metadata.mergeable).toUpperCase();
-    if (mergeable !== "MERGEABLE") {
-      const mergeState = string(metadata.mergeStateStatus).toUpperCase();
+    const metadata = Array.isArray(parsed) ? object(parsed[0]) : parsed;
+    if (!openPackageUpdate(metadata))
+      throw new Error(
+        "The pull request is no longer open and Brioche package update-authored.",
+      );
+    if (metadata.isDraft === true)
+      throw new Error("The pull request is still a draft.");
+    const snapshot = snapshotFromMetadata(metadata, review.repository);
+    if (!requireMergeable) return snapshot;
+
+    const mergeable = snapshot.mergeable.toUpperCase();
+    const mergeState = snapshot.mergeStateStatus.toUpperCase();
+    const stillCalculating =
+      mergeable === "UNKNOWN" || mergeState === "UNKNOWN";
+    if (!stillCalculating) {
+      if (mergeable !== "MERGEABLE") {
+        const stateDetail = mergeState ? `; merge state ${mergeState}` : "";
+        throw new Error(
+          `The pull request is not mergeable (${mergeable || "UNKNOWN"}${stateDetail}).`,
+        );
+      }
+      const reviewDecision = snapshot.reviewDecision.toUpperCase();
+      if (mergeState === "BLOCKED" && reviewDecision !== "REVIEW_REQUIRED")
+        throw new Error(
+          `The pull request is blocked (${mergeState}; review decision ${reviewDecision || "UNKNOWN"}).`,
+        );
+      return snapshot;
+    }
+
+    const delay = mergeStateRetryDelays[attempt];
+    if (delay === undefined) {
       const stateDetail = mergeState ? `; merge state ${mergeState}` : "";
       throw new Error(
-        `The pull request is not mergeable (${mergeable || "UNKNOWN"}${stateDetail}).`,
+        `The pull request mergeability is still pending (${mergeable || "UNKNOWN"}${stateDetail}).`,
       );
     }
-    const mergeState = string(metadata.mergeStateStatus).toUpperCase();
-    const reviewDecision = string(metadata.reviewDecision).toUpperCase();
-    if (mergeState === "BLOCKED" && reviewDecision !== "REVIEW_REQUIRED")
-      throw new Error(
-        `The pull request is blocked (${mergeState}; review decision ${reviewDecision || "UNKNOWN"}).`,
-      );
+    progress(
+      `PR #${review.number}: GitHub is still calculating mergeability; retrying in ${delay / 1000}s`,
+    );
+    await new Promise((resolve) => setTimeout(resolve, delay));
   }
-  return snapshotFromMetadata(metadata, review.repository);
 }
 
 export async function refreshReview(
   review: MutationTarget,
   requireMergeable = false,
+  progress: MutationProgress = () => {},
 ): Promise<PullRequestSnapshot> {
-  return refreshedMetadata(review, requireMergeable);
+  return refreshedMetadata(review, requireMergeable, progress);
 }
 
 export async function refreshReviewState(
@@ -866,6 +887,42 @@ async function commentAndApprove(review: MutationTarget): Promise<void> {
   }
 }
 
+type MergeOutcome = "merged" | "queued";
+
+async function observeMergeOutcome(
+  review: MutationTarget,
+  expectedHead: string,
+  progress: MutationProgress,
+): Promise<{ state: PullRequestSnapshot; outcome: MergeOutcome }> {
+  for (let attempt = 0; ; attempt += 1) {
+    const state = await refreshReviewState(review);
+    assertReviewedHead(review, state, expectedHead);
+    const stateName = state.state.toUpperCase();
+    if (stateName === "MERGED") return { state, outcome: "merged" };
+    if (stateName !== "OPEN")
+      throw new Error(
+        `GitHub reported pull request state ${state.state || "UNKNOWN"} after the merge command.`,
+      );
+
+    const queue = await fetchQueueDetails(review.number, review.cwd);
+    if (queue.state) return { state, outcome: "queued" };
+
+    const delay = mergeStateRetryDelays[attempt];
+    if (delay === undefined) {
+      const detail = queue.removalReason
+        ? `: ${queue.removalReason}`
+        : ".";
+      throw new Error(
+        `GitHub left the pull request open without reporting a merge queue entry${detail}`,
+      );
+    }
+    progress(
+      `PR #${review.number}: waiting for GitHub to report the merge outcome; retrying in ${delay / 1000}s`,
+    );
+    await new Promise((resolve) => setTimeout(resolve, delay));
+  }
+}
+
 async function mergePreparedReview(
   review: MutationTarget,
   expectedHead: string,
@@ -874,7 +931,7 @@ async function mergePreparedReview(
 ): Promise<string> {
   progress(`PR #${review.number}: refreshing metadata and required checks`);
   const [metadata, checks] = await Promise.all([
-    refreshedMetadata(review, true),
+    refreshedMetadata(review, true, progress),
     requiredChecks(review),
   ]);
   assertReviewedHead(review, metadata, expectedHead);
@@ -904,7 +961,7 @@ async function mergePreparedReview(
       progress(`PR #${review.number}: requesting approval`);
       await commentAndApprove(review);
       approved = true;
-      state = await refreshReview(review, true);
+      state = await refreshReview(review, true, progress);
       assertReviewedHead(review, state, expectedHead);
       review.snapshot = state;
     }
@@ -940,7 +997,6 @@ async function mergePreparedReview(
     "--match-head-commit",
     mergeHead,
   ];
-  let queued = false;
   try {
     await successful(
       "gh",
@@ -960,7 +1016,6 @@ async function mergePreparedReview(
       throw new Error(
         `The pull request was approved or already approved, but the merge failed: ${message}`,
       );
-    queued = true;
     try {
       await successful(
         "gh",
@@ -977,33 +1032,16 @@ async function mergePreparedReview(
   }
   try {
     progress(`PR #${review.number}: verifying merge or queue state`);
-    state = await refreshReviewState(review);
-    assertReviewedHead(review, state, expectedHead);
-    const stateName = state.state.toUpperCase();
-    if (queued && stateName !== "MERGED") {
-      if (stateName !== "OPEN")
-        throw new Error(
-          `GitHub reported pull request state ${state.state || "UNKNOWN"} after queuing the merge.`,
-        );
-      const queue = await fetchQueueDetails(review.number, review.cwd);
-      if (!queue.state)
-        throw new Error(
-          "GitHub did not report the pull request in the merge queue.",
-        );
-      review.snapshot = state;
-      return `Queued PR ${string(state.url) || review.number} for merging.`;
-    }
-    if (stateName !== "MERGED")
-      throw new Error(
-        `GitHub reported pull request state ${state.state || "UNKNOWN"} after the merge command.`,
-      );
-    review.snapshot = state;
+    const outcome = await observeMergeOutcome(review, expectedHead, progress);
+    review.snapshot = outcome.state;
+    return outcome.outcome === "queued"
+      ? `Queued PR ${string(outcome.state.url) || review.number} for merging.`
+      : `Squash-merged PR ${string(outcome.state.url) || review.number}.`;
   } catch (error) {
     throw new Error(
       `The merge command succeeded, but refreshing pull request state failed: ${error instanceof Error ? error.message : String(error)}`,
     );
   }
-  return `Squash-merged PR ${string(state.url) || review.number}.`;
 }
 
 export async function mergeReview(
