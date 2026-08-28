@@ -1,5 +1,5 @@
 import { execFile } from "node:child_process";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
@@ -61,49 +61,69 @@ async function capture(
 type FailedCheckLogTarget = {
   name: string;
   link: string;
+  checkIndexes: number[];
   jobId?: string;
   runId?: string;
 };
 
-function failedCheckLogTargets(output: string): FailedCheckLogTarget[] {
+function checkRecords(output: string): Json[] {
   let parsed: unknown;
   try {
     parsed = JSON.parse(output) as unknown;
   } catch {
     return [];
   }
-  if (!Array.isArray(parsed)) return [];
+  return Array.isArray(parsed) ? parsed.map(object) : [];
+}
+
+function failedCheckLogTargets(checks: Json[]): FailedCheckLogTarget[] {
   const targets: FailedCheckLogTarget[] = [];
-  const seen = new Set<string>();
-  for (const value of parsed) {
-    const check = object(value);
-    if (string(check.bucket).toLowerCase() !== "fail") continue;
+  const byKey = new Map<string, FailedCheckLogTarget>();
+  checks.forEach((check, index) => {
+    if (string(check.bucket).toLowerCase() !== "fail") return;
     const link = string(check.link);
     const job = link.match(/\/actions\/runs\/(\d+)\/job\/(\d+)/);
     const run = link.match(/\/actions\/runs\/(\d+)/);
     const jobId = job?.[2];
     const runId = job?.[1] || run?.[1];
-    if (!runId && !jobId) continue;
+    if (!runId && !jobId) return;
     const key = jobId ? `job:${jobId}` : `run:${runId}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
-    targets.push({
+    const target = byKey.get(key);
+    if (target) {
+      target.checkIndexes.push(index);
+      return;
+    }
+    const next = {
       name: string(check.name) || "Failed check",
       link,
+      checkIndexes: [index],
       jobId,
       runId,
-    });
-  }
+    };
+    byKey.set(key, next);
+    targets.push(next);
+  });
   return targets;
 }
 
+function failedCheckLogFileName(target: FailedCheckLogTarget): string {
+  const slug = target.name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+  return `${target.checkIndexes[0]! + 1}-${slug || "check"}.log`;
+}
+
 async function fetchFailedCheckLogs(
-  checksJson: string,
+  checks: Json[],
   repository: string,
   cwd: string,
-): Promise<string> {
-  const sections: string[] = [];
-  for (const target of failedCheckLogTargets(checksJson)) {
+  directory: string,
+): Promise<Json[]> {
+  const enrichedChecks = checks.map((check) => ({ ...check }));
+  const logsDirectory = join(directory, "failed-check-logs");
+  let logsDirectoryCreated = false;
+  for (const target of failedCheckLogTargets(checks)) {
     const args = target.jobId
       ? [
           "run",
@@ -117,11 +137,16 @@ async function fetchFailedCheckLogs(
       : ["run", "view", target.runId!, "--repo", repository, "--log-failed"];
     const result = await capture("gh", args, cwd);
     if (result.exitCode !== 0 || !result.output.trim()) continue;
-    sections.push(
-      `===== ${target.name} =====\nSource: ${target.link}\n\n${result.output.trim()}`,
-    );
+    if (!logsDirectoryCreated) {
+      await mkdir(logsDirectory, { recursive: true, mode: 0o700 });
+      logsDirectoryCreated = true;
+    }
+    const logPath = join(logsDirectory, failedCheckLogFileName(target));
+    await writeFile(logPath, `${result.output.trim()}\n`, { mode: 0o600 });
+    for (const index of target.checkIndexes)
+      enrichedChecks[index] = { ...enrichedChecks[index], logs: logPath };
   }
-  return sections.length > 0 ? `${sections.join("\n\n")}\n` : "";
+  return enrichedChecks;
 }
 
 async function successful(
@@ -592,11 +617,6 @@ export async function prepareReview(
       { number: pr, title: string(metadata.title), url: string(metadata.url) },
       cwd,
     );
-    const checks = await capture(
-      "gh",
-      ["pr", "checks", String(pr), "--repo", repository],
-      cwd,
-    );
     const checksJson = await capture(
       "gh",
       [
@@ -606,28 +626,21 @@ export async function prepareReview(
         "--repo",
         repository,
         "--json",
-        "bucket,link,name,state",
+        "bucket,completedAt,description,event,link,name,startedAt,state,workflow",
       ],
       cwd,
     );
-    const failedCheckLogs = await fetchFailedCheckLogs(
-      checksJson.output,
+    const checks = await fetchFailedCheckLogs(
+      checkRecords(checksJson.output),
       repository,
       cwd,
-    );
-    const statusChecksPath = join(directory, "status-checks.txt");
-    const statusChecksExitCodePath = join(
       directory,
-      "status-checks-exit-code.txt",
     );
-    const failedCheckLogsPath = join(directory, "failed-check-logs.txt");
     const enriched = {
       pullRequest: metadata,
       statusChecks: {
-        output: statusChecksPath,
-        exitCode: checks.exitCode,
-        exitCodeFile: statusChecksExitCodePath,
-        failedLogs: failedCheckLogsPath,
+        exitCode: checksJson.exitCode,
+        checks,
       },
       evidenceDirectory: directory,
     };
@@ -646,11 +659,6 @@ export async function prepareReview(
     await writeFile(join(directory, "diff.patch"), diff, {
       mode: 0o600,
     });
-    await writeFile(statusChecksPath, checks.output, { mode: 0o600 });
-    await writeFile(statusChecksExitCodePath, `${checks.exitCode}\n`, {
-      mode: 0o600,
-    });
-    await writeFile(failedCheckLogsPath, failedCheckLogs, { mode: 0o600 });
     return {
       directory,
       number: pr,

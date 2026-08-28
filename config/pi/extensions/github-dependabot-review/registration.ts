@@ -137,8 +137,6 @@ export default function registerDependabotReview(pi: ExtensionAPI) {
           join(review.directory, "pr-metadata.json"),
           join(review.directory, "pr-description.md"),
           join(review.directory, "diff.patch"),
-          join(review.directory, "status-checks.txt"),
-          join(review.directory, "failed-check-logs.txt"),
           reportPath,
           review.cwd,
         ],
@@ -222,14 +220,13 @@ export default function registerDependabotReview(pi: ExtensionAPI) {
       return;
     }
     report(
-      `Dependabot review evidence is ready for PR ${item.review.number}. Read the researcher and scout reports, the PR description, diff, and status checks from ${item.review.directory}. Summarize the evidence and classify the recommendation as safe to merge, follow-up needed, wait, or cannot recommend. Ask the end user to explicitly choose merge, checkout, wait, or follow-up. Do not execute any PR mutation based only on the recommendation.`,
+      `Dependabot review evidence is ready for PR ${item.review.number}. Read the researcher and scout reports, the PR description, diff, and status checks and logs from ${item.review.directory}. Summarize the evidence and classify the recommendation as safe to merge, follow-up needed, wait, or cannot recommend. Ask the end user to explicitly choose merge, checkout, wait, or follow-up. Do not execute any PR mutation based only on the recommendation.`,
       {
         pr: item.review.number,
         directory: item.review.directory,
         researcherReport: join(item.review.directory, "researcher-report.md"),
         scoutReport: reportPath,
-        statusChecks: join(item.review.directory, "status-checks.txt"),
-        failedCheckLogs: join(item.review.directory, "failed-check-logs.txt"),
+        statusChecks: join(item.review.directory, "pr-metadata.json"),
         diff: join(item.review.directory, "diff.patch"),
         scoutRunId: id,
         scoutStatus: result.status,
@@ -312,8 +309,6 @@ export default function registerDependabotReview(pi: ExtensionAPI) {
           join(review.directory, "pr-metadata.json"),
           join(review.directory, "pr-description.md"),
           join(review.directory, "diff.patch"),
-          join(review.directory, "status-checks.txt"),
-          join(review.directory, "failed-check-logs.txt"),
           review.cwd,
         ],
         intercomBridge: { mode: "off" },
