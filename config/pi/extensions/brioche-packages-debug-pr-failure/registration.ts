@@ -42,7 +42,7 @@ const briocheRuntimeUtilsRepository = join(
   "brioche-runtime-utils",
 );
 
-const investigationInstructions = `Identify the root cause of the supplied Brioche package pull request merge queue failure. Use the prepared metadata and decoded logs in the temporary context directory. Use the Brioche source repository at ${briocheSourceRepository} and the Brioche runtime utilities repository at ${briocheRuntimeUtilsRepository} as read-only source context. When the failure may involve Brioche behavior, runtime utilities, or a bundled executable, trace the relevant implementation and configuration in those repositories instead of guessing from the package repository alone. Distinguish package changes from upstream Brioche or runtime utility behavior, and cite relevant file paths and line ranges in the report. Do not download artifacts, decode logs, commit, or push changes. Report the pull request, package and version change, failure classification, root cause, relevant evidence, proposed fix, and validation commands. Treat network, registry, runner, resource, and sandbox glitches as transient. Treat assertions, build errors, test failures, and Brioche process failures as code-related. Search the package repository for prior fixes with the same error before proposing a change.`;
+const investigationInstructions = `Identify the root cause of the supplied Brioche package pull request merge queue failure. Use the supplied temporary evidence and read-only repository context. When the failure may involve Brioche behavior, runtime utilities, or a bundled executable, trace the relevant implementation and configuration in the supplied source context instead of guessing from the package repository alone. Distinguish package changes from upstream Brioche or runtime utility behavior, and cite relevant file paths and line ranges in the report. Do not download artifacts, decode logs, commit, or push changes. Report the pull request, package and version change, failure classification, root cause, relevant evidence, proposed fix, and validation commands. Treat network, registry, runner, resource, and sandbox glitches as transient. Treat assertions, build errors, test failures, and Brioche process failures as code-related. Search the package repository for prior fixes with the same error before proposing a change.`;
 
 function completionLabel(status: string, success: boolean | undefined): string {
   const normalized = status.toLowerCase();
@@ -198,7 +198,7 @@ export function registerDebugPrFailure(pi: ExtensionAPI) {
         const packageName = text(prepared.metadata.package) || "unknown";
         const task = `${investigationInstructions}
 
-Investigate Brioche package PR ${pr} for package ${packageName}. Evidence directory: ${prepared.directory}. Package repository: ${briochePackagesRepository}. Brioche source repository: ${briocheSourceRepository}. Brioche runtime utilities repository: ${briocheRuntimeUtilsRepository}. Read decoded .log files when they contain process output or when the failed job log points to them. Consult manifest.txt only when needed to resolve missing or ambiguous evidence. Inspect the two source repositories when the logs identify a Brioche component, runtime utility, executable, or configuration path, and include the relevant source path and line range in your reasoning. This is an evidence-only investigation: do not use commands, do not download or decode artifacts, and do not apply a proposed fix. Return a concise evidence-based root cause, failure classification, and proposed fix for the parent agent.`;
+Investigate Brioche package PR ${pr} for package ${packageName}. The temporary evidence and package, Brioche, and runtime utility repositories are supplied as read-only context. Use the process evidence to resolve missing or ambiguous details. When the logs identify a Brioche component, runtime utility, executable, or configuration path, trace it in the supplied source context and include the relevant source path and line range in your reasoning. This is an evidence-only investigation: do not use commands, do not download or decode artifacts, and do not apply a proposed fix. Return a concise evidence-based root cause, failure classification, and proposed fix for the parent agent.`;
         await discoverCompletionEvent();
         if (shuttingDown) {
           await removeDirectory(prepared.directory);
@@ -226,9 +226,7 @@ Investigate Brioche package PR ${pr} for package ${packageName}. Evidence direct
               agent: "oracle",
               task,
               reads: [
-                join(prepared.directory, "metadata.json"),
-                join(prepared.directory, "pr.diff"),
-                join(prepared.directory, "failed-jobs.log"),
+                prepared.directory,
                 briochePackagesRepository,
                 briocheSourceRepository,
                 briocheRuntimeUtilsRepository,

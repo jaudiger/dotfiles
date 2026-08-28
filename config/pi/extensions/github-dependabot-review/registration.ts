@@ -192,7 +192,7 @@ export default function registerDependabotReview(pi: ExtensionAPI) {
     )
       active.state = "ready";
     report(
-      `Dependabot review evidence is ready for PR ${item.review.number}. Read the researcher and scout reports, the diff, and status checks and logs from ${item.review.directory}. Treat the researcher report as the canonical dependency research. Summarize only repository and check evidence, resolve any discrepancies against the diff, and classify the recommendation as safe to merge, follow-up needed, wait, or cannot recommend. Ask the end user to explicitly choose checkout, wait, or follow-up. Do not execute any PR mutation based only on the recommendation.`,
+      `Dependabot review evidence is ready for PR ${item.review.number}. Read the researcher and scout reports, the diff, current status checks, merge queue history, and every referenced log from ${item.review.directory}. Treat the researcher report as the canonical dependency research. Summarize only repository and check evidence, resolve any discrepancies against the diff, and classify the recommendation as safe to merge, follow-up needed, wait, or cannot recommend. Ask the end user to explicitly choose checkout, wait, or follow-up. Do not execute any PR mutation based only on the recommendation.`,
       {
         pr: item.review.number,
         directory: item.review.directory,

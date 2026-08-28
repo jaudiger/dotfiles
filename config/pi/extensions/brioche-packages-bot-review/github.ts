@@ -136,7 +136,14 @@ async function fetchFailedCheckLogs(
         ]
       : ["run", "view", target.runId!, "--repo", repository, "--log-failed"];
     const result = await capture("gh", args, cwd);
-    if (result.exitCode !== 0 || !result.output.trim()) continue;
+    if (result.exitCode !== 0 || !result.output.trim()) {
+      const logError =
+        result.output.trim() ||
+        `gh run view exited with code ${result.exitCode}.`;
+      for (const index of target.checkIndexes)
+        enrichedChecks[index] = { ...enrichedChecks[index], logError };
+      continue;
+    }
     if (!logsDirectoryCreated) {
       await mkdir(logsDirectory, { recursive: true, mode: 0o700 });
       logsDirectoryCreated = true;
@@ -147,6 +154,140 @@ async function fetchFailedCheckLogs(
       enrichedChecks[index] = { ...enrichedChecks[index], logs: logPath };
   }
   return enrichedChecks;
+}
+
+type MergeQueueHistory = {
+  removals: Json[];
+  workflowRuns: Json[];
+  error?: string;
+};
+
+function workflowRunId(value: unknown): string | undefined {
+  const url = string(value);
+  return url.match(/\/actions\/runs\/(\d+)/)?.[1];
+}
+
+async function fetchMergeQueueHistory(
+  pullRequestNumber: number,
+  repository: string,
+  cwd: string,
+  directory: string,
+): Promise<MergeQueueHistory> {
+  const removals: Json[] = [];
+  const workflowRuns: Json[] = [];
+  const seenRuns = new Set<string>();
+  let before: string | undefined;
+  try {
+    for (;;) {
+      const query = `query($owner:String!,$name:String!,$number:Int!,$before:String) {
+        repository(owner:$owner, name:$name) {
+          pullRequest(number:$number) {
+            timelineItems(last:100, before:$before, itemTypes:[REMOVED_FROM_MERGE_QUEUE_EVENT]) {
+              pageInfo { hasPreviousPage startCursor }
+              nodes {
+                ... on RemovedFromMergeQueueEvent {
+                  createdAt
+                  reason
+                  beforeCommit {
+                    oid
+                    checkSuites(last:100) {
+                      nodes { status conclusion workflowRun { url workflow { name } } }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }`;
+      const args = [
+        "api",
+        "graphql",
+        "-f",
+        `query=${query}`,
+        "-F",
+        "owner=brioche-dev",
+        "-F",
+        "name=brioche-packages",
+        "-F",
+        `number=${pullRequestNumber}`,
+      ];
+      if (before) args.push("-f", `before=${before}`);
+      const result = object(await ghJson(args, cwd));
+      const pullRequest = object(object(result.data).repository).pullRequest;
+      const timeline = object(pullRequest).timelineItems;
+      const nodes = Array.isArray(object(timeline).nodes)
+        ? object(timeline).nodes
+        : [];
+      for (const raw of nodes) {
+        const removal = object(raw);
+        const commit = object(removal.beforeCommit);
+        const suites = object(commit.checkSuites).nodes;
+        const enrichedSuites: Json[] = [];
+        if (Array.isArray(suites)) {
+          for (const rawSuite of suites) {
+            const suite = object(rawSuite);
+            const workflowRun = object(suite.workflowRun);
+            const url = string(workflowRun.url);
+            const id = workflowRunId(url);
+            const enrichedRun: Json = { url };
+            if (id) {
+              enrichedRun.id = id;
+              if (!seenRuns.has(id)) {
+                seenRuns.add(id);
+                const logDirectory = join(directory, "merge-queue-logs");
+                const logPath = join(logDirectory, `${id}.log`);
+                const logResult = await capture(
+                  "gh",
+                  ["run", "view", id, "--repo", repository, "--log-failed"],
+                  cwd,
+                );
+                if (logResult.exitCode === 0 && logResult.output.trim()) {
+                  await mkdir(logDirectory, { recursive: true, mode: 0o700 });
+                  await writeFile(logPath, `${logResult.output.trim()}\n`, {
+                    mode: 0o600,
+                  });
+                  enrichedRun.log = logPath;
+                } else {
+                  enrichedRun.logError =
+                    logResult.output.trim() ||
+                    `gh run view exited with code ${logResult.exitCode}.`;
+                }
+                workflowRuns.push(enrichedRun);
+              } else {
+                const known = workflowRuns.find((run) => string(run.id) === id);
+                if (known?.log) enrichedRun.log = known.log;
+                if (known?.logError) enrichedRun.logError = known.logError;
+              }
+            }
+            enrichedSuites.push({
+              name: string(object(workflowRun.workflow).name),
+              status: string(suite.status),
+              conclusion: string(suite.conclusion),
+              workflowRun: enrichedRun,
+            });
+          }
+        }
+        removals.push({
+          createdAt: string(removal.createdAt),
+          reason: string(removal.reason),
+          beforeCommitOid: string(commit.oid),
+          checkSuites: enrichedSuites,
+        });
+      }
+      const pageInfo = object(timeline).pageInfo;
+      const startCursor = string(pageInfo.startCursor);
+      if (pageInfo.hasPreviousPage !== true || !startCursor) break;
+      before = startCursor;
+    }
+    return { removals, workflowRuns };
+  } catch (error) {
+    return {
+      removals,
+      workflowRuns,
+      error: error instanceof Error ? error.message : String(error),
+    };
+  }
 }
 
 async function successful(
@@ -698,12 +839,19 @@ export async function prepareReview(
       reviewCwd,
       directory,
     );
+    const mergeQueueHistory = await fetchMergeQueueHistory(
+      pr,
+      repository,
+      reviewCwd,
+      directory,
+    );
     const { body, ...pullRequest } = metadata;
     const enriched = {
       pullRequest,
       statusChecks: {
         checks,
       },
+      mergeQueueHistory,
       evidenceDirectory: directory,
       repositoryWorkspace: reviewCwd,
     };

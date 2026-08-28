@@ -130,7 +130,7 @@ export function registerSubmitPackage(pi: ExtensionAPI): void {
         researcherOutput = await runDelegatedText(pi, {
           agent: "researcher",
           cwd: packageRepository,
-          task: `${researcherTask(prepared, packageRepository)} Evidence directory: ${prepared.directory}. Read the package project file and validation logs from that directory as needed.`,
+          task: researcherTask(prepared, packageRepository),
         });
       } finally {
         capabilityCeiling.dispose();
