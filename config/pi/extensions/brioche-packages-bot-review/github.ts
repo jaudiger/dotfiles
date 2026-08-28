@@ -58,6 +58,72 @@ async function capture(
   }
 }
 
+type FailedCheckLogTarget = {
+  name: string;
+  link: string;
+  jobId?: string;
+  runId?: string;
+};
+
+function failedCheckLogTargets(output: string): FailedCheckLogTarget[] {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(output) as unknown;
+  } catch {
+    return [];
+  }
+  if (!Array.isArray(parsed)) return [];
+  const targets: FailedCheckLogTarget[] = [];
+  const seen = new Set<string>();
+  for (const value of parsed) {
+    const check = object(value);
+    if (string(check.bucket).toLowerCase() !== "fail") continue;
+    const link = string(check.link);
+    const job = link.match(/\/actions\/runs\/(\d+)\/job\/(\d+)/);
+    const run = link.match(/\/actions\/runs\/(\d+)/);
+    const jobId = job?.[2];
+    const runId = job?.[1] || run?.[1];
+    if (!runId && !jobId) continue;
+    const key = jobId ? `job:${jobId}` : `run:${runId}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    targets.push({
+      name: string(check.name) || "Failed check",
+      link,
+      jobId,
+      runId,
+    });
+  }
+  return targets;
+}
+
+async function fetchFailedCheckLogs(
+  checksJson: string,
+  repository: string,
+  cwd: string,
+): Promise<string> {
+  const sections: string[] = [];
+  for (const target of failedCheckLogTargets(checksJson)) {
+    const args = target.jobId
+      ? [
+          "run",
+          "view",
+          "--job",
+          target.jobId,
+          "--repo",
+          repository,
+          "--log-failed",
+        ]
+      : ["run", "view", target.runId!, "--repo", repository, "--log-failed"];
+    const result = await capture("gh", args, cwd);
+    if (result.exitCode !== 0 || !result.output.trim()) continue;
+    sections.push(
+      `===== ${target.name} =====\nSource: ${target.link}\n\n${result.output.trim()}`,
+    );
+  }
+  return sections.length > 0 ? `${sections.join("\n\n")}\n` : "";
+}
+
 async function successful(
   command: string,
   args: string[],
@@ -531,9 +597,38 @@ export async function prepareReview(
       ["pr", "checks", String(pr), "--repo", repository],
       cwd,
     );
+    const checksJson = await capture(
+      "gh",
+      [
+        "pr",
+        "checks",
+        String(pr),
+        "--repo",
+        repository,
+        "--json",
+        "bucket,link,name,state",
+      ],
+      cwd,
+    );
+    const failedCheckLogs = await fetchFailedCheckLogs(
+      checksJson.output,
+      repository,
+      cwd,
+    );
+    const statusChecksPath = join(directory, "status-checks.txt");
+    const statusChecksExitCodePath = join(
+      directory,
+      "status-checks-exit-code.txt",
+    );
+    const failedCheckLogsPath = join(directory, "failed-check-logs.txt");
     const enriched = {
       pullRequest: metadata,
-      statusChecksExitCode: checks.exitCode,
+      statusChecks: {
+        output: statusChecksPath,
+        exitCode: checks.exitCode,
+        exitCodeFile: statusChecksExitCodePath,
+        failedLogs: failedCheckLogsPath,
+      },
       evidenceDirectory: directory,
     };
     await writeFile(
@@ -551,14 +646,11 @@ export async function prepareReview(
     await writeFile(join(directory, "diff.patch"), diff, {
       mode: 0o600,
     });
-    await writeFile(join(directory, "status-checks.txt"), checks.output, {
+    await writeFile(statusChecksPath, checks.output, { mode: 0o600 });
+    await writeFile(statusChecksExitCodePath, `${checks.exitCode}\n`, {
       mode: 0o600,
     });
-    await writeFile(
-      join(directory, "status-checks-exit-code.txt"),
-      `${checks.exitCode}\n`,
-      { mode: 0o600 },
-    );
+    await writeFile(failedCheckLogsPath, failedCheckLogs, { mode: 0o600 });
     return {
       directory,
       number: pr,
@@ -909,9 +1001,7 @@ async function observeMergeOutcome(
 
     const delay = mergeStateRetryDelays[attempt];
     if (delay === undefined) {
-      const detail = queue.removalReason
-        ? `: ${queue.removalReason}`
-        : ".";
+      const detail = queue.removalReason ? `: ${queue.removalReason}` : ".";
       throw new Error(
         `GitHub left the pull request open without reporting a merge queue entry${detail}`,
       );
