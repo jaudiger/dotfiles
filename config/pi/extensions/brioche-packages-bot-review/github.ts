@@ -1,6 +1,6 @@
 import { execFile } from "node:child_process";
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { mkdir, mkdtemp, realpath, rm, writeFile } from "node:fs/promises";
+import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
@@ -230,6 +230,62 @@ function githubRepositoryFromRemote(value: string): string | undefined {
   return normalized.match(/github\.com[/:]([^/\s]+\/[^/\s]+)$/)?.[1];
 }
 
+function repositoryPath(repository: string): string {
+  const [owner, name] = repository.split("/");
+  if (
+    !owner ||
+    !name ||
+    repository.split("/").length !== 2 ||
+    !/^[A-Za-z0-9_.-]+$/.test(owner) ||
+    !/^[A-Za-z0-9_.-]+$/.test(name)
+  )
+    throw new Error(`Invalid GitHub repository name: ${repository}.`);
+  return join(homedir(), "Development", "git-repositories", owner, name);
+}
+
+async function repositoryCwd(repository: string): Promise<string> {
+  const expectedPath = repositoryPath(repository);
+  let expectedRoot: string;
+  let actualRoot: string;
+  try {
+    expectedRoot = await realpath(expectedPath);
+    actualRoot = await realpath(
+      (
+        await successful("git", ["rev-parse", "--show-toplevel"], expectedPath)
+      ).trim(),
+    );
+  } catch (error) {
+    throw new Error(
+      `Local checkout for ${repository} was not found at ${expectedPath}: ${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
+  if (actualRoot !== expectedRoot)
+    throw new Error(
+      `Local checkout for ${repository} resolved to ${actualRoot}, not ${expectedPath}.`,
+    );
+  const remotes = await successful("git", ["remote"], actualRoot);
+  for (const remote of remotes.split(/\s+/).filter(Boolean)) {
+    const urls = await successful(
+      "git",
+      ["remote", "get-url", "--all", remote],
+      actualRoot,
+    );
+    if (
+      urls
+        .split("\n")
+        .some(
+          (url) =>
+            githubRepositoryFromRemote(url)?.toLowerCase() ===
+            repository.toLowerCase(),
+        )
+    )
+      return actualRoot;
+  }
+  throw new Error(
+    `Local checkout at ${expectedPath} has no remote for ${repository}.`,
+  );
+}
+
 async function remoteForRepository(
   cwd: string,
   expectedRepository: string,
@@ -274,16 +330,18 @@ function packageUpdateAuthor(value: Json): boolean {
   return packageUpdateAuthorLogins.includes(string(author.login));
 }
 
-async function ensureRepository(cwd: string): Promise<void> {
+async function ensureRepository(): Promise<string> {
+  const checkout = await repositoryCwd(repository);
   const metadata = await ghJson(
-    ["repo", "view", "--json", "nameWithOwner"],
-    cwd,
+    ["repo", "view", repository, "--json", "nameWithOwner"],
+    checkout,
   );
   const nameWithOwner = string(object(metadata).nameWithOwner);
   if (nameWithOwner !== repository)
     throw new Error(
-      `This command must run in a checkout of ${repository}, not ${nameWithOwner || "an unknown repository"}.`,
+      `The local checkout at ${checkout} does not point to ${repository}.`,
     );
+  return checkout;
 }
 
 function openPackageUpdate(value: Json): boolean {
@@ -322,8 +380,8 @@ function isLiveUpdateDiff(diff: string): boolean {
   );
 }
 
-export async function listCandidates(cwd: string): Promise<ReviewCandidate[]> {
-  await ensureRepository(cwd);
+export async function listCandidates(): Promise<ReviewCandidate[]> {
+  const repositoryCwd = await ensureRepository();
   const listed = await ghJson(
     [
       "search",
@@ -341,7 +399,7 @@ export async function listCandidates(cwd: string): Promise<ReviewCandidate[]> {
       "--json",
       "number,title,author,state,isDraft,url",
     ],
-    cwd,
+    repositoryCwd,
   );
   const candidates = Array.isArray(listed) ? listed : [];
   return candidates.flatMap((item) => {
@@ -363,12 +421,12 @@ export async function listCandidates(cwd: string): Promise<ReviewCandidate[]> {
 
 export async function fetchReviewDiff(
   candidate: ReviewCandidate,
-  cwd: string,
 ): Promise<string> {
+  const repositoryCwd = await ensureRepository();
   const diff = await capture(
     "gh",
     ["pr", "diff", String(candidate.number), "--repo", repository],
-    cwd,
+    repositoryCwd,
   );
   if (diff.exitCode !== 0 || !diff.output) {
     const detail = diff.output.trim().slice(-2000);
@@ -505,8 +563,8 @@ async function fetchQueueDetails(
 
 export async function fetchReviewDetails(
   candidate: ReviewCandidate,
-  cwd: string,
 ): Promise<ReviewDetails> {
+  const repositoryCwd = await ensureRepository();
   const metadata = object(
     await ghJson(
       [
@@ -518,12 +576,12 @@ export async function fetchReviewDetails(
         "--json",
         detailFields,
       ],
-      cwd,
+      repositoryCwd,
     ),
   );
   let queue: QueueDetails = {};
   try {
-    queue = await fetchQueueDetails(candidate.number, cwd);
+    queue = await fetchQueueDetails(candidate.number, repositoryCwd);
   } catch {
     queue = {};
   }
@@ -563,7 +621,7 @@ export async function prepareReview(
     join(tmpdir(), "pi-brioche-packages-bot-review-"),
   );
   try {
-    await ensureRepository(cwd);
+    const reviewCwd = await ensureRepository();
     const requested = requestedPullRequest?.trim();
     let metadata: Json | undefined;
     if (requested) {
@@ -578,11 +636,11 @@ export async function prepareReview(
             "--json",
             pullRequestFields,
           ],
-          cwd,
+          reviewCwd,
         ),
       );
     } else {
-      const candidate = (await listCandidates(cwd))[0];
+      const candidate = (await listCandidates())[0];
       if (candidate) {
         metadata = object(
           await ghJson(
@@ -595,7 +653,7 @@ export async function prepareReview(
               "--json",
               pullRequestFields,
             ],
-            cwd,
+            reviewCwd,
           ),
         );
       }
@@ -613,10 +671,11 @@ export async function prepareReview(
         "Brioche package update pull request had no valid number.",
       );
 
-    const diff = await fetchReviewDiff(
-      { number: pr, title: string(metadata.title), url: string(metadata.url) },
-      cwd,
-    );
+    const diff = await fetchReviewDiff({
+      number: pr,
+      title: string(metadata.title),
+      url: string(metadata.url),
+    });
     const checksJson = await capture(
       "gh",
       [
@@ -628,12 +687,12 @@ export async function prepareReview(
         "--json",
         "bucket,completedAt,description,event,link,name,startedAt,state,workflow",
       ],
-      cwd,
+      reviewCwd,
     );
     const checks = await fetchFailedCheckLogs(
       checkRecords(checksJson.output),
       repository,
-      cwd,
+      reviewCwd,
       directory,
     );
     const enriched = {
@@ -643,6 +702,7 @@ export async function prepareReview(
         checks,
       },
       evidenceDirectory: directory,
+      repositoryWorkspace: reviewCwd,
     };
     await writeFile(
       join(directory, "pr-metadata.json"),
@@ -665,7 +725,7 @@ export async function prepareReview(
       repository,
       metadata: enriched,
       snapshot: snapshotFromMetadata(metadata, repository),
-      cwd,
+      cwd: reviewCwd,
       sessionId,
     };
   } catch (error) {
@@ -678,7 +738,7 @@ export async function prepareMutationTarget(
   candidate: ReviewCandidate,
   cwd: string,
 ): Promise<MutationTarget> {
-  await ensureRepository(cwd);
+  const repositoryCwd = await ensureRepository();
   const metadata = object(
     await ghJson(
       [
@@ -690,7 +750,7 @@ export async function prepareMutationTarget(
         "--json",
         pullRequestFields,
       ],
-      cwd,
+      repositoryCwd,
     ),
   );
   if (!liveUpdatePullRequest(metadata))
@@ -701,7 +761,7 @@ export async function prepareMutationTarget(
     number: candidate.number,
     repository,
     snapshot: snapshotFromMetadata(metadata, repository),
-    cwd,
+    cwd: repositoryCwd,
   };
   await requiredChecks(target);
   return target;
@@ -756,7 +816,7 @@ async function refreshedMetadata(
   progress: MutationProgress = () => {},
 ): Promise<PullRequestSnapshot> {
   for (let attempt = 0; ; attempt += 1) {
-    await ensureRepository(review.cwd);
+    await ensureRepository();
     const parsed = await ghJson(
       [
         "pr",
@@ -1551,7 +1611,7 @@ async function checkoutSingleReview(
   if (finalStatus.trim())
     throw new Error("The worktree became dirty; checkout was not performed.");
   progress(`PR #${review.number}: fetching the reviewed head`);
-  const remote = await remoteForRepository(review.cwd, repository);
+  const remote = await remoteForRepository(review.cwd, review.repository);
   await successful(
     "git",
     ["fetch", "--no-tags", remote, `pull/${review.number}/head`],

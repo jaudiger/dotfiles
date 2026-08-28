@@ -1,6 +1,6 @@
 import { execFile } from "node:child_process";
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { mkdir, mkdtemp, realpath, rm, writeFile } from "node:fs/promises";
+import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
@@ -229,6 +229,62 @@ function githubRepositoryFromRemote(value: string): string | undefined {
   return normalized.match(/github\.com[/:]([^/\s]+\/[^/\s]+)$/)?.[1];
 }
 
+function repositoryPath(repository: string): string {
+  const [owner, name] = repository.split("/");
+  if (
+    !owner ||
+    !name ||
+    repository.split("/").length !== 2 ||
+    !/^[A-Za-z0-9_.-]+$/.test(owner) ||
+    !/^[A-Za-z0-9_.-]+$/.test(name)
+  )
+    throw new Error(`Invalid GitHub repository name: ${repository}.`);
+  return join(homedir(), "Development", "git-repositories", owner, name);
+}
+
+async function repositoryCwd(repository: string): Promise<string> {
+  const expectedPath = repositoryPath(repository);
+  let expectedRoot: string;
+  let actualRoot: string;
+  try {
+    expectedRoot = await realpath(expectedPath);
+    actualRoot = await realpath(
+      (
+        await successful("git", ["rev-parse", "--show-toplevel"], expectedPath)
+      ).trim(),
+    );
+  } catch (error) {
+    throw new Error(
+      `Local checkout for ${repository} was not found at ${expectedPath}: ${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
+  if (actualRoot !== expectedRoot)
+    throw new Error(
+      `Local checkout for ${repository} resolved to ${actualRoot}, not ${expectedPath}.`,
+    );
+  const remotes = await successful("git", ["remote"], actualRoot);
+  for (const remote of remotes.split(/\s+/).filter(Boolean)) {
+    const urls = await successful(
+      "git",
+      ["remote", "get-url", "--all", remote],
+      actualRoot,
+    );
+    if (
+      urls
+        .split("\n")
+        .some(
+          (url) =>
+            githubRepositoryFromRemote(url)?.toLowerCase() ===
+            repository.toLowerCase(),
+        )
+    )
+      return actualRoot;
+  }
+  throw new Error(
+    `Local checkout at ${expectedPath} has no remote for ${repository}.`,
+  );
+}
+
 async function remoteForRepository(
   cwd: string,
   expectedRepository: string,
@@ -352,15 +408,15 @@ export async function listCandidates(cwd: string): Promise<ReviewCandidate[]> {
 
 export async function fetchReviewDiff(
   candidate: ReviewCandidate,
-  cwd: string,
 ): Promise<string> {
   const repository = candidate.repository ?? repositoryFromUrl(candidate.url);
   if (!repository)
     throw new Error("Dependabot pull request had no valid GitHub URL.");
+  const resolvedCwd = await repositoryCwd(repository);
   const diff = await capture(
     "gh",
     ["pr", "diff", String(candidate.number), "--repo", repository],
-    cwd,
+    resolvedCwd,
   );
   if (diff.exitCode !== 0 || !diff.output) {
     const detail = diff.output.trim().slice(-2000);
@@ -496,12 +552,12 @@ async function fetchQueueDetails(
 
 export async function fetchReviewDetails(
   candidate: ReviewCandidate,
-  cwd: string,
 ): Promise<ReviewDetails> {
   const candidateRepository =
     candidate.repository ?? repositoryFromUrl(candidate.url);
   if (!candidateRepository)
     throw new Error("Dependabot pull request had no valid GitHub repository.");
+  const resolvedCwd = await repositoryCwd(candidateRepository);
   const metadata = object(
     await ghJson(
       [
@@ -513,12 +569,16 @@ export async function fetchReviewDetails(
         "--json",
         detailFields,
       ],
-      cwd,
+      resolvedCwd,
     ),
   );
   let queue: QueueDetails = {};
   try {
-    queue = await fetchQueueDetails(candidateRepository, candidate.number, cwd);
+    queue = await fetchQueueDetails(
+      candidateRepository,
+      candidate.number,
+      resolvedCwd,
+    );
   } catch {
     queue = {};
   }
@@ -588,15 +648,13 @@ export async function prepareReview(
     const pullRequestRepository = repositoryFromUrl(metadata.url);
     if (!pullRequestRepository)
       throw new Error("Dependabot pull request had no valid GitHub URL.");
-    const diff = await fetchReviewDiff(
-      {
-        number: pr,
-        title: string(metadata.title),
-        url: string(metadata.url),
-        repository: pullRequestRepository,
-      },
-      cwd,
-    );
+    const reviewCwd = await repositoryCwd(pullRequestRepository);
+    const diff = await fetchReviewDiff({
+      number: pr,
+      title: string(metadata.title),
+      url: string(metadata.url),
+      repository: pullRequestRepository,
+    });
     const checksJson = await capture(
       "gh",
       [
@@ -608,12 +666,12 @@ export async function prepareReview(
         "--json",
         "bucket,completedAt,description,event,link,name,startedAt,state,workflow",
       ],
-      cwd,
+      reviewCwd,
     );
     const checks = await fetchFailedCheckLogs(
       checkRecords(checksJson.output),
       pullRequestRepository,
-      cwd,
+      reviewCwd,
       directory,
     );
     const enriched = {
@@ -623,6 +681,7 @@ export async function prepareReview(
         checks,
       },
       evidenceDirectory: directory,
+      repositoryWorkspace: reviewCwd,
     };
     await writeFile(
       join(directory, "pr-metadata.json"),
@@ -645,7 +704,7 @@ export async function prepareReview(
       repository: pullRequestRepository,
       metadata: enriched,
       snapshot: snapshotFromMetadata(metadata, pullRequestRepository),
-      cwd,
+      cwd: reviewCwd,
       sessionId,
     };
   } catch (error) {
@@ -662,6 +721,7 @@ export async function prepareMutationTarget(
     candidate.repository ?? repositoryFromUrl(candidate.url);
   if (!candidateRepository)
     throw new Error("Dependabot pull request had no valid GitHub repository.");
+  const targetCwd = await repositoryCwd(candidateRepository);
   const metadata = object(
     await ghJson(
       [
@@ -673,7 +733,7 @@ export async function prepareMutationTarget(
         "--json",
         pullRequestFields,
       ],
-      cwd,
+      targetCwd,
     ),
   );
   if (!openDependabot(metadata))
@@ -684,7 +744,7 @@ export async function prepareMutationTarget(
     number: candidate.number,
     repository: candidateRepository,
     snapshot: snapshotFromMetadata(metadata, candidateRepository),
-    cwd,
+    cwd: targetCwd,
   };
   await requiredChecks(target);
   return target;

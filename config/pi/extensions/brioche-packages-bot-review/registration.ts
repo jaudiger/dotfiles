@@ -220,7 +220,7 @@ export default function registerBriochePackagesBotReview(pi: ExtensionAPI) {
       return;
     }
     report(
-      `Brioche package bot review evidence is ready for PR ${item.review.number}. Read the researcher and scout reports, the PR description, diff, and status checks and logs from ${item.review.directory}. Summarize the release notes and build recipe evidence, then classify the recommendation as safe to merge, follow-up needed, wait, or cannot recommend. Ask the end user to explicitly choose merge, checkout, wait, or follow-up. Do not execute any PR mutation based only on the recommendation.`,
+      `Brioche package bot review evidence is ready for PR ${item.review.number}. Read the researcher and scout reports, the PR description, diff, and status checks and logs from ${item.review.directory}. Summarize the release notes and build recipe evidence, then classify the recommendation as safe to merge, follow-up needed, wait, or cannot recommend. Ask the end user to explicitly choose checkout, wait, or follow-up. Do not execute any PR mutation based only on the recommendation.`,
       {
         pr: item.review.number,
         directory: item.review.directory,
@@ -358,7 +358,7 @@ export default function registerBriochePackagesBotReview(pi: ExtensionAPI) {
             "Loading Brioche package update pull requests...",
             "info",
           );
-          candidates = await listCandidates(ctx.cwd);
+          candidates = await listCandidates();
           if (candidates.length === 0)
             throw new Error(
               "No open Brioche package update pull request without a review was found in the current repository.",
@@ -366,8 +366,8 @@ export default function registerBriochePackagesBotReview(pi: ExtensionAPI) {
           const selected = await pickReview(
             ctx,
             candidates,
-            (candidate) => fetchReviewDiff(candidate, ctx.cwd),
-            (candidate) => fetchReviewDetails(candidate, ctx.cwd),
+            (candidate) => fetchReviewDiff(candidate),
+            (candidate) => fetchReviewDetails(candidate),
             true,
           );
           if (!selected || selected.candidates.length === 0) return;
@@ -396,7 +396,7 @@ export default function registerBriochePackagesBotReview(pi: ExtensionAPI) {
                 : await supersedeReview(targets, ctx, progress);
             progress("Refreshing remaining pull requests...");
             try {
-              candidates = await listCandidates(ctx.cwd);
+              candidates = await listCandidates();
             } catch {
               candidates = [];
             }
@@ -529,7 +529,7 @@ export default function registerBriochePackagesBotReview(pi: ExtensionAPI) {
         );
         try {
           ctx.ui.setStatus(statusKey, "Refreshing remaining pull requests...");
-          active.candidates = await listCandidates(ctx.cwd);
+          active.candidates = await listCandidates();
           active.generation += 1;
         } catch {
           active.state = "stale";
