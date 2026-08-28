@@ -664,20 +664,26 @@ export async function prepareReview(
         "--repo",
         pullRequestRepository,
         "--json",
-        "bucket,completedAt,description,event,link,name,startedAt,state,workflow",
+        "bucket,completedAt,event,link,name,startedAt,state,workflow",
       ],
       reviewCwd,
     );
+    if (checksJson.exitCode !== 0) {
+      const detail = checksJson.output.trim().slice(-2000);
+      throw new Error(
+        `Could not retrieve status checks for Dependabot PR ${pr}${detail ? `: ${detail}` : "."}`,
+      );
+    }
     const checks = await fetchFailedCheckLogs(
       checkRecords(checksJson.output),
       pullRequestRepository,
       reviewCwd,
       directory,
     );
+    const { body, ...pullRequest } = metadata;
     const enriched = {
-      pullRequest: metadata,
+      pullRequest,
       statusChecks: {
-        exitCode: checksJson.exitCode,
         checks,
       },
       evidenceDirectory: directory,
@@ -688,13 +694,9 @@ export async function prepareReview(
       `${JSON.stringify(enriched, null, 2)}\n`,
       { mode: 0o600 },
     );
-    await writeFile(
-      join(directory, "pr-description.md"),
-      string(metadata.body),
-      {
-        mode: 0o600,
-      },
-    );
+    await writeFile(join(directory, "pr-description.md"), string(body), {
+      mode: 0o600,
+    });
     await writeFile(join(directory, "diff.patch"), diff, {
       mode: 0o600,
     });

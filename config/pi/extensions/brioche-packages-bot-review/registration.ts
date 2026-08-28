@@ -135,7 +135,6 @@ export default function registerBriochePackagesBotReview(pi: ExtensionAPI) {
         output: false,
         reads: [
           join(review.directory, "pr-metadata.json"),
-          join(review.directory, "pr-description.md"),
           join(review.directory, "diff.patch"),
           reportPath,
           review.cwd,
@@ -220,7 +219,7 @@ export default function registerBriochePackagesBotReview(pi: ExtensionAPI) {
       return;
     }
     report(
-      `Brioche package bot review evidence is ready for PR ${item.review.number}. Read the researcher and scout reports, the PR description, diff, and status checks and logs from ${item.review.directory}. Summarize the release notes and build recipe evidence, then classify the recommendation as safe to merge, follow-up needed, wait, or cannot recommend. Ask the end user to explicitly choose checkout, wait, or follow-up. Do not execute any PR mutation based only on the recommendation.`,
+      `Brioche package bot review evidence is ready for PR ${item.review.number}. Read the researcher and scout reports, the diff, and status checks and logs from ${item.review.directory}. Treat the researcher report as the canonical package research. Summarize only recipe and check evidence, resolve any discrepancies against the diff, and classify the recommendation as safe to merge, follow-up needed, wait, or cannot recommend. Ask the end user to explicitly choose checkout, wait, or follow-up. Do not execute any PR mutation based only on the recommendation.`,
       {
         pr: item.review.number,
         directory: item.review.directory,
