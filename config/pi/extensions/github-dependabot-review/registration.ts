@@ -192,7 +192,7 @@ export default function registerDependabotReview(pi: ExtensionAPI) {
     )
       active.state = "ready";
     report(
-      `Dependabot review evidence is ready for PR ${item.review.number}. Read the researcher and scout reports, the diff, current status checks, merge queue history, and every referenced log from ${item.review.directory}. Treat the researcher report as the canonical dependency research. Summarize only repository and check evidence, resolve any discrepancies against the diff, and classify the recommendation as safe to merge, follow-up needed, wait, or cannot recommend. Ask the end user to explicitly choose checkout, wait, or follow-up. Do not execute any PR mutation based only on the recommendation.`,
+      `Dependabot review evidence is ready for PR ${item.review.number}. Read the researcher and scout reports, the diff, current status checks, merge queue history, and every referenced log from ${item.review.directory}. Treat the researcher report as the canonical dependency research. Summarize only repository and check evidence, resolve any discrepancies against the diff, and classify the recommendation. Tell the user that available next actions are merge, checkout, wait, or follow-up. Wait for explicit selection and use the review execution tool for the selected action. Do not execute any PR mutation based only on the recommendation.`,
       {
         pr: item.review.number,
         directory: item.review.directory,
@@ -418,9 +418,10 @@ export default function registerDependabotReview(pi: ExtensionAPI) {
     name: "github_dependabot_review_execute",
     label: "Dependabot Review Execute",
     description:
-      "Execute an explicitly user-selected Dependabot review action.",
+      "Execute an explicitly user-selected Dependabot review action: merge, checkout, wait, or follow-up.",
     parameters: Type.Object({
       action: Type.Union([
+        Type.Literal("merge"),
         Type.Literal("checkout"),
         Type.Literal("wait"),
         Type.Literal("follow-up"),
@@ -452,12 +453,25 @@ export default function registerDependabotReview(pi: ExtensionAPI) {
       active.state = "mutating";
       ctx.ui.setStatus(
         statusKey,
-        `Checking out PR ${active.reviews[0]?.number ?? "selected pull request"}...`,
+        params.action === "merge"
+          ? `Merging PR ${active.reviews[0]?.number ?? "selected pull request"}...`
+          : `Checking out PR ${active.reviews[0]?.number ?? "selected pull request"}...`,
       );
       try {
-        const text = await checkoutReview(active.reviews, ctx, (message) =>
-          ctx.ui.setStatus(statusKey, message),
-        );
+        const targets = active.reviews.map((review) => ({
+          number: review.number,
+          repository: review.repository,
+          snapshot: review.snapshot,
+          cwd: review.cwd,
+        }));
+        const text =
+          params.action === "merge"
+            ? await mergeReview(targets, ctx, (message) =>
+                ctx.ui.setStatus(statusKey, message),
+              )
+            : await checkoutReview(active.reviews, ctx, (message) =>
+                ctx.ui.setStatus(statusKey, message),
+              );
         try {
           ctx.ui.setStatus(statusKey, "Refreshing remaining pull requests...");
           active.candidates = await listCandidates(ctx.cwd);
