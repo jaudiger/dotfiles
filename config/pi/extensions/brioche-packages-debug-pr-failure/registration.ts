@@ -11,6 +11,7 @@ import { asObject, parsePr, text } from "./parsing.js";
 import {
   asyncCompletionEvent,
   completionArtifactPaths,
+  completionChildArtifacts,
   completionAsyncDir,
   completionRunId,
   completionSessionFile,
@@ -59,10 +60,18 @@ function completionLabel(status: string, success: boolean | undefined): string {
 
 export function registerDebugPrFailure(pi: ExtensionAPI) {
   const pending = new Map<string, PendingRun>();
+  const trackedRuns = new Map<string, PendingRun>();
   const earlyCompletions = new Map<string, unknown>();
+  const processingPromises = new Set<Promise<unknown>>();
+  const spawningPromises = new Set<Promise<void>>();
   const subscribedEvents = new Set<string>();
   const terminalStates = new Map<string, string>();
   const terminalWaiters = new Map<string, Set<(observed: boolean) => void>>();
+  const capabilityLockKey = Symbol.for(
+    "pi-subagents.capability-ceiling-spawn-lock",
+  );
+  const globalLocks = globalThis as typeof globalThis &
+    Record<symbol, Promise<void> | undefined>;
   let spawning = 0;
   let shuttingDown = false;
 
@@ -87,25 +96,48 @@ export function registerDebugPrFailure(pi: ExtensionAPI) {
     });
   };
 
-  const complete = async (payload: unknown) => {
+  const acquireCapabilityLock = async (): Promise<() => void> => {
+    const previous = globalLocks[capabilityLockKey] ?? Promise.resolve();
+    let release!: () => void;
+    globalLocks[capabilityLockKey] = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    await previous;
+    return release;
+  };
+
+  const complete = async (payload: unknown): Promise<boolean> => {
     const runId = completionRunId(payload);
     const item = pending.get(runId);
-    if (!item) return;
+    if (!item) return false;
     pending.delete(runId);
-    if (shuttingDown) return;
+    if (shuttingDown) return false;
+    const terminalObserved = await waitForProcessTerminal(runId);
+    if (shuttingDown) return false;
     const result = completionText(payload);
     const artifacts = completionArtifactPaths(payload);
+    const childArtifacts = completionChildArtifacts(payload);
     const asyncDir = completionAsyncDir(payload);
     const sessionFile = completionSessionFile(payload);
     const status = completionStatus(payload);
     const success = completionSuccess(payload);
     const label = completionLabel(status, success);
-    const cleanupSucceeded = await removeDirectory(item.directory);
+    const cleanupSucceeded = terminalObserved
+      ? await removeDirectory(item.directory)
+      : false;
     const cleanupNotice = cleanupSucceeded
       ? ""
       : "\n\nTemporary debug artifacts could not be removed automatically.";
-    const artifactNotice = artifacts.length
-      ? `\n\nSubagent artifacts:\n${artifacts.join("\n")}`
+    if (shuttingDown) return terminalObserved;
+    const artifactLines = [
+      ...artifacts,
+      ...childArtifacts.flatMap(({ artifactPath, sessionPath }) => [
+        ...(artifactPath ? [`artifactPath: ${artifactPath}`] : []),
+        ...(sessionPath ? [`sessionPath: ${sessionPath}`] : []),
+      ]),
+    ];
+    const artifactNotice = artifactLines.length
+      ? `\n\nSubagent artifacts:\n${[...new Set(artifactLines)].join("\n")}`
       : "";
     pi.sendMessage(
       {
@@ -119,11 +151,37 @@ export function registerDebugPrFailure(pi: ExtensionAPI) {
           ...(asyncDir ? { asyncDir } : {}),
           ...(sessionFile ? { sessionFile } : {}),
           ...(artifacts.length ? { artifactPaths: artifacts } : {}),
+          ...(childArtifacts.length ? { childArtifacts } : {}),
         },
         display: true,
       },
       { triggerTurn: false, deliverAs: "followUp" },
     );
+    return terminalObserved;
+  };
+
+  const trackCompletion = (payload: unknown): void => {
+    const runId = completionRunId(payload);
+    const promise = complete(payload);
+    processingPromises.add(promise);
+    void promise.then(
+      (terminalObserved) => {
+        processingPromises.delete(promise);
+        if (!shuttingDown && terminalObserved) trackedRuns.delete(runId);
+      },
+      () => {
+        processingPromises.delete(promise);
+      },
+    );
+  };
+
+  const trackSpawning = (promise: Promise<void>): Promise<void> => {
+    spawningPromises.add(promise);
+    void promise.then(
+      () => spawningPromises.delete(promise),
+      () => spawningPromises.delete(promise),
+    );
+    return promise;
   };
 
   const subscribeToCompletion = (event: string) => {
@@ -132,7 +190,7 @@ export function registerDebugPrFailure(pi: ExtensionAPI) {
     pi.events.on(event, (payload) => {
       const runId = completionRunId(payload);
       if (pending.has(runId)) {
-        void complete(payload);
+        trackCompletion(payload);
         return;
       }
       if (spawning && runId) earlyCompletions.set(runId, payload);
@@ -150,6 +208,14 @@ export function registerDebugPrFailure(pi: ExtensionAPI) {
       const waiters = terminalWaiters.get(runId);
       if (waiters) {
         for (const finish of waiters) finish(state === "observed");
+      }
+      if (shuttingDown && state === "observed") {
+        const item = trackedRuns.get(runId);
+        if (item) {
+          void removeDirectory(item.directory).then((removed) => {
+            if (removed) trackedRuns.delete(runId);
+          });
+        }
       }
     });
   };
@@ -204,62 +270,74 @@ Investigate Brioche package PR ${pr} for package ${packageName}. The temporary e
           await removeDirectory(prepared.directory);
           return;
         }
-        spawning += 1;
-        try {
-          const capabilityCeiling = registerSubagentCapabilityCeiling({
-            sessionId: ctx.sessionManager.getSessionId(),
-            source: "brioche-packages-debug-pr-failure",
-            ceiling: {
-              allowedAgents: ["oracle"],
-              allowedTools: ["read", "grep", "find", "ls"],
-            },
-          });
-          let rpc: Json;
-          try {
-            if (shuttingDown) {
-              await removeDirectory(prepared.directory);
-              return;
-            }
-            rpc = await sendRpc(pi, "spawn", {
-              cwd: briochePackagesRepository,
-              context: "fresh",
-              agent: "oracle",
-              task,
-              reads: [
-                prepared.directory,
-                briochePackagesRepository,
-                briocheSourceRepository,
-                briocheRuntimeUtilsRepository,
-              ],
-              intercomBridge: { mode: "off" },
-              mission: false,
-              async: true,
-            });
-          } finally {
-            capabilityCeiling.dispose();
-          }
-          const runId = spawnedRunId(rpc);
-          if (!runId)
-            throw new Error("Subagent started without a run identifier.");
-          if (shuttingDown) {
+        await trackSpawning(
+          (async () => {
+            spawning += 1;
+            const release = await acquireCapabilityLock();
             try {
-              await sendRpc(pi, "stop", { runId });
-            } catch {
-              // The run may have reached a terminal state before shutdown.
+              if (shuttingDown) {
+                await removeDirectory(prepared.directory);
+                return;
+              }
+              const capabilityCeiling = registerSubagentCapabilityCeiling({
+                sessionId: ctx.sessionManager.getSessionId(),
+                source: "brioche-packages-debug-pr-failure",
+                ceiling: {
+                  allowedAgents: ["oracle"],
+                  allowedTools: ["read", "grep", "find", "ls"],
+                },
+              });
+              let rpc: Json;
+              try {
+                if (shuttingDown) {
+                  await removeDirectory(prepared.directory);
+                  return;
+                }
+                rpc = await sendRpc(pi, "spawn", {
+                  cwd: briochePackagesRepository,
+                  context: "fresh",
+                  agent: "oracle",
+                  task,
+                  reads: [
+                    prepared.directory,
+                    briochePackagesRepository,
+                    briocheSourceRepository,
+                    briocheRuntimeUtilsRepository,
+                  ],
+                  intercomBridge: { mode: "off" },
+                  mission: false,
+                  async: true,
+                });
+              } finally {
+                capabilityCeiling.dispose();
+              }
+              const runId = spawnedRunId(rpc);
+              if (!runId)
+                throw new Error("Subagent started without a run identifier.");
+              const item = { directory: prepared.directory, pr };
+              trackedRuns.set(runId, item);
+              if (shuttingDown) {
+                try {
+                  await sendRpc(pi, "stop", { runId });
+                } catch {
+                  // The run may have reached a terminal state before shutdown.
+                }
+                if (await waitForProcessTerminal(runId))
+                  await removeDirectory(prepared.directory);
+                return;
+              }
+              pending.set(runId, item);
+              const completion = earlyCompletions.get(runId);
+              if (completion) {
+                earlyCompletions.delete(runId);
+                trackCompletion(completion);
+              }
+            } finally {
+              release();
+              spawning -= 1;
             }
-            if (await waitForProcessTerminal(runId))
-              await removeDirectory(prepared.directory);
-            return;
-          }
-          pending.set(runId, { directory: prepared.directory, pr });
-          const completion = earlyCompletions.get(runId);
-          if (completion) {
-            earlyCompletions.delete(runId);
-            void complete(completion);
-          }
-        } finally {
-          spawning -= 1;
-        }
+          })(),
+        );
         ctx.ui.notify(
           `Prepared ${prepared.summary}. Started investigation for PR ${pr} in ${basename(prepared.directory)}.`,
           "info",
@@ -274,7 +352,8 @@ Investigate Brioche package PR ${pr} for package ${packageName}. The temporary e
 
   pi.on("session_shutdown", async () => {
     shuttingDown = true;
-    const runs = [...pending.entries()];
+    await Promise.allSettled([...spawningPromises]);
+    const runs = [...trackedRuns.entries()];
     await Promise.all(
       runs.map(async ([runId, item]) => {
         try {
@@ -287,7 +366,11 @@ Investigate Brioche package PR ${pr} for package ${packageName}. The temporary e
         return undefined;
       }),
     );
+    await Promise.allSettled(processingPromises);
     pending.clear();
+    for (const [runId] of trackedRuns) {
+      if (terminalStates.get(runId) === "observed") trackedRuns.delete(runId);
+    }
     earlyCompletions.clear();
   });
 }

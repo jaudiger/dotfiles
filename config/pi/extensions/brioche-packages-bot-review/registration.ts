@@ -29,7 +29,6 @@ import {
 import { workflowTask } from "./tasks.js";
 import type {
   Json,
-  PendingRun,
   PickerMode,
   ReviewCandidate,
   PreparedReview,
@@ -38,22 +37,45 @@ import type {
 import { object, string } from "./utils.js";
 
 export default function registerBriochePackagesBotReview(pi: ExtensionAPI) {
-  const pending = new Map<string, PendingRun>();
+  type ReviewRun = {
+    id: string;
+    review: PreparedReview;
+    completionReceived: boolean;
+    completion?: unknown;
+    processing: boolean;
+    terminalObserved: boolean;
+    stopping: boolean;
+    successful?: boolean;
+    reported: boolean;
+    cleaned: boolean;
+  };
+
+  const reviewLabel = "Brioche package bot";
+  const researchLabel = "package";
+  const customType = "brioche-packages-bot-review";
+  const capabilitySource = "brioche-packages-bot-review";
+  const capabilityLockKey = Symbol.for(
+    "pi-subagents.capability-ceiling-spawn-lock",
+  );
+  const globalLocks = globalThis as typeof globalThis &
+    Record<symbol, Promise<void> | undefined>;
+  const runs = new Map<string, ReviewRun>();
   const earlyCompletions = new Map<string, unknown>();
-  const processing = new Set<string>();
+  const earlyTerminals = new Map<string, string>();
   const processingPromises = new Set<Promise<void>>();
+  const spawningPromises = new Set<Promise<void>>();
   const retainedDirectories = new Set<string>();
   const subscribed = new Set<string>();
   let active: ReviewContext | undefined;
   const statusKey = "brioche-package-bot-review";
-
-  const isActiveReview = (review: PreparedReview): boolean =>
-    active?.reviews.some((item) => item.directory === review.directory) ??
-    false;
   let spawning = 0;
   let shuttingDown = false;
   const terminalStates = new Map<string, string>();
   const terminalWaiters = new Map<string, Set<(observed: boolean) => void>>();
+
+  const isActiveReview = (review: PreparedReview): boolean =>
+    active?.reviews.some((item) => item.directory === review.directory) ??
+    false;
 
   const waitForProcessTerminal = (id: string): Promise<boolean> => {
     const state = terminalStates.get(id);
@@ -76,150 +98,219 @@ export default function registerBriochePackagesBotReview(pi: ExtensionAPI) {
     });
   };
 
-  const stopAndConfirm = async (id: string): Promise<boolean> => {
+  const stopAndConfirm = async (run: ReviewRun): Promise<boolean> => {
     try {
-      await sendRpc(pi, "stop", { runId: id });
+      await sendRpc(pi, "stop", { runId: run.id });
     } catch {
-      return waitForProcessTerminal(id);
+      return waitForProcessTerminal(run.id);
     }
-    return waitForProcessTerminal(id);
+    return waitForProcessTerminal(run.id);
+  };
+
+  const cleanupRun = async (run: ReviewRun): Promise<void> => {
+    if (!run.terminalObserved || run.cleaned) return;
+    try {
+      await rm(run.review.directory, { recursive: true, force: true });
+      run.cleaned = true;
+      runs.delete(run.id);
+      terminalStates.delete(run.id);
+    } catch {
+      retainedDirectories.add(run.review.directory);
+    }
   };
 
   const report = (content: string, details: Json = {}, triggerTurn = false) => {
     pi.sendMessage(
-      {
-        customType: "brioche-packages-bot-review",
-        content,
-        details,
-        display: true,
-      },
+      { customType, content, details, display: true },
       { triggerTurn, deliverAs: "followUp" },
     );
   };
 
   const stopReview = async () => {
-    const runs = [...pending.keys()];
     const directories = active?.reviews.map((review) => review.directory) ?? [];
-    pending.clear();
-    earlyCompletions.clear();
     active = undefined;
-    const stopped = await Promise.all(runs.map(stopAndConfirm));
-    await Promise.all(processingPromises);
-    if (spawning === 0 && (runs.length === 0 || stopped.every(Boolean))) {
+    for (const run of runs.values()) run.stopping = true;
+    await Promise.allSettled([...spawningPromises]);
+    const ownedRuns = [...runs.values()];
+    const stopped = await Promise.all(
+      ownedRuns.map(async (run) => {
+        run.terminalObserved = await stopAndConfirm(run);
+        if (run.terminalObserved) await cleanupRun(run);
+        return run.terminalObserved;
+      }),
+    );
+    await Promise.allSettled([...processingPromises]);
+    const runDirectories = new Set(
+      ownedRuns.map((run) => run.review.directory),
+    );
+    if (stopped.every(Boolean))
       await Promise.all(
         directories
-          .filter((directory) => !retainedDirectories.has(directory))
+          .filter(
+            (directory) =>
+              !runDirectories.has(directory) &&
+              !retainedDirectories.has(directory),
+          )
           .map((directory) => rm(directory, { recursive: true, force: true })),
       );
-    }
+    earlyCompletions.clear();
+    earlyTerminals.clear();
   };
 
-  const spawnWorkflow = async (review: PreparedReview) => {
+  const acquireCapabilityLock = async (): Promise<() => void> => {
+    const previous = globalLocks[capabilityLockKey] ?? Promise.resolve();
+    let release!: () => void;
+    globalLocks[capabilityLockKey] = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    await previous;
+    return release;
+  };
+
+  const spawnWorkflow = async (review: PreparedReview): Promise<void> => {
     if (shuttingDown || !isActiveReview(review)) return;
     spawning += 1;
-    const capability = registerSubagentCapabilityCeiling({
-      sessionId: review.sessionId,
-      source: "brioche-packages-bot-review",
-      ceiling: {
-        allowedAgents: ["researcher", "scout"],
-        allowedTools: [
-          "read",
-          "grep",
-          "find",
-          "ls",
-          "web_search",
-          "fetch_content",
-          "get_search_content",
-        ],
-      },
-    });
+    const release = await acquireCapabilityLock();
     try {
-      const rpc = await sendRpc(pi, "spawn", {
-        cwd: review.cwd,
-        workflowScript: workflowTask(review),
-        output: false,
-        intercomBridge: { mode: "off" },
-        mission: false,
-        async: true,
+      if (shuttingDown || !isActiveReview(review)) return;
+      const capability = registerSubagentCapabilityCeiling({
+        sessionId: review.sessionId,
+        source: capabilitySource,
+        ceiling: {
+          allowedAgents: ["researcher", "scout"],
+          allowedTools: [
+            "read",
+            "grep",
+            "find",
+            "ls",
+            "web_search",
+            "fetch_content",
+            "get_search_content",
+          ],
+        },
       });
+      let rpc: unknown;
+      try {
+        rpc = await sendRpc(pi, "spawn", {
+          cwd: review.cwd,
+          workflowScript: workflowTask(review),
+          output: false,
+          intercomBridge: { mode: "off" },
+          mission: false,
+          async: true,
+        });
+      } finally {
+        capability.dispose();
+      }
       const id = runId(rpc);
       if (!id)
         throw new Error("Review workflow started without a run identifier.");
-      if (shuttingDown || !isActiveReview(review)) {
-        earlyCompletions.delete(id);
-        if (await stopAndConfirm(id))
-          await rm(review.directory, { recursive: true, force: true });
+      const earlyTerminal = earlyTerminals.get(id);
+      earlyTerminals.delete(id);
+      if (earlyTerminal) terminalStates.set(id, earlyTerminal);
+      const run: ReviewRun = {
+        id,
+        review,
+        completionReceived: false,
+        processing: false,
+        terminalObserved:
+          earlyTerminal === "observed" || terminalStates.get(id) === "observed",
+        stopping: shuttingDown || !isActiveReview(review),
+        reported: false,
+        cleaned: false,
+      };
+      runs.set(id, run);
+      if (run.stopping) {
+        run.terminalObserved = await stopAndConfirm(run);
+        if (run.terminalObserved) await cleanupRun(run);
         else retainedDirectories.add(review.directory);
         return;
       }
-      pending.set(id, { kind: "workflow", review });
       const early = earlyCompletions.get(id);
-      if (early) {
+      if (early !== undefined) {
         earlyCompletions.delete(id);
-        startCompletion(id, early);
+        run.completion = early;
+        run.completionReceived = true;
+        startCompletion(run);
       }
     } finally {
-      capability.dispose();
+      release();
       spawning -= 1;
     }
   };
 
-  const finishWorkflow = async (id: string, item: PendingRun, raw: unknown) => {
-    const result = completion(raw);
-    if (shuttingDown || !isActiveReview(item.review)) return;
-    if (
-      result.success === false ||
-      ["failed", "error", "cancelled", "canceled"].includes(
-        result.status.toLowerCase(),
-      )
-    ) {
+  const processCompletion = async (run: ReviewRun): Promise<void> => {
+    try {
+      if (!run.terminalObserved)
+        run.terminalObserved = await waitForProcessTerminal(run.id);
+      if (!run.terminalObserved) return;
+      if (run.stopping || shuttingDown || !isActiveReview(run.review)) {
+        await cleanupRun(run);
+        return;
+      }
+      const result = completion(run.completion);
+      const failed =
+        result.success === false ||
+        !["complete", "completed", "success", "succeeded"].includes(
+          result.status.toLowerCase(),
+        );
+      run.successful = !failed;
+      run.reported = true;
+      if (failed) {
+        report(
+          `${reviewLabel} review workflow failed for PR ${run.review.number}. Evidence retained at ${run.review.directory}.`,
+          {
+            runId: run.id,
+            directory: run.review.directory,
+            researcherReport: join(
+              run.review.directory,
+              "researcher-report.md",
+            ),
+            scoutReport: join(run.review.directory, "scout-report.md"),
+            status: result.status,
+          },
+        );
+        return;
+      }
+      const ready =
+        active?.reviews.every((review) =>
+          [...runs.values()].some(
+            (candidate) =>
+              candidate.review.directory === review.directory &&
+              candidate.successful === true &&
+              candidate.terminalObserved,
+          ),
+        ) ?? false;
+      if (ready) active.state = "ready";
       report(
-        `Brioche package bot review workflow failed for PR ${item.review.number}. Evidence retained at ${item.review.directory}.`,
+        `${reviewLabel} review evidence is ready for PR ${run.review.number}. Read the researcher and scout reports, the diff, current status checks, merge queue history, and every referenced log from ${run.review.directory}. Treat the researcher report as the canonical ${researchLabel} research. Summarize only recipe and check evidence, resolve any discrepancies against the diff, and classify the recommendation. Tell the user that available next actions are merge, checkout, wait, or follow-up. Wait for explicit selection and use the review execution tool for the selected action. Do not execute any PR mutation based only on the recommendation.`,
         {
-          runId: id,
-          directory: item.review.directory,
-          researcherReport: join(item.review.directory, "researcher-report.md"),
-          scoutReport: join(item.review.directory, "scout-report.md"),
-          status: result.status,
+          pr: run.review.number,
+          directory: run.review.directory,
+          researcherReport: join(run.review.directory, "researcher-report.md"),
+          scoutReport: join(run.review.directory, "scout-report.md"),
+          statusChecks: join(run.review.directory, "pr-metadata.json"),
+          diff: join(run.review.directory, "diff.patch"),
+          workflowRunId: run.id,
+          workflowStatus: result.status,
         },
       );
-      return;
+    } finally {
+      run.processing = false;
     }
-    if (
-      active?.reviews.some(
-        (review) => review.directory === item.review.directory,
-      )
-    )
-      active.state = "ready";
-    report(
-      `Brioche package bot review evidence is ready for PR ${item.review.number}. Read the researcher and scout reports, the diff, current status checks, merge queue history, and every referenced log from ${item.review.directory}. Treat the researcher report as the canonical package research. Summarize only recipe and check evidence, resolve any discrepancies against the diff, and classify the recommendation. Tell the user that available next actions are merge, checkout, wait, or follow-up. Wait for explicit selection and use the review execution tool for the selected action. Do not execute any PR mutation based only on the recommendation.`,
-      {
-        pr: item.review.number,
-        directory: item.review.directory,
-        researcherReport: join(item.review.directory, "researcher-report.md"),
-        scoutReport: join(item.review.directory, "scout-report.md"),
-        statusChecks: join(item.review.directory, "pr-metadata.json"),
-        diff: join(item.review.directory, "diff.patch"),
-        workflowRunId: id,
-        workflowStatus: result.status,
-      },
-    );
   };
 
-  const startCompletion = (id: string, raw: unknown) => {
-    if (processing.has(id)) return;
-    const item = pending.get(id);
-    if (!item) return;
-    processing.add(id);
-    pending.delete(id);
-    const promise = finishWorkflow(id, item, raw)
-      .catch((error: unknown) => {
-        report(
-          `Brioche package bot review run ${id} failed: ${error instanceof Error ? error.message : String(error)}`,
-          { runId: id, directory: item.review.directory },
-        );
-      })
-      .finally(() => processing.delete(id));
+  const startCompletion = (run: ReviewRun): void => {
+    if (run.processing || run.reported || !run.completionReceived) return;
+    run.processing = true;
+    const promise = processCompletion(run).catch((error: unknown) => {
+      run.successful = false;
+      run.reported = true;
+      report(
+        `${reviewLabel} review run ${run.id} failed: ${error instanceof Error ? error.message : String(error)}`,
+        { runId: run.id, directory: run.review.directory },
+      );
+    });
     processingPromises.add(promise);
     void promise.then(
       () => processingPromises.delete(promise),
@@ -227,26 +318,50 @@ export default function registerBriochePackagesBotReview(pi: ExtensionAPI) {
     );
   };
 
-  const subscribeCompletion = (event: string) => {
+  const subscribeCompletion = (event: string): void => {
     if (subscribed.has(event)) return;
     subscribed.add(event);
     pi.events.on(event, (raw) => {
       const id = completion(raw).runId;
-      if (pending.has(id)) startCompletion(id, raw);
-      else if (spawning > 0 && id) earlyCompletions.set(id, raw);
+      const run = runs.get(id);
+      if (run) {
+        if (!run.completionReceived) {
+          run.completion = raw;
+          run.completionReceived = true;
+          startCompletion(run);
+        }
+      } else if (spawning > 0 && id) {
+        earlyCompletions.set(id, raw);
+      }
     });
   };
 
-  const subscribeProcessTerminal = (event: string) => {
+  const trackSpawning = (promise: Promise<void>): Promise<void> => {
+    spawningPromises.add(promise);
+    void promise.then(
+      () => spawningPromises.delete(promise),
+      () => spawningPromises.delete(promise),
+    );
+    return promise;
+  };
+
+  const subscribeProcessTerminal = (event: string): void => {
     if (subscribed.has(event)) return;
     subscribed.add(event);
     pi.events.on(event, (raw) => {
       const id = processTerminalRunId(raw);
       const state = processTerminalState(raw);
-      if (!id || !state) return;
+      const run = id ? runs.get(id) : undefined;
+      if (!run || !state) {
+        if (id && state && spawning > 0) earlyTerminals.set(id, state);
+        return;
+      }
       terminalStates.set(id, state);
+      if (state === "observed") run.terminalObserved = true;
       const waiters = terminalWaiters.get(id);
       if (waiters) for (const finish of waiters) finish(state === "observed");
+      if (run.stopping && run.terminalObserved) void cleanupRun(run);
+      else if (run.completionReceived) startCompletion(run);
     });
   };
 
@@ -385,7 +500,7 @@ export default function registerBriochePackagesBotReview(pi: ExtensionAPI) {
         spawning += 1;
         try {
           const results = await Promise.allSettled(
-            reviews.map((review) => spawnWorkflow(review)),
+            reviews.map((review) => trackSpawning(spawnWorkflow(review))),
           );
           const failure = results.find(
             (result) => result.status === "rejected",
@@ -455,6 +570,15 @@ export default function registerBriochePackagesBotReview(pi: ExtensionAPI) {
             },
           ],
         };
+      if (active.state !== "ready")
+        return {
+          content: [
+            {
+              type: "text",
+              text: "Review evidence is not ready for mutation. Wait until every selected PR has a successful, terminal-observed result.",
+            },
+          ],
+        };
       active.state = "mutating";
       ctx.ui.setStatus(
         statusKey,
@@ -515,23 +639,6 @@ export default function registerBriochePackagesBotReview(pi: ExtensionAPI) {
 
   pi.on("session_shutdown", async () => {
     shuttingDown = true;
-    const runs = [...pending.keys()];
-    const stopped = await Promise.all(runs.map(stopAndConfirm));
-    await Promise.all(processingPromises);
-    pending.clear();
-    earlyCompletions.clear();
-    processing.clear();
-    if (
-      active &&
-      spawning === 0 &&
-      (runs.length === 0 || stopped.every(Boolean))
-    )
-      await Promise.all(
-        active.reviews
-          .map((review) => review.directory)
-          .filter((directory) => !retainedDirectories.has(directory))
-          .map((directory) => rm(directory, { recursive: true, force: true })),
-      );
-    active = undefined;
+    await stopReview();
   });
 }

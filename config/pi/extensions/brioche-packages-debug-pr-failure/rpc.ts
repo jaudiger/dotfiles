@@ -73,7 +73,12 @@ export function spawnedRunId(payload: unknown): string {
   return text(details.runId) || text(details.asyncId);
 }
 
-type CompletionResult = {
+export type CompletionChildArtifacts = {
+  artifactPath?: string;
+  sessionPath?: string;
+};
+
+type CompletionResult = CompletionChildArtifacts & {
   output?: string;
   artifactPaths?: Json;
 };
@@ -104,6 +109,8 @@ function completionResult(value: unknown): CompletionResult | undefined {
   return {
     output: text(result.output) || undefined,
     artifactPaths: optionalObject(result.artifactPaths),
+    artifactPath: text(result.artifactPath) || undefined,
+    sessionPath: text(result.sessionPath) || undefined,
   };
 }
 
@@ -155,16 +162,30 @@ function pathsFrom(value: unknown): string[] {
     text(object.outputPath),
     text(object.transcriptPath),
     text(object.sessionFile),
+    text(object.artifactPath),
+    text(object.sessionPath),
   ].filter(Boolean);
+}
+
+export function completionChildArtifacts(
+  payload: unknown,
+): CompletionChildArtifacts[] {
+  return (completion(payload).results ?? [])
+    .map(({ artifactPath, sessionPath }) => ({
+      ...(artifactPath ? { artifactPath } : {}),
+      ...(sessionPath ? { sessionPath } : {}),
+    }))
+    .filter(({ artifactPath, sessionPath }) => artifactPath || sessionPath);
 }
 
 export function completionArtifactPaths(payload: unknown): string[] {
   const data = completion(payload);
   const paths = [
     ...pathsFrom(data.artifactPaths),
-    ...(data.results ?? []).flatMap((result) =>
-      pathsFrom(result.artifactPaths),
-    ),
+    ...(data.results ?? []).flatMap((result) => [
+      ...pathsFrom(result.artifactPaths),
+      ...pathsFrom(result),
+    ]),
   ];
   return [...new Set(paths)];
 }

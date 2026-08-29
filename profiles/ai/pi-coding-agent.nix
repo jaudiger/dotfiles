@@ -52,8 +52,8 @@ in
             ../../config/pi/extensions/sandbox-bash
           ];
           packages = [
-            "npm:pi-subagents@0.58.0"
-            "npm:pi-web-access@0.26.0"
+            "npm:pi-subagents@0.59.0"
+            "npm:pi-web-access@0.27.0"
           ];
           quietStartup = true;
           showCacheMissNotices = true;
