@@ -23,7 +23,8 @@ in
             "--pointer=>"
             "--prompt '> '"
             "--highlight-line"
-            "--color=gutter:-1,selected-bg:238,selected-fg:146,current-fg:189"
+            "--gutter ' '"
+            "--color=selected-bg:238,selected-fg:146,current-fg:189"
           ];
         };
       };
