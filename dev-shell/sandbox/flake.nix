@@ -43,8 +43,15 @@
               (subpath "/var/folders")
               (subpath (param "PWD")))
             (allow mach-lookup
-              ; Allow TLS clients to use macOS trustd for certificate verification.
-              (global-name "com.apple.trustd.agent"))
+              ; Allow TLS clients and the macOS Keychain to verify credentials.
+              (global-name "com.apple.SecurityServer")
+              (global-name "com.apple.cfprefsd.agent")
+              (global-name "com.apple.cfprefsd.daemon")
+              (global-name "com.apple.ocspd")
+              (global-name "com.apple.securityd")
+              (global-name "com.apple.trustd")
+              (global-name "com.apple.trustd.agent")
+              (global-name "com.apple.xpcd"))
             (allow process-exec
               (subpath "/bin")
               (subpath "/nix/store")
