@@ -1067,7 +1067,6 @@ async function requiredChecks(review: MutationTarget): Promise<string> {
       String(review.number),
       "--repo",
       review.repository,
-      "--required",
       "--json",
       "name,state,bucket,link",
     ],
