@@ -6,16 +6,6 @@ import type { Json } from "./types.js";
 const rpcRequest = "subagents:rpc:v1:request";
 const rpcReplyPrefix = "subagents:rpc:v1:reply:";
 
-export class SubagentRpcError extends Error {
-  readonly code: string;
-
-  constructor(code: string, message: string) {
-    super(message);
-    this.name = "SubagentRpcError";
-    this.code = code;
-  }
-}
-
 export function sendRpc(
   pi: ExtensionAPI,
   method: string,
@@ -39,20 +29,7 @@ export function sendRpc(
       );
     }, 30_000);
     unsubscribe = pi.events.on(replyEvent, (raw) => {
-      const reply = asObject(raw);
-      if (reply.success !== true) {
-        const error = asObject(reply.error);
-        finish(() =>
-          reject(
-            new SubagentRpcError(
-              text(error.code) || "unknown",
-              text(error.message) || "Subagent RPC failed",
-            ),
-          ),
-        );
-        return;
-      }
-      finish(() => resolve(asObject(reply.data)));
+      finish(() => resolve((raw as { data: Json }).data));
     });
     pi.events.emit(rpcRequest, {
       version: 1,
@@ -208,8 +185,6 @@ export function completionSuccess(payload: unknown): boolean | undefined {
 }
 
 export function rpcErrorMessage(error: unknown): string {
-  if (error instanceof SubagentRpcError)
-    return `${error.message} (RPC ${error.code})`;
   return error instanceof Error ? error.message : String(error);
 }
 

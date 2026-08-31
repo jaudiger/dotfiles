@@ -16,11 +16,6 @@ export function completion(value: unknown): RpcCompletion {
   };
 }
 
-function rpcError(value: unknown): Error {
-  const error = object(value);
-  return new Error(string(error.message) || "Subagent RPC failed.");
-}
-
 export function sendRpc(
   pi: ExtensionAPI,
   method: string,
@@ -46,12 +41,7 @@ export function sendRpc(
       30_000,
     );
     unsubscribe = pi.events.on(replyEvent, (raw) => {
-      const reply = object(raw);
-      if (reply.success !== true) {
-        finish(() => reject(rpcError(reply.error)));
-      } else {
-        finish(() => resolve(object(reply.data)));
-      }
+      finish(() => resolve((raw as { data: Json }).data));
     });
     pi.events.emit(rpcRequest, {
       version: 1,
