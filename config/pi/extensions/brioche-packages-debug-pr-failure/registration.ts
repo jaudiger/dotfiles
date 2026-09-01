@@ -264,7 +264,7 @@ export function registerDebugPrFailure(pi: ExtensionAPI) {
         const packageName = text(prepared.metadata.package) || "unknown";
         const task = `${investigationInstructions}
 
-Investigate Brioche package PR ${pr} for package ${packageName}. The temporary evidence and package, Brioche, and runtime utility repositories are supplied as read-only context. Use the process evidence to resolve missing or ambiguous details. When the logs identify a Brioche component, runtime utility, executable, or configuration path, trace it in the supplied source context and include the relevant source path and line range in your reasoning. This is an evidence-only investigation: do not use commands, do not download or decode artifacts, and do not apply a proposed fix. Return a concise evidence-based root cause, failure classification, and proposed fix for the parent agent.`;
+Investigate Brioche package PR ${pr} for package ${packageName}. The temporary evidence and package, Brioche, and runtime utility repositories are supplied as read-only context. Return your findings for the parent agent.`;
         await discoverCompletionEvent();
         if (shuttingDown) {
           await removeDirectory(prepared.directory);
@@ -366,7 +366,7 @@ Investigate Brioche package PR ${pr} for package ${packageName}. The temporary e
         return undefined;
       }),
     );
-    await Promise.allSettled(processingPromises);
+    await Promise.allSettled([...processingPromises]);
     pending.clear();
     for (const [runId] of trackedRuns) {
       if (terminalStates.get(runId) === "observed") trackedRuns.delete(runId);

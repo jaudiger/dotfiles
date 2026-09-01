@@ -419,18 +419,6 @@ function isHttpsUrl(value: string): boolean {
   }
 }
 
-export function researcherMetadataFromText(value: string): ResearchMetadata {
-  if (!value.trim() || value.trim() !== value)
-    throw new Error("Researcher returned empty or padded metadata.");
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(value) as unknown;
-  } catch {
-    throw new Error("Researcher did not return valid JSON metadata.");
-  }
-  return validateResearchMetadata(parsed);
-}
-
 function statusPaths(status: string): string[] {
   const paths: string[] = [];
   const records = status.split("\0");

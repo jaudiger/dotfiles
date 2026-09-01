@@ -4,6 +4,7 @@ import {
   SUBAGENT_DELEGATION_CANCEL_EVENT,
   SUBAGENT_DELEGATION_REQUEST_EVENT,
   SUBAGENT_DELEGATION_RESPONSE_EVENT,
+  type SubagentDelegationJsonSchemaObject,
   type SubagentDelegationRequest,
   type SubagentDelegationResponse,
 } from "pi-subagents/delegation";
@@ -17,10 +18,15 @@ type ActiveDelegation = Pick<
 
 const activeDelegations = new Map<string, ActiveDelegation>();
 
-export async function runDelegatedText(
+export async function runDelegatedStructured(
   pi: ExtensionAPI,
-  input: { agent: string; task: string; cwd: string },
-): Promise<string> {
+  input: {
+    agent: string;
+    task: string;
+    cwd: string;
+    schema: SubagentDelegationJsonSchemaObject;
+  },
+): Promise<unknown> {
   const requestId = `brioche-submit-${crypto.randomUUID()}`;
   const request: SubagentDelegationRequest = {
     requestId,
@@ -30,7 +36,8 @@ export async function runDelegatedText(
     task: input.task,
     context: "fresh",
     cwd: input.cwd,
-    result: { kind: "text" },
+    timeoutMs: 30 * 60 * 1000,
+    result: { kind: "structured", schema: input.schema },
     artifacts: false,
   };
   activeDelegations.set(requestId, request);
@@ -81,9 +88,9 @@ export async function runDelegatedText(
       throw new Error(
         response.error || `Delegated researcher ${response.status}.`,
       );
-    if (!response.result || response.result.kind !== "text")
-      throw new Error("Delegated researcher returned no text result.");
-    return response.result.text;
+    if (!response.result || response.result.kind !== "structured")
+      throw new Error("Delegated researcher returned no structured result.");
+    return response.result.value;
   } finally {
     activeDelegations.delete(requestId);
   }

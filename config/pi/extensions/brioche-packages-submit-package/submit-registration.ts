@@ -3,7 +3,7 @@ import type {
   ExtensionContext,
 } from "@earendil-works/pi-coding-agent";
 import { registerSubagentCapabilityCeiling } from "pi-subagents/capability-ceiling";
-import { cancelDelegatedRequests, runDelegatedText } from "./rpc.js";
+import { cancelDelegatedRequests, runDelegatedStructured } from "./rpc.js";
 import type { Json } from "./rpc.js";
 import {
   evidenceLogPaths,
@@ -11,8 +11,8 @@ import {
   packageArgument,
   prepareSubmission,
   removeSubmissionDirectory,
-  researcherMetadataFromText,
   submitPreparedPackage,
+  validateResearchMetadata,
   SubmissionError,
   type PreparedSubmission,
 } from "./submission.js";
@@ -50,7 +50,7 @@ function researcherTask(
   prepared: PreparedSubmission,
   packageRepository: string,
 ): string {
-  return `Read the package project file at ${prepared.projectPath} first. This is read-only research for the Brioche package ${prepared.packageName}. If project.bri contains a repository URL, use that exact URL as upstreamUrl and do not search for another upstream repository. Research only metadata missing from project.bri. Determine the Repology project URL and a concise package description only when they are missing. Return exactly one JSON object with exactly these string fields: upstreamUrl, repologyUrl, description. Return no markdown, explanation, or extra fields. Preserve repository URLs exactly as found in project.bri. The repologyUrl must be the HTTPS Repology project page. Do not edit files, run git commands, create branches, commit, push, or create pull requests. Package repository: ${packageRepository}.`;
+  return `Read the package project file at ${prepared.projectPath} first. This is read-only research for the Brioche package ${prepared.packageName}. If project.bri contains a repository URL, use that exact URL as upstreamUrl and do not search for another upstream repository. Research only metadata missing from project.bri. Determine the Repology project URL and a concise package description only when they are missing. Populate the structured output with upstreamUrl, repologyUrl, and description. Preserve repository URLs exactly as found in project.bri. The repologyUrl must be the HTTPS Repology project page. Keep this research read-only. Package repository: ${packageRepository}.`;
 }
 
 function submissionFailure(
@@ -69,6 +69,17 @@ function submissionFailure(
     : "No branch, commit, push, or pull request was completed.";
   return `Brioche package submission failed for ${prepared.packageName}.\n\n${error.message}\n\n${stateText}\nEvidence directory retained for recovery: ${prepared.directory}`;
 }
+
+const researcherOutputSchema = {
+  type: "object",
+  properties: {
+    upstreamUrl: { type: "string" },
+    repologyUrl: { type: "string" },
+    description: { type: "string" },
+  },
+  required: ["upstreamUrl", "repologyUrl", "description"],
+  additionalProperties: false,
+};
 
 function submissionResult(
   prepared: PreparedSubmission,
@@ -125,18 +136,19 @@ export function registerSubmitPackage(pi: ExtensionAPI): void {
           ],
         },
       });
-      let researcherOutput: string;
+      let researcherOutput: unknown;
       try {
-        researcherOutput = await runDelegatedText(pi, {
+        researcherOutput = await runDelegatedStructured(pi, {
           agent: "researcher",
           cwd: packageRepository,
           task: researcherTask(prepared, packageRepository),
+          schema: researcherOutputSchema,
         });
       } finally {
         capabilityCeiling.dispose();
       }
       if (shuttingDown || signal.aborted) return;
-      const metadata = researcherMetadataFromText(researcherOutput);
+      const metadata = validateResearchMetadata(researcherOutput);
       submissionStarted = true;
       const result = await submitPreparedPackage(
         prepared,
@@ -296,7 +308,7 @@ export function registerSubmitPackage(pi: ExtensionAPI): void {
     shuttingDown = true;
     submissionAbortController?.abort();
     cancelDelegatedRequests(pi);
-    await Promise.all(processingPromises);
+    await Promise.allSettled([...processingPromises]);
     activeDirectory = undefined;
   });
 }
