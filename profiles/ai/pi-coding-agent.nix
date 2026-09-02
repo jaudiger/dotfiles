@@ -79,8 +79,7 @@ in
             defaultModel = "${defaultProvider}/${defaultModel}";
             defaultThinking = defaultThinkingLevel;
             modelScope = {
-              allow = [ "openai-codex/gpt-5.*" ];
-              enforce = true;
+              allow = [ "openai-codex/gpt-5.6-*" ];
               agents = {
                 delegate.allow = [ "openai-codex/gpt-5.6-luna" ];
                 oracle.allow = [ "openai-codex/gpt-5.6-terra" ];
@@ -89,6 +88,8 @@ in
                 scout.allow = [ "openai-codex/gpt-5.6-luna" ];
                 worker.allow = [ "openai-codex/gpt-5.6-luna" ];
               };
+              enforce = true;
+              strict = true;
             };
           };
           thinkingBudgets = {
