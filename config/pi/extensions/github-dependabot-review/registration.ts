@@ -25,6 +25,7 @@ import {
   runId,
   sendRpc,
   requireAsyncCapacity,
+  registerRpcReady,
 } from "./rpc.js";
 import { workflowTask } from "./tasks.js";
 import type {
@@ -37,6 +38,7 @@ import type {
 import { object, string } from "./utils.js";
 
 export default function registerDependabotReview(pi: ExtensionAPI) {
+  registerRpcReady(pi);
   type ReviewRun = {
     id: string;
     review: PreparedReview;

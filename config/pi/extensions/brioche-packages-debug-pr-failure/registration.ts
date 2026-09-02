@@ -23,6 +23,7 @@ import {
   rpcErrorMessage,
   sendRpc,
   spawnedRunId,
+  registerRpcReady,
 } from "./rpc.js";
 import type { Json, PendingRun, PreparedContext } from "./types.js";
 
@@ -59,6 +60,7 @@ function completionLabel(status: string, success: boolean | undefined): string {
 }
 
 export function registerDebugPrFailure(pi: ExtensionAPI) {
+  registerRpcReady(pi);
   const pending = new Map<string, PendingRun>();
   const trackedRuns = new Map<string, PendingRun>();
   const earlyCompletions = new Map<string, unknown>();
