@@ -1,7 +1,7 @@
 import { execFile } from "node:child_process";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { basename, join } from "node:path";
 import { promisify } from "node:util";
 import { asObject, packageFromFiles, text, workflowRunId } from "./parsing.js";
 import type { PreparedContext } from "./types.js";
@@ -68,6 +68,19 @@ async function ghJson(args: string[], cwd: string): Promise<unknown> {
       `GitHub command returned invalid JSON: ${output.slice(0, 200)}`,
     );
   }
+}
+
+async function removeLimaDirectory(
+  directory: string,
+  cwd: string,
+): Promise<void> {
+  try {
+    await run(
+      "limactl",
+      ["shell", "brioche-packages", "--", "rm", "-rf", "--", directory],
+      cwd,
+    );
+  } catch {}
 }
 
 export async function prepareContext(
@@ -164,22 +177,42 @@ export async function prepareContext(
       cwd,
     );
     await writeFile(join(directory, "failed-jobs.log"), failedLog);
-    for (const eventFile of eventFiles) {
-      const output = await run(
-        "limactl",
-        [
-          "shell",
-          "brioche-packages",
-          "--",
-          "bash",
-          "-c",
-          `brioche jobs logs "$1"`,
-          "brioche-jobs-logs",
-          eventFile,
-        ],
-        cwd,
-      );
-      await writeFile(`${eventFile}.log`, output);
+    if (eventFiles.length > 0) {
+      const limaDirectory = `/tmp/${basename(directory)}`;
+      try {
+        await run(
+          "limactl",
+          ["shell", "brioche-packages", "--", "mkdir", "-p", limaDirectory],
+          cwd,
+        );
+        for (const [index, eventFile] of eventFiles.entries()) {
+          const limaEventFile = join(
+            limaDirectory,
+            `${String(index).padStart(4, "0")}-events.bin.zst`,
+          );
+          await run(
+            "limactl",
+            ["copy", eventFile, `brioche-packages:${limaEventFile}`],
+            cwd,
+          );
+          const output = await run(
+            "limactl",
+            [
+              "shell",
+              "brioche-packages",
+              "--",
+              "brioche",
+              "jobs",
+              "logs",
+              limaEventFile,
+            ],
+            cwd,
+          );
+          await writeFile(`${eventFile}.log`, output);
+        }
+      } finally {
+        await removeLimaDirectory(limaDirectory, cwd);
+      }
     }
     const listing = await run("find", [directory, "-type", "f"], cwd);
     await writeFile(join(directory, "manifest.txt"), listing);
