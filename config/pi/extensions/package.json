@@ -1,0 +1,17 @@
+{
+  "name": "pi-extensions",
+  "private": true,
+  "pi": {
+    "extensions": [
+      "./brioche-packages-bot-review/index.ts",
+      "./brioche-packages-debug-pr-failure/index.ts",
+      "./brioche-packages-discover-package/index.ts",
+      "./brioche-packages-submit-package/index.ts",
+      "./github-dependabot-review/index.ts",
+      "./notifications/index.ts",
+      "./project-trust/index.ts",
+      "./protected-paths/index.ts",
+      "./sandbox-bash/index.ts"
+    ]
+  }
+}

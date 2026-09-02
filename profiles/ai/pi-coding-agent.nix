@@ -41,15 +41,7 @@ in
           enableInstallTelemetry = false;
           externalEditor = "nvim";
           extensions = [
-            ../../config/pi/extensions/brioche-packages-bot-review
-            ../../config/pi/extensions/brioche-packages-debug-pr-failure
-            ../../config/pi/extensions/brioche-packages-discover-package
-            ../../config/pi/extensions/brioche-packages-submit-package
-            ../../config/pi/extensions/github-dependabot-review
-            ../../config/pi/extensions/notifications
-            ../../config/pi/extensions/project-trust
-            ../../config/pi/extensions/protected-paths
-            ../../config/pi/extensions/sandbox-bash
+            ../../config/pi/extensions
           ];
           packages = [
             "npm:pi-subagents@0.63.0"
