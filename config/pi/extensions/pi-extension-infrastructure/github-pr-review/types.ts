@@ -1,7 +1,5 @@
 export type Json = Record<string, unknown>;
 
-export type CommandResult = { output: string; exitCode: number };
-
 export type ReviewCandidate = {
   number: number;
   title: string;
@@ -43,13 +41,6 @@ export type PullRequestSnapshot = {
   baseRefName: string;
 };
 
-export type PickerMode = "review" | "merge" | "supersede";
-
-export type PickerSelection = {
-  mode: PickerMode;
-  candidates: ReviewCandidate[];
-};
-
 export type MutationTarget = {
   number: number;
   repository: string;
@@ -65,30 +56,4 @@ export type PreparedReview = {
   snapshot: PullRequestSnapshot;
   cwd: string;
   sessionId: string;
-};
-
-export type ReviewSessionState =
-  | "preparing"
-  | "researching"
-  | "ready"
-  | "mutating"
-  | "stale";
-
-export type ReviewContext = {
-  candidates: ReviewCandidate[];
-  reviews: PreparedReview[];
-  generation: number;
-  state: ReviewSessionState;
-};
-
-export type PendingRun = {
-  kind: "workflow";
-  review: PreparedReview;
-};
-
-export type RpcCompletion = {
-  runId: string;
-  output: string;
-  status: string;
-  success?: boolean;
 };

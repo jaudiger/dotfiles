@@ -2,9 +2,10 @@ import type {
   ExtensionAPI,
   ExtensionContext,
 } from "@earendil-works/pi-coding-agent";
-import { registerSubagentCapabilityCeiling } from "pi-subagents/capability-ceiling";
-import { cancelDelegatedRequests, runDelegatedStructured } from "./rpc.js";
-import type { Json } from "./rpc.js";
+import {
+  cancelDelegatedRequests,
+  runDelegatedStructured,
+} from "../pi-extension-infrastructure/subagents/delegation.js";
 import {
   evidenceLogPaths,
   failureOutput,
@@ -101,7 +102,7 @@ export function registerSubmitPackage(pi: ExtensionAPI): void {
   let submissionAbortController: AbortController | undefined;
   let shuttingDown = false;
 
-  const report = (content: string, details: Json = {}) => {
+  const report = (content: string, details: Record<string, unknown> = {}) => {
     pi.sendMessage(
       {
         customType: "brioche-package-submit",
@@ -123,30 +124,34 @@ export function registerSubmitPackage(pi: ExtensionAPI): void {
     let submissionStarted = false;
     try {
       if (shuttingDown || signal.aborted) return;
-      const capabilityCeiling = registerSubagentCapabilityCeiling({
-        sessionId,
-        source: "brioche-packages-submit-package",
-        ceiling: {
-          allowedAgents: ["researcher"],
-          allowedTools: [
-            "read",
-            "web_search",
-            "fetch_content",
-            "get_search_content",
-          ],
-        },
-      });
-      let researcherOutput: unknown;
-      try {
-        researcherOutput = await runDelegatedStructured(pi, {
+      const researcherOutput = await runDelegatedStructured(
+        pi,
+        {
           agent: "researcher",
           cwd: packageRepository,
           task: researcherTask(prepared, packageRepository),
           schema: researcherOutputSchema,
-        });
-      } finally {
-        capabilityCeiling.dispose();
-      }
+        },
+        {
+          sourcePrefix: "brioche-submit",
+          nodeId: "researcher",
+          timeoutMs: 30 * 60 * 1000,
+          signal,
+          capabilityScope: {
+            sessionId,
+            source: "brioche-packages-submit-package",
+            ceiling: {
+              allowedAgents: ["researcher"],
+              allowedTools: [
+                "read",
+                "web_search",
+                "fetch_content",
+                "get_search_content",
+              ],
+            },
+          },
+        },
+      );
       if (shuttingDown || signal.aborted) return;
       const metadata = validateResearchMetadata(researcherOutput);
       submissionStarted = true;

@@ -8,21 +8,25 @@ import {
   truncateToWidth,
 } from "@earendil-works/pi-tui";
 
-import type {
-  PickerMode,
-  PickerSelection,
-  ReviewCandidate,
-  ReviewDetails,
-} from "./types.js";
+import type { ReviewCandidate, ReviewDetails } from "./types.js";
+
+type PickerMode = "review" | "merge" | "supersede";
+
+type PickerSelection = {
+  mode: PickerMode;
+  candidates: ReviewCandidate[];
+};
 
 type ReviewPickerOptions = {
+  loadDiff: (candidate: ReviewCandidate) => Promise<string>;
+  loadDetails: (candidate: ReviewCandidate) => Promise<ReviewDetails>;
+
   tui: TUI;
   theme: Theme;
   keybindings: KeybindingsManager;
   candidates: ReviewCandidate[];
-  loadDiff: (candidate: ReviewCandidate) => Promise<string>;
-  loadDetails: (candidate: ReviewCandidate) => Promise<ReviewDetails>;
   showQueuePosition: boolean;
+  showRepositoryDescription: boolean;
   done: (selection: PickerSelection | null) => void;
 };
 
@@ -48,6 +52,7 @@ export async function pickReview(
   loadDiff: (candidate: ReviewCandidate) => Promise<string>,
   loadDetails: (candidate: ReviewCandidate) => Promise<ReviewDetails>,
   showQueuePosition: boolean,
+  showRepositoryDescription = false,
 ): Promise<PickerSelection | null> {
   if (ctx.mode !== "tui")
     return candidates.length > 0
@@ -65,6 +70,7 @@ export async function pickReview(
         loadDiff,
         loadDetails,
         showQueuePosition,
+        showRepositoryDescription,
         done,
       }),
     {
@@ -89,6 +95,7 @@ class ReviewPicker implements Component {
     candidate: ReviewCandidate,
   ) => Promise<ReviewDetails>;
   private readonly showQueuePosition: boolean;
+  private readonly showRepositoryDescription: boolean;
   private readonly done: (selection: PickerSelection | null) => void;
   private readonly candidatesByUrl: Map<string, ReviewCandidate>;
   private readonly selector: SelectList;
@@ -116,6 +123,7 @@ class ReviewPicker implements Component {
     this.loadDiffFor = options.loadDiff;
     this.loadDetailsFor = options.loadDetails;
     this.showQueuePosition = options.showQueuePosition;
+    this.showRepositoryDescription = options.showRepositoryDescription;
     this.done = options.done;
     this.selected = this.candidates[0]!;
     this.candidatesByUrl = new Map(
@@ -125,7 +133,9 @@ class ReviewPicker implements Component {
     const items = this.candidates.map((candidate) => ({
       value: candidate.url,
       label: `#${candidate.number} ${candidate.title}`,
-      description: candidate.repository,
+      description: this.showRepositoryDescription
+        ? candidate.repository
+        : undefined,
     }));
     this.selector = new SelectList(
       items,

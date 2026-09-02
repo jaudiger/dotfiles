@@ -5,11 +5,8 @@ import type {
   ExtensionAPI,
   ExtensionContext,
 } from "@earendil-works/pi-coding-agent";
-import { registerSubagentCapabilityCeiling } from "pi-subagents/capability-ceiling";
-import { prepareContext, removeDirectory } from "./evidence.js";
-import { asObject, parsePr, text } from "./parsing.js";
+import { spawnWithCapabilityCeiling } from "../pi-extension-infrastructure/subagents/capability-spawn.js";
 import {
-  asyncCompletionEvent,
   completionArtifactPaths,
   completionChildArtifacts,
   completionAsyncDir,
@@ -18,14 +15,20 @@ import {
   completionStatus,
   completionSuccess,
   completionText,
+  discoverCompletion,
   processTerminalRunId,
   processTerminalState,
+  registerRpcReady,
   rpcErrorMessage,
   sendRpc,
   spawnedRunId,
-  registerRpcReady,
-} from "./rpc.js";
-import type { Json, PendingRun, PreparedContext } from "./types.js";
+} from "../pi-extension-infrastructure/subagents/rpc-v1.js";
+import type { Json } from "../pi-extension-infrastructure/subagents/rpc-v1.js";
+import { prepareContext, removeDirectory } from "./evidence.js";
+import { parsePr, text } from "./parsing.js";
+import type { PendingRun, PreparedContext } from "./types.js";
+
+const source = "brioche-packages-debug-pr-failure";
 
 const repositoriesRoot = join(homedir(), "Development", "git-repositories");
 const briochePackagesRepository = join(
@@ -69,11 +72,6 @@ export function registerDebugPrFailure(pi: ExtensionAPI) {
   const subscribedEvents = new Set<string>();
   const terminalStates = new Map<string, string>();
   const terminalWaiters = new Map<string, Set<(observed: boolean) => void>>();
-  const capabilityLockKey = Symbol.for(
-    "pi-subagents.capability-ceiling-spawn-lock",
-  );
-  const globalLocks = globalThis as typeof globalThis &
-    Record<symbol, Promise<void> | undefined>;
   let spawning = 0;
   let shuttingDown = false;
 
@@ -96,16 +94,6 @@ export function registerDebugPrFailure(pi: ExtensionAPI) {
       waiters.add(finish);
       terminalWaiters.set(runId, waiters);
     });
-  };
-
-  const acquireCapabilityLock = async (): Promise<() => void> => {
-    const previous = globalLocks[capabilityLockKey] ?? Promise.resolve();
-    let release!: () => void;
-    globalLocks[capabilityLockKey] = new Promise<void>((resolve) => {
-      release = resolve;
-    });
-    await previous;
-    return release;
   };
 
   const complete = async (payload: unknown): Promise<boolean> => {
@@ -223,24 +211,9 @@ export function registerDebugPrFailure(pi: ExtensionAPI) {
   };
 
   const discoverCompletionEvent = async () => {
-    let ping;
-    try {
-      ping = await sendRpc(pi, "ping", {});
-    } catch (error) {
-      throw error instanceof Error
-        ? error
-        : new Error(
-            `Could not discover the subagent completion event: ${String(error)}`,
-          );
-    }
-    const event = asyncCompletionEvent(ping);
-    const terminalEvent = text(asObject(ping.events).processTerminal);
-    if (!event || !terminalEvent)
-      throw new Error(
-        "Subagent RPC did not advertise the required completion events.",
-      );
-    subscribeToCompletion(event);
-    subscribeToProcessTerminal(terminalEvent);
+    const events = await discoverCompletion(pi, source);
+    subscribeToCompletion(events.asyncComplete);
+    subscribeToProcessTerminal(events.processTerminal);
   };
 
   pi.registerCommand("brioche-packages:debug-pr-failure", {
@@ -275,43 +248,40 @@ Investigate Brioche package PR ${pr} for package ${packageName}. The temporary e
         await trackSpawning(
           (async () => {
             spawning += 1;
-            const release = await acquireCapabilityLock();
             try {
               if (shuttingDown) {
                 await removeDirectory(prepared.directory);
                 return;
               }
-              const capabilityCeiling = registerSubagentCapabilityCeiling({
+              const rpc = await spawnWithCapabilityCeiling<Json | undefined>({
                 sessionId: ctx.sessionManager.getSessionId(),
                 source: "brioche-packages-debug-pr-failure",
                 ceiling: {
                   allowedAgents: ["oracle"],
                   allowedTools: ["read", "grep", "find", "ls"],
                 },
+                spawn: async () =>
+                  shuttingDown
+                    ? undefined
+                    : sendRpc(pi, source, "spawn", {
+                        cwd: briochePackagesRepository,
+                        context: "fresh",
+                        agent: "oracle",
+                        task,
+                        reads: [
+                          prepared.directory,
+                          briochePackagesRepository,
+                          briocheSourceRepository,
+                          briocheRuntimeUtilsRepository,
+                        ],
+                        intercomBridge: { mode: "off" },
+                        mission: false,
+                        async: true,
+                      }),
               });
-              let rpc: Json;
-              try {
-                if (shuttingDown) {
-                  await removeDirectory(prepared.directory);
-                  return;
-                }
-                rpc = await sendRpc(pi, "spawn", {
-                  cwd: briochePackagesRepository,
-                  context: "fresh",
-                  agent: "oracle",
-                  task,
-                  reads: [
-                    prepared.directory,
-                    briochePackagesRepository,
-                    briocheSourceRepository,
-                    briocheRuntimeUtilsRepository,
-                  ],
-                  intercomBridge: { mode: "off" },
-                  mission: false,
-                  async: true,
-                });
-              } finally {
-                capabilityCeiling.dispose();
+              if (!rpc) {
+                await removeDirectory(prepared.directory);
+                return;
               }
               const runId = spawnedRunId(rpc);
               if (!runId)
@@ -320,7 +290,7 @@ Investigate Brioche package PR ${pr} for package ${packageName}. The temporary e
               trackedRuns.set(runId, item);
               if (shuttingDown) {
                 try {
-                  await sendRpc(pi, "stop", { runId });
+                  await sendRpc(pi, source, "stop", { runId });
                 } catch {
                   // The run may have reached a terminal state before shutdown.
                 }
@@ -335,7 +305,6 @@ Investigate Brioche package PR ${pr} for package ${packageName}. The temporary e
                 trackCompletion(completion);
               }
             } finally {
-              release();
               spawning -= 1;
             }
           })(),
@@ -359,7 +328,7 @@ Investigate Brioche package PR ${pr} for package ${packageName}. The temporary e
     await Promise.all(
       runs.map(async ([runId, item]) => {
         try {
-          await sendRpc(pi, "stop", { runId });
+          await sendRpc(pi, source, "stop", { runId });
         } catch {
           // The run may have reached a terminal state before shutdown.
         }

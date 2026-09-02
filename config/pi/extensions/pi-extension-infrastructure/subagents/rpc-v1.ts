@@ -1,7 +1,7 @@
 import * as crypto from "node:crypto";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import { asObject, text } from "./parsing.js";
-import type { Json } from "./types.js";
+
+export type Json = Record<string, unknown>;
 
 type RpcEvents = {
   on(event: string, handler: (data: unknown) => void): (() => void) | void;
@@ -11,6 +11,37 @@ type RpcEvents = {
 type ReadyState = {
   ready: boolean;
   waiters: Set<() => void>;
+};
+
+type RpcCompletion = {
+  runId: string;
+  output: string;
+  status: string;
+  success?: boolean;
+};
+
+type CompletionChildArtifacts = {
+  artifactPath?: string;
+  sessionPath?: string;
+};
+
+type CompletionResult = CompletionChildArtifacts & {
+  output?: string;
+  artifactPaths?: Json;
+};
+
+type CompletionPayload = {
+  runId: string;
+  summary?: string;
+  output?: string;
+  error?: string;
+  state?: string;
+  status?: string;
+  success?: boolean;
+  asyncDir?: string;
+  sessionFile?: string;
+  artifactPaths?: Json;
+  results?: CompletionResult[];
 };
 
 const rpcRequest = "subagents:rpc:v1:request";
@@ -29,6 +60,10 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function record(value: unknown): Record<string, unknown> {
   return isRecord(value) ? value : {};
+}
+
+function text(value: unknown): string {
+  return typeof value === "string" ? value : "";
 }
 
 function describe(value: unknown): string {
@@ -90,15 +125,16 @@ function replyData(raw: unknown, requestId: string, method: string): Json {
   return reply.data;
 }
 
+/** Send one versioned subagent RPC request for the named extension source. */
 export function sendRpc(
   pi: ExtensionAPI,
+  source: string,
   method: string,
   params: Json,
 ): Promise<Json> {
   registerRpcReady(pi);
   const events = eventsFor(pi);
   const state = readyStates.get(events)!;
-  const source = "brioche-packages-debug-pr-failure";
   const requestId = `${source}-${crypto.randomUUID()}`;
   const replyEvent = `${rpcReplyPrefix}${requestId}`;
 
@@ -125,27 +161,39 @@ export function sendRpc(
     const start = () => {
       if (settled) return;
       state.waiters.delete(start);
-      unsubscribe = events.on(replyEvent, (raw) => {
-        try {
-          const data = replyData(raw, requestId, method);
-          finish(() => resolve(data));
-        } catch (error) {
-          finish(() =>
-            reject(
-              error instanceof Error
-                ? error
-                : new Error(`Subagent RPC ${method} failed: ${String(error)}`),
-            ),
-          );
-        }
-      });
-      events.emit(rpcRequest, {
-        version: rpcVersion,
-        requestId,
-        method,
-        params,
-        source: { extension: source },
-      });
+      try {
+        unsubscribe = events.on(replyEvent, (raw) => {
+          try {
+            const data = replyData(raw, requestId, method);
+            finish(() => resolve(data));
+          } catch (error) {
+            finish(() =>
+              reject(
+                error instanceof Error
+                  ? error
+                  : new Error(
+                      `Subagent RPC ${method} failed: ${String(error)}`,
+                    ),
+              ),
+            );
+          }
+        });
+        events.emit(rpcRequest, {
+          version: rpcVersion,
+          requestId,
+          method,
+          params,
+          source: { extension: source },
+        });
+      } catch (error) {
+        finish(() =>
+          reject(
+            error instanceof Error
+              ? error
+              : new Error(`Subagent RPC ${method} failed: ${String(error)}`),
+          ),
+        );
+      }
     };
 
     if (state.ready) start();
@@ -153,48 +201,65 @@ export function sendRpc(
   });
 }
 
-export function asyncCompletionEvent(payload: unknown): string {
-  return text(asObject(asObject(payload).events).asyncComplete);
+export async function discoverCompletion(
+  pi: ExtensionAPI,
+  source: string,
+): Promise<{ asyncComplete: string; processTerminal: string }> {
+  const ping = await sendRpc(pi, source, "ping", {});
+  const events = record(ping).events;
+  const asyncComplete = text(record(events).asyncComplete);
+  const processTerminal = text(record(events).processTerminal);
+  if (!asyncComplete || !processTerminal)
+    throw new Error(
+      "Subagent RPC did not advertise the required completion events.",
+    );
+  return { asyncComplete, processTerminal };
 }
 
 export function spawnedRunId(payload: unknown): string {
-  const details = asObject(asObject(payload).details);
+  const details = record(record(payload).details);
   return text(details.runId) || text(details.asyncId);
 }
 
-export type CompletionChildArtifacts = {
-  artifactPath?: string;
-  sessionPath?: string;
-};
+type AsyncCapacity = { used: number; limit: number };
 
-type CompletionResult = CompletionChildArtifacts & {
-  output?: string;
-  artifactPaths?: Json;
-};
+function asyncCapacity(value: unknown): AsyncCapacity {
+  return (value as { fleet: { topLevelAsyncCapacity: AsyncCapacity } }).fleet
+    .topLevelAsyncCapacity;
+}
 
-type Completion = {
-  runId: string;
-  summary?: string;
-  output?: string;
-  error?: string;
-  state?: string;
-  status?: string;
-  success?: boolean;
-  asyncDir?: string;
-  sessionFile?: string;
-  artifactPaths?: Json;
-  results?: CompletionResult[];
-};
+export function requireAsyncCapacity(
+  value: unknown,
+  requested: number,
+  label: string,
+): AsyncCapacity {
+  const capacity = asyncCapacity(value);
+  if (capacity.limit > 0 && capacity.used + requested > capacity.limit)
+    throw new Error(
+      `Cannot start ${label}: top-level async capacity is ${capacity.used}/${capacity.limit}; ${requested} run${requested === 1 ? "" : "s"} requested.`,
+    );
+  return capacity;
+}
+
+/** Parse a completion payload into the compact shape used by review clients. */
+export function completion(value: unknown): RpcCompletion {
+  const data = record(value);
+  return {
+    runId: text(data.runId) || text(data.id),
+    output: text(data.output) || text(data.summary) || text(data.error),
+    status: text(data.state) || text(data.status),
+    success: typeof data.success === "boolean" ? data.success : undefined,
+  };
+}
 
 function optionalObject(value: unknown): Json | undefined {
-  const object = asObject(value);
+  const object = record(value);
   return Object.keys(object).length > 0 ? object : undefined;
 }
 
 function completionResult(value: unknown): CompletionResult | undefined {
-  if (!value || typeof value !== "object" || Array.isArray(value))
-    return undefined;
-  const result = asObject(value);
+  if (!isRecord(value)) return undefined;
+  const result = record(value);
   return {
     output: text(result.output) || undefined,
     artifactPaths: optionalObject(result.artifactPaths),
@@ -210,8 +275,8 @@ function completionResults(value: unknown): CompletionResult[] | undefined {
     .filter((result): result is CompletionResult => result !== undefined);
 }
 
-function completion(payload: unknown): Completion {
-  const data = asObject(payload);
+function completionPayload(value: unknown): CompletionPayload {
+  const data = record(value);
   return {
     runId: text(data.runId) || text(data.id),
     summary: text(data.summary) || undefined,
@@ -228,11 +293,11 @@ function completion(payload: unknown): Completion {
 }
 
 export function completionRunId(payload: unknown): string {
-  return completion(payload).runId;
+  return completionPayload(payload).runId;
 }
 
 export function completionText(payload: unknown): string {
-  const data = completion(payload);
+  const data = completionPayload(payload);
   return (
     data.output ||
     data.summary ||
@@ -246,7 +311,7 @@ export function completionText(payload: unknown): string {
 }
 
 function pathsFrom(value: unknown): string[] {
-  const object = asObject(value);
+  const object = record(value);
   return [
     text(object.outputPath),
     text(object.transcriptPath),
@@ -259,7 +324,7 @@ function pathsFrom(value: unknown): string[] {
 export function completionChildArtifacts(
   payload: unknown,
 ): CompletionChildArtifacts[] {
-  return (completion(payload).results ?? [])
+  return (completionPayload(payload).results ?? [])
     .map(({ artifactPath, sessionPath }) => ({
       ...(artifactPath ? { artifactPath } : {}),
       ...(sessionPath ? { sessionPath } : {}),
@@ -268,7 +333,7 @@ export function completionChildArtifacts(
 }
 
 export function completionArtifactPaths(payload: unknown): string[] {
-  const data = completion(payload);
+  const data = completionPayload(payload);
   const paths = [
     ...pathsFrom(data.artifactPaths),
     ...(data.results ?? []).flatMap((result) => [
@@ -280,20 +345,20 @@ export function completionArtifactPaths(payload: unknown): string[] {
 }
 
 export function completionStatus(payload: unknown): string {
-  const data = completion(payload);
+  const data = completionPayload(payload);
   return data.status || data.state || "";
 }
 
 export function completionAsyncDir(payload: unknown): string {
-  return completion(payload).asyncDir || "";
+  return completionPayload(payload).asyncDir || "";
 }
 
 export function completionSessionFile(payload: unknown): string {
-  return completion(payload).sessionFile || "";
+  return completionPayload(payload).sessionFile || "";
 }
 
 export function completionSuccess(payload: unknown): boolean | undefined {
-  return completion(payload).success;
+  return completionPayload(payload).success;
 }
 
 export function rpcErrorMessage(error: unknown): string {
@@ -301,11 +366,11 @@ export function rpcErrorMessage(error: unknown): string {
 }
 
 export function processTerminalRunId(payload: unknown): string {
-  const data = asObject(payload);
-  return text(data.runId) || text(asObject(data.processTerminal).runId);
+  const data = record(payload);
+  return text(data.runId) || text(record(data.processTerminal).runId);
 }
 
 export function processTerminalState(payload: unknown): string {
-  const data = asObject(payload);
-  return text(data.state) || text(asObject(data.processTerminal).state);
+  const data = record(payload);
+  return text(data.state) || text(record(data.processTerminal).state);
 }
