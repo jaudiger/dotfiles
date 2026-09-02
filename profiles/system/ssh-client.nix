@@ -44,7 +44,7 @@ in
           ForwardAgent = "no";
           HashKnownHosts = "yes";
           UserKnownHostsFile = "${host.homeDirectory}/.ssh/known_hosts";
-          ControlPath = "${host.homeDirectory}/.ssh/master-%r@%n:%p";
+          ControlPath = "/tmp/ssh-control-%C";
           IgnoreUnknown = "UseKeychain";
           UseKeychain = "yes";
         };
