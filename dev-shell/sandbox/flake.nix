@@ -43,12 +43,13 @@
               (subpath "/var/folders")
               (subpath (param "PWD")))
             (allow mach-lookup
-              ; Allow TLS clients and the macOS Keychain to verify credentials.
+              ; Allow credential verification and user identity lookups through macOS system services.
               (global-name "com.apple.SecurityServer")
               (global-name "com.apple.cfprefsd.agent")
               (global-name "com.apple.cfprefsd.daemon")
               (global-name "com.apple.ocspd")
               (global-name "com.apple.securityd")
+              (global-name "com.apple.system.opendirectoryd.libinfo")
               (global-name "com.apple.trustd")
               (global-name "com.apple.trustd.agent")
               (global-name "com.apple.xpcd"))
