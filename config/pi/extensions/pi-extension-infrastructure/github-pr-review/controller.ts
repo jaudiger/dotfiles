@@ -7,6 +7,11 @@ import {
 import { Type } from "typebox";
 import { pickReview } from "./picker.js";
 import {
+  createAsyncRunSupervisor,
+  type AsyncRun,
+  type AsyncRunSupervisor,
+} from "../subagents/async-run-supervisor.js";
+import {
   workflowTask,
   type ReviewWorkflowProvider,
 } from "./workflow-script.js";
@@ -209,18 +214,12 @@ function reviewUrl(review: PreparedReview): string {
   return review.number.toString();
 }
 
-export type ReviewRun = {
-  id: string;
-  review: PreparedReview;
-  completionReceived: boolean;
-  completion?: unknown;
-  processing: boolean;
-  terminalObserved: boolean;
-  stopping: boolean;
+type ReviewRunState = {
   successful?: boolean;
   reported: boolean;
-  cleaned: boolean;
 };
+
+export type ReviewRun = AsyncRun<PreparedReview, ReviewRunState>;
 
 export type GithubPrReviewController = {
   readonly active: ReviewContext | undefined;
@@ -239,18 +238,12 @@ export function registerGithubPrReviewController(
 ): GithubPrReviewController {
   provider.runtime.registerReady(pi);
 
-  const runs = new Map<string, ReviewRun>();
-  const earlyCompletions = new Map<string, unknown>();
-  const earlyTerminals = new Map<string, string>();
-  const processingPromises = new Set<Promise<void>>();
-  const spawningPromises = new Set<Promise<void>>();
-  const retainedDirectories = new Set<string>();
-  const subscribed = new Set<string>();
-  const terminalStates = new Map<string, string>();
-  const terminalWaiters = new Map<string, Set<(observed: boolean) => void>>();
+  // Keep prepared evidence owned until its directory is removed, including
+  // reviews that never reach supervisor.start.
+  const ownedDirectories = new Set<string>();
+  const cleanupPromises = new Map<string, Promise<boolean>>();
   let active: ReviewContext | undefined;
-  let spawning = 0;
-  let shuttingDown = false;
+  let supervisor: AsyncRunSupervisor<PreparedReview, ReviewRunState>;
 
   const report = (message: ReviewMessage): void => {
     pi.sendMessage(
@@ -271,150 +264,78 @@ export function registerGithubPrReviewController(
     active?.reviews.some((item) => item.directory === review.directory) ??
     false;
 
-  const waitForProcessTerminal = (id: string): Promise<boolean> => {
-    const state = terminalStates.get(id);
-    if (state === "observed") return Promise.resolve(true);
-    if (state === "unknown") return Promise.resolve(false);
-    return new Promise((resolve) => {
-      const waiters = terminalWaiters.get(id) ?? new Set();
-      let settled = false;
-      const finish = (observed: boolean) => {
-        if (settled) return;
-        settled = true;
-        waiters.delete(finish);
-        if (waiters.size === 0) terminalWaiters.delete(id);
-        clearTimeout(timeout);
-        resolve(observed);
-      };
-      const timeout = setTimeout(() => finish(false), 5_000);
-      waiters.add(finish);
-      terminalWaiters.set(id, waiters);
-    });
+  const cleanupDirectory = (directory: string): Promise<boolean> => {
+    const existing = cleanupPromises.get(directory);
+    if (existing) return existing;
+    const operation = (async () => {
+      try {
+        await rm(directory, { recursive: true, force: true });
+        ownedDirectories.delete(directory);
+        return true;
+      } catch {
+        return false;
+      } finally {
+        cleanupPromises.delete(directory);
+      }
+    })();
+    cleanupPromises.set(directory, operation);
+    return operation;
   };
 
-  const stopAndConfirm = async (run: ReviewRun): Promise<boolean> => {
-    try {
-      await provider.runtime.send(pi, "stop", { runId: run.id });
-    } catch {
-      // A failed stop request is still followed by terminal-event observation.
-    }
-    return waitForProcessTerminal(run.id);
-  };
+  const cleanupReview = (run: ReviewRun): Promise<boolean> =>
+    cleanupDirectory(run.owner.directory);
 
-  const cleanupRun = async (run: ReviewRun): Promise<void> => {
-    if (!run.terminalObserved || run.cleaned) return;
-    try {
-      await rm(run.review.directory, { recursive: true, force: true });
-      run.cleaned = true;
-      runs.delete(run.id);
-      terminalStates.delete(run.id);
-    } catch {
-      retainedDirectories.add(run.review.directory);
-    }
-  };
-
-  const stopReview = async (): Promise<void> => {
-    const directories = active?.reviews.map((review) => review.directory) ?? [];
-    active = undefined;
-    for (const run of runs.values()) run.stopping = true;
-    await Promise.allSettled([...spawningPromises]);
-    const ownedRuns = [...runs.values()];
-    const stopped = await Promise.all(
-      ownedRuns.map(async (run) => {
-        run.terminalObserved = await stopAndConfirm(run);
-        if (run.terminalObserved) await cleanupRun(run);
-        return run.terminalObserved;
-      }),
-    );
-    await Promise.allSettled([...processingPromises]);
+  const cleanupUnstarted = async (): Promise<void> => {
     const runDirectories = new Set(
-      ownedRuns.map((run) => run.review.directory),
+      [...supervisor.runs.values()].map((run) => run.owner.directory),
     );
-    if (stopped.every(Boolean))
-      await Promise.all(
-        directories
-          .filter(
-            (directory) =>
-              !runDirectories.has(directory) &&
-              !retainedDirectories.has(directory),
-          )
-          .map((directory) => rm(directory, { recursive: true, force: true })),
-      );
-    earlyCompletions.clear();
-    earlyTerminals.clear();
+    await Promise.all(
+      [...ownedDirectories]
+        .filter((directory) => !runDirectories.has(directory))
+        .map((directory) => cleanupDirectory(directory)),
+    );
   };
 
-  const spawnWorkflow = async (review: PreparedReview): Promise<void> => {
-    if (shuttingDown || !isActiveReview(review)) return;
-    spawning += 1;
-    try {
-      if (shuttingDown || !isActiveReview(review)) return;
-      const rpc = await provider.runtime.spawn(
-        pi,
-        review,
-        workflowTask(review, provider.workflow),
-        provider.identity.capabilitySource,
-      );
-      const id = provider.runtime.runId(rpc);
-      if (!id)
-        throw new Error("Review workflow started without a run identifier.");
-      const earlyTerminal = earlyTerminals.get(id);
-      earlyTerminals.delete(id);
-      if (earlyTerminal) terminalStates.set(id, earlyTerminal);
-      const run: ReviewRun = {
-        id,
-        review,
-        completionReceived: false,
-        processing: false,
-        terminalObserved:
-          earlyTerminal === "observed" || terminalStates.get(id) === "observed",
-        stopping: shuttingDown || !isActiveReview(review),
-        reported: false,
-        cleaned: false,
-      };
-      runs.set(id, run);
-      if (run.stopping) {
-        run.terminalObserved = await stopAndConfirm(run);
-        if (run.terminalObserved) await cleanupRun(run);
-        else retainedDirectories.add(review.directory);
+  supervisor = createAsyncRunSupervisor({
+    pi,
+    discoverEvents: () => provider.runtime.discoverEvents(pi),
+    runId: provider.runtime.runId,
+    completionRunId: (value) => provider.runtime.completion(value).runId,
+    processTerminalRunId: provider.runtime.processTerminalRunId,
+    processTerminalState: provider.runtime.processTerminalState,
+    stop: (runId) => provider.runtime.send(pi, "stop", { runId }),
+    createState: () => ({ reported: false }),
+    shouldStop: (review) => !isActiveReview(review),
+    // Keep completed runs so readiness can account for every selected review
+    // until stopReview performs the owner cleanup.
+    retainCompletedRuns: true,
+    cleanup: cleanupReview,
+    cleanupUnstarted,
+    onStopFailure: async (run, error) => {
+      report(provider.text.runFailure(run, error));
+    },
+    onCompletion: async (run, payload) => {
+      if (!isActiveReview(run.owner)) {
+        // Let the supervisor coordinate cleanup with the stop outcome. A
+        // terminal event can arrive while stopReview is still awaiting RPC.
+        run.stopping = true;
         return;
       }
-      const early = earlyCompletions.get(id);
-      if (early !== undefined) {
-        earlyCompletions.delete(id);
-        run.completion = early;
-        run.completionReceived = true;
-        startCompletion(run);
-      }
-    } finally {
-      spawning -= 1;
-    }
-  };
-
-  const processCompletion = async (run: ReviewRun): Promise<void> => {
-    try {
-      if (!run.terminalObserved)
-        run.terminalObserved = await waitForProcessTerminal(run.id);
-      if (!run.terminalObserved) return;
-      if (run.stopping || shuttingDown || !isActiveReview(run.review)) {
-        await cleanupRun(run);
-        return;
-      }
-      const result = provider.runtime.completion(run.completion);
+      const result = provider.runtime.completion(payload);
       const failed =
         result.success === false ||
         !["complete", "completed", "success", "succeeded"].includes(
           result.status.toLowerCase(),
         );
-      run.successful = !failed;
-      run.reported = true;
+      run.state.successful = !failed;
+      run.state.reported = true;
       if (!failed) {
         const ready =
           active?.reviews.every((review) =>
-            [...runs.values()].some(
+            [...supervisor.runs.values()].some(
               (candidate) =>
-                candidate.review.directory === review.directory &&
-                candidate.successful === true &&
+                candidate.owner.directory === review.directory &&
+                candidate.state.successful === true &&
                 candidate.terminalObserved,
             ),
           ) ?? false;
@@ -425,70 +346,29 @@ export function registerGithubPrReviewController(
           ? provider.text.workflowFailure(run, result)
           : provider.text.workflowReady(run, result),
       );
-    } finally {
-      run.processing = false;
-    }
-  };
-
-  const startCompletion = (run: ReviewRun): void => {
-    if (run.processing || run.reported || !run.completionReceived) return;
-    run.processing = true;
-    const promise = processCompletion(run).catch((error: unknown) => {
-      run.successful = false;
-      run.reported = true;
+    },
+    onCompletionError: async (run, error) => {
+      run.state.successful = false;
+      run.state.reported = true;
       report(provider.text.runFailure(run, error));
-    });
-    processingPromises.add(promise);
-    void promise.then(
-      () => processingPromises.delete(promise),
-      () => processingPromises.delete(promise),
-    );
+    },
+  });
+
+  const stopReview = async (): Promise<void> => {
+    active = undefined;
+    await supervisor.stopAll();
   };
 
-  const subscribeCompletion = (event: string): void => {
-    if (subscribed.has(event)) return;
-    subscribed.add(event);
-    pi.events.on(event, (raw) => {
-      const id = provider.runtime.completion(raw).runId;
-      const run = runs.get(id);
-      if (run) {
-        if (!run.completionReceived) {
-          run.completion = raw;
-          run.completionReceived = true;
-          startCompletion(run);
-        }
-      } else if (spawning > 0 && id) {
-        earlyCompletions.set(id, raw);
-      }
-    });
-  };
-
-  const trackSpawning = (promise: Promise<void>): Promise<void> => {
-    spawningPromises.add(promise);
-    void promise.then(
-      () => spawningPromises.delete(promise),
-      () => spawningPromises.delete(promise),
-    );
-    return promise;
-  };
-
-  const subscribeProcessTerminal = (event: string): void => {
-    if (subscribed.has(event)) return;
-    subscribed.add(event);
-    pi.events.on(event, (raw) => {
-      const id = provider.runtime.processTerminalRunId(raw);
-      const state = provider.runtime.processTerminalState(raw);
-      const run = id ? runs.get(id) : undefined;
-      if (!run || !state) {
-        if (id && state && spawning > 0) earlyTerminals.set(id, state);
-        return;
-      }
-      terminalStates.set(id, state);
-      if (state === "observed") run.terminalObserved = true;
-      const waiters = terminalWaiters.get(id);
-      if (waiters) for (const finish of waiters) finish(state === "observed");
-      if (run.stopping && run.terminalObserved) void cleanupRun(run);
-      else if (run.completionReceived) startCompletion(run);
+  const spawnWorkflow = async (review: PreparedReview): Promise<void> => {
+    if (supervisor.shuttingDown || !isActiveReview(review)) return;
+    await supervisor.start(review, async () => {
+      if (supervisor.shuttingDown || !isActiveReview(review)) return undefined;
+      return provider.runtime.spawn(
+        pi,
+        review,
+        workflowTask(review, provider.workflow),
+        provider.identity.capabilitySource,
+      );
     });
   };
 
@@ -499,9 +379,9 @@ export function registerGithubPrReviewController(
     description: provider.command.description,
     handler: async (args, ctx) => {
       const requestedPullRequest = args.trim() || undefined;
-      if (shuttingDown) return;
+      if (supervisor.shuttingDown) return;
       await stopReview();
-      if (shuttingDown) return;
+      if (supervisor.shuttingDown) return;
       const progress = progressFor(ctx);
       let requests: string[] = [];
       let candidates: ReviewCandidate[] = [];
@@ -527,7 +407,7 @@ export function registerGithubPrReviewController(
             provider.showRepositoryDescription ?? false,
           );
           if (!selected || selected.candidates.length === 0) return;
-          if (shuttingDown) return;
+          if (supervisor.shuttingDown) return;
           candidates = selected.candidates;
           if (selected.mode !== "review") {
             const action = selected.mode === "merge" ? "merge" : "supersede";
@@ -551,7 +431,7 @@ export function registerGithubPrReviewController(
                 return provider.prepareMutationTarget(candidate, ctx.cwd);
               }),
             );
-            if (shuttingDown) return;
+            if (supervisor.shuttingDown) return;
             await provider.mutations.before(action, targets, ctx);
             let text: string;
             if (action === "merge")
@@ -590,15 +470,16 @@ export function registerGithubPrReviewController(
             ctx.sessionManager.getSessionId(),
             request,
           );
-          if (shuttingDown) {
-            await rm(review.directory, { recursive: true, force: true });
+          ownedDirectories.add(review.directory);
+          if (supervisor.shuttingDown) {
+            await cleanupDirectory(review.directory);
             await stopReview();
             return;
           }
           session.reviews = [...session.reviews, review];
           session.generation += 1;
         }
-        if (shuttingDown) {
+        if (supervisor.shuttingDown) {
           await stopReview();
           return;
         }
@@ -606,15 +487,13 @@ export function registerGithubPrReviewController(
         if (provider.text.startingResearch)
           progress(provider.text.startingResearch(session.reviews.length));
         const reviews = session.reviews;
-        const events = await provider.runtime.discoverEvents(pi);
-        if (shuttingDown) {
+        await supervisor.discoverEvents();
+        if (supervisor.shuttingDown) {
           await stopReview();
           return;
         }
-        subscribeCompletion(events.asyncComplete);
-        subscribeProcessTerminal(events.processTerminal);
         const status = await provider.runtime.send(pi, "status", {});
-        if (shuttingDown) {
+        if (supervisor.shuttingDown) {
           await stopReview();
           return;
         }
@@ -623,19 +502,12 @@ export function registerGithubPrReviewController(
           reviews.length,
           `the selected ${reviews.length} pull request${reviews.length === 1 ? "" : "s"}`,
         );
-        spawning += 1;
-        try {
-          const results = await Promise.allSettled(
-            reviews.map((review) => trackSpawning(spawnWorkflow(review))),
-          );
-          const failure = results.find(
-            (result) => result.status === "rejected",
-          );
-          if (failure?.status === "rejected") throw failure.reason;
-        } finally {
-          spawning -= 1;
-        }
-        if (shuttingDown) return;
+        const results = await Promise.allSettled(
+          reviews.map((review) => spawnWorkflow(review)),
+        );
+        const failure = results.find((result) => result.status === "rejected");
+        if (failure?.status === "rejected") throw failure.reason;
+        if (supervisor.shuttingDown) return;
         if (provider.text.researchStarted)
           progress(provider.text.researchStarted);
         ctx.ui.notify(
@@ -735,8 +607,7 @@ export function registerGithubPrReviewController(
   });
 
   pi.on("session_shutdown", async () => {
-    shuttingDown = true;
-    await stopReview();
+    await supervisor.shutdown();
   });
 
   return {
@@ -744,7 +615,7 @@ export function registerGithubPrReviewController(
       return active;
     },
     get shuttingDown() {
-      return shuttingDown;
+      return supervisor.shuttingDown;
     },
     stopReview,
   };

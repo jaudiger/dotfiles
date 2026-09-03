@@ -4,6 +4,7 @@ import { spawnWithCapabilityCeiling } from "../pi-extension-infrastructure/subag
 import {
   registerGithubPrReviewController,
   type ReviewMessage,
+  type ReviewRun,
 } from "../pi-extension-infrastructure/github-pr-review/controller.js";
 import {
   checkoutReview,
@@ -27,7 +28,6 @@ import {
 } from "../pi-extension-infrastructure/subagents/rpc-v1.js";
 import { briocheWorkflowProvider } from "./tasks.js";
 import type {
-  PreparedReview,
   ReviewCandidate,
   ReviewDetails,
 } from "../pi-extension-infrastructure/github-pr-review/types.js";
@@ -37,40 +37,36 @@ const reviewLabel = "Brioche package bot";
 const researchLabel = "package";
 
 function workflowFailure(
-  run: {
-    id: string;
-    review: PreparedReview;
-  },
+  run: ReviewRun,
   result: ReturnType<typeof completion>,
 ): ReviewMessage {
+  const review = run.owner;
   return {
-    content: `${reviewLabel} review workflow failed for PR ${run.review.number}. Evidence retained at ${run.review.directory}.`,
+    content: `${reviewLabel} review workflow failed for PR ${review.number}. Evidence retained at ${review.directory}.`,
     details: {
       runId: run.id,
-      directory: run.review.directory,
-      researcherReport: join(run.review.directory, "researcher-report.md"),
-      scoutReport: join(run.review.directory, "scout-report.md"),
+      directory: review.directory,
+      researcherReport: join(review.directory, "researcher-report.md"),
+      scoutReport: join(review.directory, "scout-report.md"),
       status: result.status,
     },
   };
 }
 
 function workflowReady(
-  run: {
-    id: string;
-    review: PreparedReview;
-  },
+  run: ReviewRun,
   result: ReturnType<typeof completion>,
 ): ReviewMessage {
+  const review = run.owner;
   return {
-    content: `${reviewLabel} review evidence is ready for PR ${run.review.number}. Read the researcher and scout reports, the diff, current status checks, merge queue history, and every referenced log from ${run.review.directory}. Treat the researcher report as the canonical ${researchLabel} research. Summarize only recipe and check evidence, resolve any discrepancies against the diff, and classify the recommendation. Tell the user that available next actions are merge, checkout, wait, or follow-up. Wait for explicit selection and use the review execution tool for the selected action. Do not execute any PR mutation based only on the recommendation.`,
+    content: `${reviewLabel} review evidence is ready for PR ${review.number}. Read the researcher and scout reports, the diff, current status checks, merge queue history, and every referenced log from ${review.directory}. Treat the researcher report as the canonical ${researchLabel} research. Summarize only recipe and check evidence, resolve any discrepancies against the diff, and classify the recommendation. Tell the user that available next actions are merge, checkout, wait, or follow-up. Wait for explicit selection and use the review execution tool for the selected action. Do not execute any PR mutation based only on the recommendation.`,
     details: {
-      pr: run.review.number,
-      directory: run.review.directory,
-      researcherReport: join(run.review.directory, "researcher-report.md"),
-      scoutReport: join(run.review.directory, "scout-report.md"),
-      statusChecks: join(run.review.directory, "pr-metadata.json"),
-      diff: join(run.review.directory, "diff.patch"),
+      pr: review.number,
+      directory: review.directory,
+      researcherReport: join(review.directory, "researcher-report.md"),
+      scoutReport: join(review.directory, "scout-report.md"),
+      statusChecks: join(review.directory, "pr-metadata.json"),
+      diff: join(review.directory, "diff.patch"),
       workflowRunId: run.id,
       workflowStatus: result.status,
     },
@@ -164,7 +160,7 @@ export default function registerBriochePackagesBotReview(pi: ExtensionAPI) {
       workflowReady,
       runFailure: (run, error) => ({
         content: `${reviewLabel} review run ${run.id} failed: ${error instanceof Error ? error.message : String(error)}`,
-        details: { runId: run.id, directory: run.review.directory },
+        details: { runId: run.id, directory: run.owner.directory },
       }),
     },
     runtime: {

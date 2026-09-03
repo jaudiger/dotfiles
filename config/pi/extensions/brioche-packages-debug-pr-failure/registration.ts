@@ -1,4 +1,3 @@
-import { rm } from "node:fs/promises";
 import { basename, join } from "node:path";
 import { homedir } from "node:os";
 import type {
@@ -6,6 +5,10 @@ import type {
   ExtensionContext,
 } from "@earendil-works/pi-coding-agent";
 import { spawnWithCapabilityCeiling } from "../pi-extension-infrastructure/subagents/capability-spawn.js";
+import {
+  createAsyncRunSupervisor,
+  type AsyncRunSupervisor,
+} from "../pi-extension-infrastructure/subagents/async-run-supervisor.js";
 import {
   completionArtifactPaths,
   completionChildArtifacts,
@@ -18,7 +21,6 @@ import {
   discoverCompletion,
   processTerminalRunId,
   processTerminalState,
-  registerRpcReady,
   rpcErrorMessage,
   sendRpc,
   spawnedRunId,
@@ -29,6 +31,23 @@ import { parsePr, text } from "./parsing.js";
 import type { PendingRun, PreparedContext } from "./types.js";
 
 const source = "brioche-packages-debug-pr-failure";
+// Keep prepared evidence owned until it is removed, even when no run was
+// attached to the supervisor.
+const ownedDirectories = new Set<string>();
+const cleanupPromises = new Map<string, Promise<boolean>>();
+
+function cleanupDirectory(directory: string): Promise<boolean> {
+  const existing = cleanupPromises.get(directory);
+  if (existing) return existing;
+  const operation = removeDirectory(directory).finally(() =>
+    cleanupPromises.delete(directory),
+  );
+  cleanupPromises.set(directory, operation);
+  void operation.then((cleaned) => {
+    if (cleaned) ownedDirectories.delete(directory);
+  });
+  return operation;
+}
 
 const repositoriesRoot = join(homedir(), "Development", "git-repositories");
 const briochePackagesRepository = join(
@@ -63,158 +82,91 @@ function completionLabel(status: string, success: boolean | undefined): string {
 }
 
 export function registerDebugPrFailure(pi: ExtensionAPI) {
-  registerRpcReady(pi);
-  const pending = new Map<string, PendingRun>();
-  const trackedRuns = new Map<string, PendingRun>();
-  const earlyCompletions = new Map<string, unknown>();
-  const processingPromises = new Set<Promise<unknown>>();
-  const spawningPromises = new Set<Promise<void>>();
-  const subscribedEvents = new Set<string>();
-  const terminalStates = new Map<string, string>();
-  const terminalWaiters = new Map<string, Set<(observed: boolean) => void>>();
-  let spawning = 0;
-  let shuttingDown = false;
-
-  const waitForProcessTerminal = (runId: string): Promise<boolean> => {
-    const state = terminalStates.get(runId);
-    if (state === "observed") return Promise.resolve(true);
-    if (state === "unknown") return Promise.resolve(false);
-    return new Promise((resolve) => {
-      const waiters = terminalWaiters.get(runId) ?? new Set();
-      let settled = false;
-      const finish = (observed: boolean) => {
-        if (settled) return;
-        settled = true;
-        waiters.delete(finish);
-        if (waiters.size === 0) terminalWaiters.delete(runId);
-        clearTimeout(timeout);
-        resolve(observed);
-      };
-      const timeout = setTimeout(() => finish(false), 5_000);
-      waiters.add(finish);
-      terminalWaiters.set(runId, waiters);
-    });
+  let supervisor: AsyncRunSupervisor<PendingRun>;
+  const cleanupUnstarted = async (): Promise<void> => {
+    const runDirectories = new Set(
+      [...supervisor.runs.values()].map((run) => run.owner.directory),
+    );
+    await Promise.all(
+      [...ownedDirectories]
+        .filter((directory) => !runDirectories.has(directory))
+        .map((directory) => cleanupDirectory(directory)),
+    );
   };
 
-  const complete = async (payload: unknown): Promise<boolean> => {
-    const runId = completionRunId(payload);
-    const item = pending.get(runId);
-    if (!item) return false;
-    pending.delete(runId);
-    if (shuttingDown) return false;
-    const terminalObserved = await waitForProcessTerminal(runId);
-    if (shuttingDown) return false;
-    const result = completionText(payload);
-    const artifacts = completionArtifactPaths(payload);
-    const childArtifacts = completionChildArtifacts(payload);
-    const asyncDir = completionAsyncDir(payload);
-    const sessionFile = completionSessionFile(payload);
-    const status = completionStatus(payload);
-    const success = completionSuccess(payload);
-    const label = completionLabel(status, success);
-    const cleanupSucceeded = terminalObserved
-      ? await removeDirectory(item.directory)
-      : false;
-    const cleanupNotice = cleanupSucceeded
-      ? ""
-      : "\n\nTemporary debug artifacts could not be removed automatically.";
-    if (shuttingDown) return terminalObserved;
-    const artifactLines = [
-      ...artifacts,
-      ...childArtifacts.flatMap(({ artifactPath, sessionPath }) => [
-        ...(artifactPath ? [`artifactPath: ${artifactPath}`] : []),
-        ...(sessionPath ? [`sessionPath: ${sessionPath}`] : []),
-      ]),
-    ];
-    const artifactNotice = artifactLines.length
-      ? `\n\nSubagent artifacts:\n${[...new Set(artifactLines)].join("\n")}`
-      : "";
-    pi.sendMessage(
-      {
-        customType: "brioche-debug-pr-failure",
-        content: `${label} for PR ${item.pr}.\n\n${result || "The subagent returned no report."}${artifactNotice}${cleanupNotice}`,
-        details: {
-          pr: item.pr,
-          runId,
-          ...(status ? { status } : {}),
-          ...(success !== undefined ? { success } : {}),
-          ...(asyncDir ? { asyncDir } : {}),
-          ...(sessionFile ? { sessionFile } : {}),
-          ...(artifacts.length ? { artifactPaths: artifacts } : {}),
-          ...(childArtifacts.length ? { childArtifacts } : {}),
+  supervisor = createAsyncRunSupervisor<PendingRun>({
+    pi,
+    discoverEvents: async () => discoverCompletion(pi, source),
+    runId: spawnedRunId,
+    completionRunId,
+    processTerminalRunId,
+    processTerminalState,
+    stop: (runId) => sendRpc(pi, source, "stop", { runId }),
+    // A failed cleanup must retain both the run and its evidence for a later
+    // retry, including the shutdown retry path.
+    retainCompletedRuns: true,
+    cleanupUnstarted,
+    cleanup: async (run) => {
+      const cleaned = await cleanupDirectory(run.owner.directory);
+      run.cleaned = cleaned;
+      return cleaned;
+    },
+    onStopFailure: async (run, error) => {
+      pi.sendMessage(
+        {
+          customType: "brioche-debug-pr-failure",
+          content: `Shutdown could not confirm investigation completion for PR ${run.owner.pr}: ${String(error)}`,
+          details: { pr: run.owner.pr, runId: run.id, error: String(error) },
+          display: true,
         },
-        display: true,
-      },
-      { triggerTurn: false, deliverAs: "followUp" },
-    );
-    return terminalObserved;
-  };
-
-  const trackCompletion = (payload: unknown): void => {
-    const runId = completionRunId(payload);
-    const promise = complete(payload);
-    processingPromises.add(promise);
-    void promise.then(
-      (terminalObserved) => {
-        processingPromises.delete(promise);
-        if (!shuttingDown && terminalObserved) trackedRuns.delete(runId);
-      },
-      () => {
-        processingPromises.delete(promise);
-      },
-    );
-  };
-
-  const trackSpawning = (promise: Promise<void>): Promise<void> => {
-    spawningPromises.add(promise);
-    void promise.then(
-      () => spawningPromises.delete(promise),
-      () => spawningPromises.delete(promise),
-    );
-    return promise;
-  };
-
-  const subscribeToCompletion = (event: string) => {
-    if (subscribedEvents.has(event)) return;
-    subscribedEvents.add(event);
-    pi.events.on(event, (payload) => {
-      const runId = completionRunId(payload);
-      if (pending.has(runId)) {
-        trackCompletion(payload);
-        return;
-      }
-      if (spawning && runId) earlyCompletions.set(runId, payload);
-    });
-  };
-
-  const subscribeToProcessTerminal = (event: string) => {
-    if (subscribedEvents.has(event)) return;
-    subscribedEvents.add(event);
-    pi.events.on(event, (payload) => {
-      const runId = processTerminalRunId(payload);
-      const state = processTerminalState(payload);
-      if (!runId || !state) return;
-      terminalStates.set(runId, state);
-      const waiters = terminalWaiters.get(runId);
-      if (waiters) {
-        for (const finish of waiters) finish(state === "observed");
-      }
-      if (shuttingDown && state === "observed") {
-        const item = trackedRuns.get(runId);
-        if (item) {
-          void removeDirectory(item.directory).then((removed) => {
-            if (removed) trackedRuns.delete(runId);
-          });
-        }
-      }
-    });
-  };
-
-  const discoverCompletionEvent = async () => {
-    const events = await discoverCompletion(pi, source);
-    subscribeToCompletion(events.asyncComplete);
-    subscribeToProcessTerminal(events.processTerminal);
-  };
+        { triggerTurn: false, deliverAs: "followUp" },
+      );
+    },
+    onCompletion: async (run, payload) => {
+      const item = run.owner;
+      const result = completionText(payload);
+      const artifacts = completionArtifactPaths(payload);
+      const childArtifacts = completionChildArtifacts(payload);
+      const asyncDir = completionAsyncDir(payload);
+      const sessionFile = completionSessionFile(payload);
+      const status = completionStatus(payload);
+      const success = completionSuccess(payload);
+      const label = completionLabel(status, success);
+      const cleanupSucceeded = await cleanupDirectory(item.directory);
+      run.cleaned = cleanupSucceeded;
+      const cleanupNotice = cleanupSucceeded
+        ? ""
+        : "\n\nTemporary debug artifacts could not be removed automatically.";
+      const artifactLines = [
+        ...artifacts,
+        ...childArtifacts.flatMap(({ artifactPath, sessionPath }) => [
+          ...(artifactPath ? [`artifactPath: ${artifactPath}`] : []),
+          ...(sessionPath ? [`sessionPath: ${sessionPath}`] : []),
+        ]),
+      ];
+      const artifactNotice = artifactLines.length
+        ? `\n\nSubagent artifacts:\n${[...new Set(artifactLines)].join("\n")}`
+        : "";
+      pi.sendMessage(
+        {
+          customType: "brioche-debug-pr-failure",
+          content: `${label} for PR ${item.pr}.\n\n${result || "The subagent returned no report."}${artifactNotice}${cleanupNotice}`,
+          details: {
+            pr: item.pr,
+            runId: run.id,
+            ...(status ? { status } : {}),
+            ...(success !== undefined ? { success } : {}),
+            ...(asyncDir ? { asyncDir } : {}),
+            ...(sessionFile ? { sessionFile } : {}),
+            ...(artifacts.length ? { artifactPaths: artifacts } : {}),
+            ...(childArtifacts.length ? { childArtifacts } : {}),
+          },
+          display: true,
+        },
+        { triggerTurn: false, deliverAs: "followUp" },
+      );
+    },
+  });
 
   pi.registerCommand("brioche-packages:debug-pr-failure", {
     description: "Investigate a Brioche package PR merge queue failure",
@@ -227,121 +179,71 @@ export function registerDebugPrFailure(pi: ExtensionAPI) {
         );
         return;
       }
-      if (shuttingDown) return;
+      if (supervisor.shuttingDown) return;
       let prepared: PreparedContext | undefined;
       try {
         ctx.ui.notify(`Preparing failure artifacts for PR ${pr}...`, "info");
         prepared = await prepareContext(pr, briochePackagesRepository);
-        if (shuttingDown) {
-          await removeDirectory(prepared.directory);
+        ownedDirectories.add(prepared.directory);
+        if (supervisor.shuttingDown) {
+          await cleanupDirectory(prepared.directory);
           return;
         }
-        const packageName = text(prepared.metadata.package) || "unknown";
+        const context = prepared;
+        const packageName = text(context.metadata.package) || "unknown";
         const task = `${investigationInstructions}
 
 Investigate Brioche package PR ${pr} for package ${packageName}. The temporary evidence and package, Brioche, and runtime utility repositories are supplied as read-only context. Return your findings for the parent agent.`;
-        await discoverCompletionEvent();
-        if (shuttingDown) {
-          await removeDirectory(prepared.directory);
+        await supervisor.discoverEvents();
+        if (supervisor.shuttingDown) {
+          await cleanupDirectory(context.directory);
           return;
         }
-        await trackSpawning(
-          (async () => {
-            spawning += 1;
-            try {
-              if (shuttingDown) {
-                await removeDirectory(prepared.directory);
-                return;
-              }
-              const rpc = await spawnWithCapabilityCeiling<Json | undefined>({
-                sessionId: ctx.sessionManager.getSessionId(),
-                source: "brioche-packages-debug-pr-failure",
-                ceiling: {
-                  allowedAgents: ["oracle"],
-                  allowedTools: ["read", "grep", "find", "ls"],
-                },
-                spawn: async () =>
-                  shuttingDown
-                    ? undefined
-                    : sendRpc(pi, source, "spawn", {
-                        cwd: briochePackagesRepository,
-                        context: "fresh",
-                        agent: "oracle",
-                        task,
-                        reads: [
-                          prepared.directory,
-                          briochePackagesRepository,
-                          briocheSourceRepository,
-                          briocheRuntimeUtilsRepository,
-                        ],
-                        intercomBridge: { mode: "off" },
-                        mission: false,
-                        async: true,
-                      }),
-              });
-              if (!rpc) {
-                await removeDirectory(prepared.directory);
-                return;
-              }
-              const runId = spawnedRunId(rpc);
-              if (!runId)
-                throw new Error("Subagent started without a run identifier.");
-              const item = { directory: prepared.directory, pr };
-              trackedRuns.set(runId, item);
-              if (shuttingDown) {
-                try {
-                  await sendRpc(pi, source, "stop", { runId });
-                } catch {
-                  // The run may have reached a terminal state before shutdown.
-                }
-                if (await waitForProcessTerminal(runId))
-                  await removeDirectory(prepared.directory);
-                return;
-              }
-              pending.set(runId, item);
-              const completion = earlyCompletions.get(runId);
-              if (completion) {
-                earlyCompletions.delete(runId);
-                trackCompletion(completion);
-              }
-            } finally {
-              spawning -= 1;
-            }
-          })(),
+        const item = { directory: context.directory, pr };
+        const run = await supervisor.start(item, () =>
+          spawnWithCapabilityCeiling<Json | undefined>({
+            sessionId: ctx.sessionManager.getSessionId(),
+            source,
+            ceiling: {
+              allowedAgents: ["oracle"],
+              allowedTools: ["read", "grep", "find", "ls"],
+            },
+            spawn: async () =>
+              supervisor.shuttingDown
+                ? undefined
+                : sendRpc(pi, source, "spawn", {
+                    cwd: briochePackagesRepository,
+                    context: "fresh",
+                    agent: "oracle",
+                    task,
+                    reads: [
+                      context.directory,
+                      briochePackagesRepository,
+                      briocheSourceRepository,
+                      briocheRuntimeUtilsRepository,
+                    ],
+                    intercomBridge: { mode: "off" },
+                    mission: false,
+                    async: true,
+                  }),
+          }),
         );
+        if (!run) {
+          await cleanupDirectory(context.directory);
+          return;
+        }
         ctx.ui.notify(
-          `Prepared ${prepared.summary}. Started investigation for PR ${pr} in ${basename(prepared.directory)}.`,
+          `Prepared ${context.summary}. Started investigation for PR ${pr} in ${basename(context.directory)}.`,
           "info",
         );
       } catch (error) {
-        if (prepared)
-          await rm(prepared.directory, { recursive: true, force: true });
+        if (prepared) await cleanupDirectory(prepared.directory);
         ctx.ui.notify(rpcErrorMessage(error), "error");
       }
     },
   });
 
   pi.on("session_shutdown", async () => {
-    shuttingDown = true;
-    await Promise.allSettled([...spawningPromises]);
-    const runs = [...trackedRuns.entries()];
-    await Promise.all(
-      runs.map(async ([runId, item]) => {
-        try {
-          await sendRpc(pi, source, "stop", { runId });
-        } catch {
-          // The run may have reached a terminal state before shutdown.
-        }
-        if (await waitForProcessTerminal(runId))
-          await removeDirectory(item.directory);
-        return undefined;
-      }),
-    );
-    await Promise.allSettled([...processingPromises]);
-    pending.clear();
-    for (const [runId] of trackedRuns) {
-      if (terminalStates.get(runId) === "observed") trackedRuns.delete(runId);
-    }
-    earlyCompletions.clear();
+    await supervisor.shutdown();
   });
 }
