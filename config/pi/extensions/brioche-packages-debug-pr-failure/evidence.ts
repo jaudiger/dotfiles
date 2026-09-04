@@ -35,21 +35,6 @@ async function run(
   return result.stdout;
 }
 
-async function capture(
-  command: string,
-  args: string[],
-  cwd: string,
-): Promise<string> {
-  try {
-    return await run(command, args, cwd);
-  } catch (error) {
-    const result = asObject(error);
-    const output = `${text(result.stdout)}${text(result.stderr)}`;
-    if (output) return output;
-    throw error;
-  }
-}
-
 export async function removeDirectory(directory: string): Promise<boolean> {
   try {
     await rm(directory, { recursive: true, force: true });
@@ -133,7 +118,9 @@ export async function prepareContext(
       join(directory, "metadata.json"),
       `${JSON.stringify(metadata, null, 2)}\n`,
     );
-    const pullRequestDiff = await capture(
+    // The diff is required evidence; unlike optional job logs, a failed
+    // command must abort preparation rather than produce a misleading run.
+    const pullRequestDiff = await run(
       "gh",
       ["pr", "diff", pr, "--repo", "brioche-dev/brioche-packages"],
       cwd,
@@ -164,18 +151,25 @@ export async function prepareContext(
       .split("\n")
       .map((path) => path.trim())
       .filter(Boolean);
-    const failedLog = await capture(
-      "gh",
-      [
-        "run",
-        "view",
-        runId,
-        "--repo",
-        "brioche-dev/brioche-packages",
-        "--log-failed",
-      ],
-      cwd,
-    );
+    let failedLog: string;
+    try {
+      failedLog = await run(
+        "gh",
+        [
+          "run",
+          "view",
+          runId,
+          "--repo",
+          "brioche-dev/brioche-packages",
+          "--log-failed",
+        ],
+        cwd,
+      );
+    } catch (error) {
+      // Failed-job logs are optional diagnostics. Preserve the failure and
+      // label the missing evidence instead of treating it as a report.
+      failedLog = `Diagnostic: failed-job evidence unavailable (${error instanceof Error ? error.message : String(error)}).`;
+    }
     await writeFile(join(directory, "failed-jobs.log"), failedLog);
     if (eventFiles.length > 0) {
       const limaDirectory = `/tmp/${basename(directory)}`;

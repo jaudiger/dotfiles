@@ -57,6 +57,8 @@ export type PreparedSubmission = {
 };
 
 type SubmissionState = {
+  /** True once repository mutation work has been entered; ambiguity retains evidence. */
+  mutationStarted: boolean;
   branch?: string;
   branchCreated: boolean;
   commitCreated: boolean;
@@ -745,6 +747,7 @@ export async function submitPreparedPackage(
   if (!prepared.success)
     throw new Error("Cannot submit a package with a failed preflight.");
   const state: SubmissionState = {
+    mutationStarted: false,
     branchCreated: false,
     commitCreated: false,
     pushSucceeded: false,
@@ -754,6 +757,10 @@ export async function submitPreparedPackage(
     const packagePath = `packages/${prepared.packageName}`;
     const repository = await verifyRepository(cwd, packagePath, signal);
     const branch = branchName(prepared.packageName);
+    // From this point onward cancellation may race a Git mutation. The
+    // resulting evidence must remain available even if no acknowledgement is
+    // received for the command that was in flight.
+    state.mutationStarted = true;
     await startFromMain(cwd, packagePath, repository.branch, signal);
     await ensureBranchAvailable(branch, cwd, signal);
     await runCommand("git", ["switch", "-c", branch], cwd, signal);

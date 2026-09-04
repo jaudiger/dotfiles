@@ -1,10 +1,8 @@
 import { join } from "node:path";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import { spawnWithCapabilityCeiling } from "../pi-extension-infrastructure/subagents/capability-spawn.js";
 import {
   registerGithubPrReviewController,
   type ReviewMessage,
-  type ReviewRun,
 } from "../pi-extension-infrastructure/github-pr-review/controller.js";
 import {
   checkoutReview,
@@ -16,18 +14,10 @@ import {
   prepareReview,
   supersedeReview,
 } from "./github.js";
-import {
-  completion,
-  discoverCompletion,
-  processTerminalRunId,
-  processTerminalState,
-  registerRpcReady,
-  requireAsyncCapacity,
-  sendRpc,
-  spawnedRunId,
-} from "../pi-extension-infrastructure/subagents/rpc-v1.js";
+import type { AsyncCompletion } from "../pi-extension-infrastructure/subagents/async.js";
 import { briocheWorkflowProvider } from "./tasks.js";
 import type {
+  PreparedReview,
   ReviewCandidate,
   ReviewDetails,
 } from "../pi-extension-infrastructure/github-pr-review/types.js";
@@ -36,28 +26,28 @@ const rpcSource = "brioche-packages-bot-review";
 const reviewLabel = "Brioche package bot";
 const researchLabel = "package";
 
-function workflowFailure(
-  run: ReviewRun,
-  result: ReturnType<typeof completion>,
-): ReviewMessage {
-  const review = run.owner;
-  return {
-    content: `${reviewLabel} review workflow failed for PR ${review.number}. Evidence retained at ${review.directory}.`,
-    details: {
-      runId: run.id,
-      directory: review.directory,
-      researcherReport: join(review.directory, "researcher-report.md"),
-      scoutReport: join(review.directory, "scout-report.md"),
-      status: result.status,
-    },
-  };
+function validateWorkflowResult(
+  review: PreparedReview,
+  result: AsyncCompletion,
+): void {
+  const value = result.value;
+  if (!value || typeof value !== "object" || Array.isArray(value))
+    throw new Error("Review workflow returned no valid evidence handoff.");
+  const handoff = value as Record<string, unknown>;
+  if (
+    handoff.status !== "ready" ||
+    handoff.directory !== review.directory ||
+    handoff.researcherReport !==
+      join(review.directory, "researcher-report.md") ||
+    handoff.scoutReport !== join(review.directory, "scout-report.md")
+  )
+    throw new Error("Review workflow returned a malformed evidence handoff.");
 }
 
 function workflowReady(
-  run: ReviewRun,
-  result: ReturnType<typeof completion>,
+  review: PreparedReview,
+  result: AsyncCompletion,
 ): ReviewMessage {
-  const review = run.owner;
   return {
     content: `${reviewLabel} review evidence is ready for PR ${review.number}. Read the researcher and scout reports, the diff, current status checks, merge queue history, and every referenced log from ${review.directory}. Treat the researcher report as the canonical ${researchLabel} research. Summarize only recipe and check evidence, resolve any discrepancies against the diff, and classify the recommendation. Tell the user that available next actions are merge, checkout, wait, or follow-up. Wait for explicit selection and use the review execution tool for the selected action. Do not execute any PR mutation based only on the recommendation.`,
     details: {
@@ -67,8 +57,7 @@ function workflowReady(
       scoutReport: join(review.directory, "scout-report.md"),
       statusChecks: join(review.directory, "pr-metadata.json"),
       diff: join(review.directory, "diff.patch"),
-      workflowRunId: run.id,
-      workflowStatus: result.status,
+      ...(result.text ? { researcherOutput: result.text } : {}),
     },
   };
 }
@@ -156,48 +145,8 @@ export default function registerBriochePackagesBotReview(pi: ExtensionAPI) {
           : `Checking out PR ${review?.number ?? "selected pull request"}...`,
       blockedCommand:
         "A Brioche package bot review is active. Use brioche_packages_bot_review_execute after explicit user action selection.",
-      workflowFailure,
       workflowReady,
-      runFailure: (run, error) => ({
-        content: `${reviewLabel} review run ${run.id} failed: ${error instanceof Error ? error.message : String(error)}`,
-        details: { runId: run.id, directory: run.owner.directory },
-      }),
-    },
-    runtime: {
-      registerReady: registerRpcReady,
-      discoverEvents: (pi) => discoverCompletion(pi, rpcSource),
-      send: (pi, method, params) => sendRpc(pi, rpcSource, method, params),
-      completion,
-      processTerminalRunId,
-      processTerminalState,
-      runId: spawnedRunId,
-      requireAsyncCapacity,
-      spawn: async (pi, review, workflowScript, capabilitySource) =>
-        spawnWithCapabilityCeiling({
-          sessionId: review.sessionId,
-          source: capabilitySource,
-          ceiling: {
-            allowedAgents: ["researcher", "scout"],
-            allowedTools: [
-              "read",
-              "grep",
-              "find",
-              "ls",
-              "web_search",
-              "fetch_content",
-              "get_search_content",
-            ],
-          },
-          spawn: () =>
-            sendRpc(pi, rpcSource, "spawn", {
-              cwd: review.cwd,
-              workflowScript,
-              output: false,
-              intercomBridge: { mode: "off" },
-              mission: false,
-              async: true,
-            }),
-        }),
+      validateWorkflowResult,
     },
   });
 }

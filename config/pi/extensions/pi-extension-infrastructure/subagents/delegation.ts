@@ -146,7 +146,7 @@ async function runDelegation(
       cancellationController.abort();
       clearTimeout(timeout);
       try {
-        unsubscribe?.();
+        if (typeof unsubscribe === "function") unsubscribe();
       } catch {
         // Listener cleanup is best effort when the host is shutting down.
       }
@@ -289,7 +289,7 @@ export async function runDelegatedText(
   return result.text;
 }
 
-/** Run one owned delegation that requests a schema-validated structured result. */
+/** Run one owned delegation using the schema as a provider hint. */
 export async function runDelegatedStructured(
   pi: ExtensionAPI,
   input: DelegationRequestInput & { schema: Record<string, unknown> },

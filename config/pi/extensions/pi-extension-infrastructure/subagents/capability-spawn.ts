@@ -10,23 +10,28 @@ type CapabilitySpawnOptions<T> = {
   source: string;
   ceiling: CapabilityCeiling;
   signal?: AbortSignal;
-  spawn: () => Promise<T>;
+  spawn: (signal: AbortSignal) => Promise<T>;
 };
 
 const capabilityLockKey = Symbol.for(
-  "pi-subagents.capability-ceiling-spawn-lock",
+  "pi-subagents.capability-ceiling-spawn-locks",
 );
 const globalLocks = globalThis as typeof globalThis &
-  Record<symbol, Promise<void> | undefined>;
+  Record<symbol, Map<string, Promise<void>>>;
+const locks =
+  globalLocks[capabilityLockKey] ?? new Map<string, Promise<void>>();
+globalLocks[capabilityLockKey] = locks;
 
 const acquireCapabilityLock = async (
+  key: string,
   signal?: AbortSignal,
 ): Promise<() => void> => {
-  const previous = globalLocks[capabilityLockKey] ?? Promise.resolve();
+  const previous = locks.get(key) ?? Promise.resolve();
   let release!: () => void;
-  globalLocks[capabilityLockKey] = new Promise<void>((resolve) => {
+  const current = new Promise<void>((resolve) => {
     release = resolve;
   });
+  locks.set(key, current);
 
   await new Promise<void>((resolve, reject) => {
     let settled = false;
@@ -37,8 +42,21 @@ const acquireCapabilityLock = async (
       settled = true;
       removeAbortListener();
       // Keep the lock chain live, but do not hold this cancelled request in it.
-      void previous.then(release, release);
-      reject(new Error("Capability ceiling acquisition was cancelled."));
+      void previous.then(
+        () => {
+          release();
+          if (locks.get(key) === current) locks.delete(key);
+        },
+        () => {
+          release();
+          if (locks.get(key) === current) locks.delete(key);
+        },
+      );
+      const error = new Error(
+        "Capability ceiling acquisition was cancelled.",
+      ) as Error & { dispatchState?: string };
+      error.dispatchState = "not-dispatched";
+      reject(error);
     };
 
     if (signal?.aborted) {
@@ -57,32 +75,55 @@ const acquireCapabilityLock = async (
         if (settled) return;
         settled = true;
         removeAbortListener();
-        void release();
+        release();
+        if (locks.get(key) === current) locks.delete(key);
         reject(error);
       },
     );
   });
 
-  return release;
+  return () => {
+    release();
+    if (locks.get(key) === current) locks.delete(key);
+  };
 };
 
 /** Run one spawn while its temporary capability ceiling is registered. */
 export async function spawnWithCapabilityCeiling<T>(
   options: CapabilitySpawnOptions<T>,
 ): Promise<T> {
-  const release = await acquireCapabilityLock(options.signal);
+  const key = `${options.sessionId}\u0000${options.source}`;
+  const release = await acquireCapabilityLock(key, options.signal);
   if (options.signal?.aborted) {
     release();
-    throw new Error("Capability ceiling acquisition was cancelled.");
+    const error = new Error(
+      "Capability ceiling acquisition was cancelled.",
+    ) as Error & { dispatchState?: string };
+    error.dispatchState = "not-dispatched";
+    throw error;
   }
+  let capability: { dispose: () => void };
   try {
-    const capability = registerSubagentCapabilityCeiling({
+    capability = registerSubagentCapabilityCeiling({
       sessionId: options.sessionId,
       source: options.source,
       ceiling: options.ceiling,
     });
+  } catch (cause) {
+    const error = new Error(
+      `Capability ceiling setup failed: ${
+        cause instanceof Error ? cause.message : String(cause)
+      }`,
+    ) as Error & { dispatchState?: string };
+    error.dispatchState = "not-dispatched";
+    release();
+    throw error;
+  }
+  try {
     try {
-      return await options.spawn();
+      return await options.spawn(
+        options.signal ?? new AbortController().signal,
+      );
     } finally {
       capability.dispose();
     }
