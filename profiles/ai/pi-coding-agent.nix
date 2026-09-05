@@ -44,8 +44,8 @@ in
             ../../config/pi/extensions
           ];
           packages = [
-            "npm:pi-subagents@0.65.0"
-            "npm:pi-web-access@0.27.0"
+            "npm:pi-subagents@0.65.1"
+            "npm:pi-web-access@0.28.0"
           ];
           quietStartup = true;
           showCacheMissNotices = true;
