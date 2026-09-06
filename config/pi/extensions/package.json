@@ -9,6 +9,7 @@
       "./brioche-packages-submit-package/index.ts",
       "./github-dependabot-review/index.ts",
       "./notifications/index.ts",
+      "./nixpkgs-update-package/index.ts",
       "./project-trust/index.ts",
       "./web-tools/index.ts",
       "./protected-paths/index.ts",
