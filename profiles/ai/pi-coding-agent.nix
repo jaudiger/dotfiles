@@ -15,6 +15,15 @@ let
   # Rules
   rulesDir = ../../config/agents/rules;
   ruleFiles = builtins.sort (a: b: a < b) (builtins.attrNames (builtins.readDir rulesDir));
+
+  # Web tools
+  webToolsPython = pkgs.python3.withPackages (
+    pythonPackages: with pythonPackages; [
+      playwright
+      trafilatura
+    ]
+  );
+  webToolsBrowsers = pkgs.playwright-driver.browsers;
 in
 
 {
@@ -23,12 +32,17 @@ in
       programs.pi-coding-agent = {
         enable = true;
 
+        extraPackages = [ webToolsPython ];
+
         package = pkgs.symlinkJoin {
           name = "pi-coding-agent";
           paths = [ pkgs.pi-coding-agent ];
           nativeBuildInputs = [ pkgs.makeWrapper ];
           postBuild = ''
-            wrapProgram "$out/bin/pi" --set NODE_PATH "${host.homeDirectory}/.pi/agent/npm/node_modules"
+            wrapProgram "$out/bin/pi" \
+              --set NODE_PATH "${host.homeDirectory}/.pi/agent/npm/node_modules" \
+              --set PI_WEB_TOOLS_PYTHON "${webToolsPython}/bin/python3" \
+              --set PLAYWRIGHT_BROWSERS_PATH "${webToolsBrowsers}"
           '';
         };
 
@@ -45,7 +59,6 @@ in
           ];
           packages = [
             "npm:pi-subagents@0.65.1"
-            "npm:pi-web-access@0.28.0"
           ];
           quietStartup = true;
           showCacheMissNotices = true;
@@ -62,6 +75,11 @@ in
               researcher = {
                 model = "openai-codex/gpt-5.6-terra";
                 thinking = "medium";
+                tools = [
+                  "read"
+                  "web_search"
+                  "fetch_url"
+                ];
               };
               reviewer = {
                 model = "openai-codex/gpt-5.6-terra";
@@ -127,10 +145,6 @@ in
           "piSubagentsConfig" = {
             source = ../../config/pi/packages/pi-subagents.json;
             target = ".pi/agent/extensions/subagent/config.json";
-          };
-          "piWebSearchConfig" = {
-            source = ../../config/pi/packages/web-search.json;
-            target = ".config/pi/web-search.json";
           };
         };
       };

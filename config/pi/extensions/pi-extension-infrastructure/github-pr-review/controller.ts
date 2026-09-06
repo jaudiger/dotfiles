@@ -241,15 +241,7 @@ export function registerGithubPrReviewController(
       capabilities: {
         sessionId: owner.review.sessionId,
         allowedAgents: ["researcher", "scout"],
-        allowedTools: [
-          "read",
-          "grep",
-          "find",
-          "ls",
-          "web_search",
-          "fetch_content",
-          "get_search_content",
-        ],
+        allowedTools: ["read", "grep", "find", "ls", "web_search", "fetch_url"],
       },
     },
     evidence: {
