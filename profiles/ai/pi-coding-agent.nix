@@ -51,6 +51,12 @@ in
         settings = {
           collapseChangelog = true;
           inherit defaultModel defaultProvider defaultThinkingLevel;
+          defaultTools = [
+            "bash"
+            "read"
+            "edit"
+            "write"
+          ];
           enableAnalytics = false;
           enableInstallTelemetry = false;
           externalEditor = "nvim";
@@ -67,31 +73,65 @@ in
               delegate = {
                 model = "openai-codex/gpt-5.6-luna";
                 thinking = "medium";
+                tools = [
+                  "read"
+                  "bash"
+                  "edit"
+                  "write"
+                  "contact_supervisor"
+                ];
               };
               oracle = {
                 model = "openai-codex/gpt-5.6-terra";
                 thinking = "xhigh";
+                tools = [
+                  "read"
+                  "bash"
+                ];
               };
               researcher = {
                 model = "openai-codex/gpt-5.6-terra";
                 thinking = "medium";
                 tools = [
+                  "bash"
                   "read"
+                  "write"
                   "web_search"
                   "fetch_url"
+                ];
+                subagentOnlyExtensions = [
+                  ../../config/pi/extensions/web-tools
                 ];
               };
               reviewer = {
                 model = "openai-codex/gpt-5.6-terra";
                 thinking = "high";
+                tools = [
+                  "read"
+                  "bash"
+                  "contact_supervisor"
+                ];
               };
               scout = {
                 model = "openai-codex/gpt-5.6-luna";
                 thinking = "medium";
+                tools = [
+                  "read"
+                  "bash"
+                  "write"
+                  "contact_supervisor"
+                ];
               };
               worker = {
                 model = "openai-codex/gpt-5.6-luna";
                 thinking = "high";
+                tools = [
+                  "read"
+                  "bash"
+                  "edit"
+                  "write"
+                  "contact_supervisor"
+                ];
               };
             };
             defaultModel = "${defaultProvider}/${defaultModel}";

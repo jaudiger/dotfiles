@@ -6,6 +6,7 @@ import {
 } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
 import { pickReview } from "./picker.js";
+import { createToolScope } from "../tool-scope.js";
 import {
   createAsyncJobs,
   type AsyncCompletion,
@@ -161,6 +162,7 @@ type ReviewSessionState =
   "preparing" | "researching" | "ready" | "mutating" | "stale";
 
 type ReviewContext = {
+  sessionId: string;
   candidates: ReviewCandidate[];
   reviews: PreparedReview[];
   generation: number;
@@ -210,6 +212,7 @@ export function registerGithubPrReviewController(
   let active: ReviewContext | undefined;
   let reviewGeneration = 0;
   let shuttingDown = false;
+  const actionToolScope = createToolScope(pi, [provider.tool.name]);
   const asyncJobs = createAsyncJobs(pi, {
     source,
     customType: provider.identity.customType,
@@ -221,6 +224,7 @@ export function registerGithubPrReviewController(
 
   const stopReview = async (): Promise<void> => {
     active = undefined;
+    actionToolScope.release();
     await asyncJobs.stopAll();
   };
 
@@ -241,7 +245,7 @@ export function registerGithubPrReviewController(
       capabilities: {
         sessionId: owner.review.sessionId,
         allowedAgents: ["researcher", "scout"],
-        allowedTools: ["read", "grep", "find", "ls", "web_search", "fetch_url"],
+        allowedTools: ["read", "bash", "web_search", "fetch_url"],
       },
     },
     evidence: {
@@ -372,6 +376,7 @@ export function registerGithubPrReviewController(
         progress(provider.text.preparingEvidence(requests.length));
         ctx.ui.notify(provider.text.preparingEvidence(requests.length), "info");
         const session: ReviewContext = {
+          sessionId: ctx.sessionManager.getSessionId(),
           candidates,
           reviews: [],
           generation: ++reviewGeneration,
@@ -379,6 +384,7 @@ export function registerGithubPrReviewController(
           readyDirectories: new Set(),
         };
         active = session;
+        actionToolScope.acquire();
         for (const [index, request] of requests.entries()) {
           progress(`Preparing evidence ${index + 1} of ${requests.length}...`);
           const review = await provider.prepareReview(
@@ -440,7 +446,7 @@ export function registerGithubPrReviewController(
       ]),
     }),
     async execute(_id, params, _signal, _onUpdate, ctx) {
-      if (!active)
+      if (!active || active.sessionId !== ctx.sessionManager.getSessionId())
         return {
           content: [{ type: "text", text: provider.text.noActiveReview }],
         };
@@ -458,14 +464,14 @@ export function registerGithubPrReviewController(
         snapshot: review.snapshot,
         cwd: review.cwd,
       }));
-      await provider.mutations.before(params.action, targets, ctx);
-      session.state = "mutating";
       const progress = progressFor(ctx);
-      ctx.ui.setStatus(
-        provider.identity.statusKey,
-        provider.text.mutationStatus(params.action, session.reviews[0]),
-      );
       try {
+        await provider.mutations.before(params.action, targets, ctx);
+        session.state = "mutating";
+        ctx.ui.setStatus(
+          provider.identity.statusKey,
+          provider.text.mutationStatus(params.action, session.reviews[0]),
+        );
         const text =
           params.action === "merge"
             ? await provider.mutations.merge(targets, ctx, progress)
@@ -481,6 +487,7 @@ export function registerGithubPrReviewController(
         }
         return { content: [{ type: "text", text }] };
       } finally {
+        actionToolScope.release();
         session.generation += 1;
         session.state = "stale";
         ctx.ui.setStatus(provider.identity.statusKey, undefined);
@@ -488,8 +495,13 @@ export function registerGithubPrReviewController(
     },
   });
 
-  pi.on("tool_call", (event) => {
-    if (!active || !isToolCallEventType("bash", event)) return;
+  pi.on("tool_call", (event, ctx) => {
+    if (
+      !active ||
+      active.sessionId !== ctx.sessionManager.getSessionId() ||
+      !isToolCallEventType("bash", event)
+    )
+      return;
     const command = event.input.command;
     const bypassesReview =
       /\bgh\b.*\bpr\s+(?:merge|review|checkout|close|comment|edit|create)\b/.test(
@@ -509,6 +521,8 @@ export function registerGithubPrReviewController(
 
   pi.on("session_shutdown", async () => {
     shuttingDown = true;
+    active = undefined;
+    actionToolScope.release();
     await asyncJobs.shutdown();
   });
 
