@@ -36,6 +36,11 @@
       enable = true;
     };
 
+    # Python
+    ruff-format = {
+      enable = true;
+    };
+
     # TOML
     taplo = {
       enable = true;

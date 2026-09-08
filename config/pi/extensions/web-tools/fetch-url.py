@@ -47,7 +47,7 @@ def is_text_content(content_type: str) -> bool:
 
 def response_charset(content_type: str) -> str:
     match = re.search(r"(?:^|;)\s*charset=([^;]+)", content_type, re.IGNORECASE)
-    return match.group(1).strip().strip('"\'') if match else "utf-8"
+    return match.group(1).strip().strip("\"'") if match else "utf-8"
 
 
 def decode_response_body(body: bytes, content_type: str) -> str:
@@ -145,8 +145,10 @@ async def fetch_url(url: str) -> str:
             )
             content_type = response.headers.get("content-type", "") if response else ""
 
-            if response and is_text_content(content_type) and not is_html_content(
-                content_type
+            if (
+                response
+                and is_text_content(content_type)
+                and not is_html_content(content_type)
             ):
                 return decode_response_body(await response.body(), content_type)
 
