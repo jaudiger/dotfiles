@@ -198,7 +198,7 @@ export function registerResearchTool(
                 source: "nixpkgs-update-package",
                 ceiling: {
                   allowedAgents: ["researcher"],
-                  allowedTools: ["read", "web_search", "fetch_url"],
+                  allowedTools: ["bash", "web_search", "fetch_url"],
                 },
               },
             },

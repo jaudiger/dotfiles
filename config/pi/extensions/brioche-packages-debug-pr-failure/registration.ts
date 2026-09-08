@@ -63,7 +63,7 @@ export function registerDebugPrFailure(pi: ExtensionAPI) {
       capabilities: {
         sessionId: ctx.sessionManager.getSessionId(),
         allowedAgents: ["oracle"],
-        allowedTools: ["read", "bash"],
+        allowedTools: ["bash"],
       },
     },
     evidence: {

@@ -163,7 +163,7 @@ export function registerSubmitPackage(pi: ExtensionAPI): void {
       capabilities: {
         sessionId: owner.sessionId,
         allowedAgents: ["researcher"],
-        allowedTools: ["read", "web_search", "fetch_url"],
+        allowedTools: ["bash", "web_search", "fetch_url"],
       },
     },
     evidence: {

@@ -53,9 +53,6 @@ in
           inherit defaultModel defaultProvider defaultThinkingLevel;
           defaultTools = [
             "bash"
-            "read"
-            "edit"
-            "write"
           ];
           enableAnalytics = false;
           enableInstallTelemetry = false;
@@ -74,10 +71,7 @@ in
                 model = "openai-codex/gpt-5.6-luna";
                 thinking = "medium";
                 tools = [
-                  "read"
                   "bash"
-                  "edit"
-                  "write"
                   "contact_supervisor"
                 ];
               };
@@ -85,7 +79,6 @@ in
                 model = "openai-codex/gpt-5.6-terra";
                 thinking = "xhigh";
                 tools = [
-                  "read"
                   "bash"
                 ];
               };
@@ -94,8 +87,6 @@ in
                 thinking = "medium";
                 tools = [
                   "bash"
-                  "read"
-                  "write"
                   "web_search"
                   "fetch_url"
                 ];
@@ -107,7 +98,6 @@ in
                 model = "openai-codex/gpt-5.6-terra";
                 thinking = "high";
                 tools = [
-                  "read"
                   "bash"
                   "contact_supervisor"
                 ];
@@ -116,9 +106,7 @@ in
                 model = "openai-codex/gpt-5.6-luna";
                 thinking = "medium";
                 tools = [
-                  "read"
                   "bash"
-                  "write"
                   "contact_supervisor"
                 ];
               };
@@ -126,10 +114,7 @@ in
                 model = "openai-codex/gpt-5.6-luna";
                 thinking = "high";
                 tools = [
-                  "read"
                   "bash"
-                  "edit"
-                  "write"
                   "contact_supervisor"
                 ];
               };

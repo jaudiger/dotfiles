@@ -245,7 +245,7 @@ export function registerGithubPrReviewController(
       capabilities: {
         sessionId: owner.review.sessionId,
         allowedAgents: ["researcher", "scout"],
-        allowedTools: ["read", "bash", "web_search", "fetch_url"],
+        allowedTools: ["bash", "web_search", "fetch_url"],
       },
     },
     evidence: {
