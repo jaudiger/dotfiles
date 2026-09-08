@@ -107,7 +107,6 @@ export function createAsyncJobs(
   pi: ExtensionAPI,
   options: { source: string; customType: string },
 ): AsyncJobs {
-  registerReady(pi);
   const events = eventsFor(pi);
   const jobs = new Map<string, RecordState>();
   const byRun = new Map<string, RecordState>();
@@ -122,75 +121,91 @@ export function createAsyncJobs(
   const subscriptions = new Set<() => void>();
   let shuttingDown = false;
   let shutdownPromise: Promise<void> | undefined;
-  const discovered = discover(pi, options.source).then((found) => {
-    if (shuttingDown) return;
-    const completionUnsubscribe = events.on(found.completionEvent, (raw) => {
-      let runId = "";
-      try {
-        const candidate =
-          raw && typeof raw === "object"
-            ? (raw as Record<string, unknown>)
-            : {};
-        runId =
-          typeof candidate.runId === "string"
-            ? candidate.runId
-            : typeof candidate.id === "string"
-              ? candidate.id
-              : "";
-        const completion = parseCompletion(raw);
-        runId = completion.runId;
-        const run = byRun.get(runId);
-        if (!run) {
-          earlyCompletions.set(runId, {
-            value: raw,
-            expires: Date.now() + earlyEventTtlMs,
-          });
-          return;
-        }
-        if (run.finalizing || run.completion) return;
-        run.completion = completion;
-        void process(run);
-      } catch (error) {
-        const run = runId ? byRun.get(runId) : undefined;
-        if (run && !run.finalizing)
-          void finalize(
-            run,
-            genericFailure(
-              run.job,
-              `completion was malformed (${errorMessage(error)})`,
-            ),
-          );
-        else if (runId)
-          earlyCompletions.set(runId, {
-            value: raw,
-            expires: Date.now() + earlyEventTtlMs,
-          });
-      }
-    });
-    if (typeof completionUnsubscribe === "function")
-      subscriptions.add(completionUnsubscribe);
-    const terminalUnsubscribe = events.on(found.terminalEvent, (raw) => {
-      const observed = terminal(raw);
-      if (!observed) return;
-      const run = byRun.get(observed.runId);
+  let initialization: Promise<void> | undefined;
+
+  const handleCompletion = (raw: unknown): void => {
+    let runId = "";
+    try {
+      const candidate =
+        raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
+      runId =
+        typeof candidate.runId === "string"
+          ? candidate.runId
+          : typeof candidate.id === "string"
+            ? candidate.id
+            : "";
+      const completion = parseCompletion(raw);
+      runId = completion.runId;
+      const run = byRun.get(runId);
       if (!run) {
-        earlyTerminals.set(observed.runId, {
-          observed: observed.observed,
+        earlyCompletions.set(runId, {
+          value: raw,
           expires: Date.now() + earlyEventTtlMs,
         });
         return;
       }
-      if (run.finalizing) return;
-      if (observed.observed) run.terminalObserved = true;
-      if (run.completion) void process(run);
-      else scheduleIncomplete(run);
+      if (run.finalizing || run.completion) return;
+      run.completion = completion;
+      void process(run);
+    } catch (error) {
+      const run = runId ? byRun.get(runId) : undefined;
+      if (run && !run.finalizing)
+        void finalize(
+          run,
+          genericFailure(
+            run.job,
+            `completion was malformed (${errorMessage(error)})`,
+          ),
+        );
+      else if (runId)
+        earlyCompletions.set(runId, {
+          value: raw,
+          expires: Date.now() + earlyEventTtlMs,
+        });
+    }
+  };
+
+  const handleTerminal = (raw: unknown): void => {
+    const observed = terminal(raw);
+    if (!observed) return;
+    const run = byRun.get(observed.runId);
+    if (!run) {
+      earlyTerminals.set(observed.runId, {
+        observed: observed.observed,
+        expires: Date.now() + earlyEventTtlMs,
+      });
+      return;
+    }
+    if (run.finalizing) return;
+    if (observed.observed) run.terminalObserved = true;
+    if (run.completion) void process(run);
+    else scheduleIncomplete(run);
+  };
+
+  function initialize(): Promise<void> {
+    if (initialization) return initialization;
+    if (shuttingDown)
+      return Promise.reject(new Error("service is shutting down"));
+
+    initialization = discover(pi, options.source).then((found) => {
+      if (shuttingDown) return;
+      const completionUnsubscribe = events.on(
+        found.completionEvent,
+        handleCompletion,
+      );
+      if (typeof completionUnsubscribe === "function")
+        subscriptions.add(completionUnsubscribe);
+      const terminalUnsubscribe = events.on(
+        found.terminalEvent,
+        handleTerminal,
+      );
+      if (typeof terminalUnsubscribe === "function")
+        subscriptions.add(terminalUnsubscribe);
     });
-    if (typeof terminalUnsubscribe === "function")
-      subscriptions.add(terminalUnsubscribe);
-  });
-  // Discovery is intentionally allowed to reject; every start turns it into a
-  // pre-dispatch final report rather than creating an unhandled rejection.
-  void discovered.catch(() => undefined);
+    // Discovery failures are reported by the first job that needs the service.
+    void initialization.catch(() => undefined);
+    return initialization;
+  }
 
   function forget(run: RecordState): void {
     jobs.delete(run.key);
@@ -471,7 +486,8 @@ export function createAsyncJobs(
     let preparationError: unknown;
     try {
       if (shuttingDown) throw new Error("service is shutting down");
-      await discovered;
+      await initialize();
+      if (shuttingDown) throw new Error("service is shutting down");
       capacity(
         await requestStatus(),
         records.length,
