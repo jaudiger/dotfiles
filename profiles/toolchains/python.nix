@@ -70,42 +70,6 @@ in
           '';
         };
 
-        # Claude Code configuration
-        claude-code = {
-          lspServers = {
-            ruff = {
-              command = "ruff";
-              args = [ "server" ];
-              extensionToLanguage = {
-                ".py" = "python";
-                ".pyi" = "python";
-              };
-            };
-            ty = {
-              command = "ty";
-              args = [ "server" ];
-              extensionToLanguage = {
-                ".py" = "python";
-                ".pyi" = "python";
-              };
-            };
-          };
-        };
-
-        # Opencode configuration
-        opencode = {
-          settings = {
-            lsp = {
-              ty = {
-                command = [
-                  "ty"
-                  "server"
-                ];
-              };
-            };
-          };
-        };
-
         # Zed configuration
         zed-editor = {
           userSettings = {

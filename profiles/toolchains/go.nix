@@ -63,20 +63,6 @@ in
         enable = true;
       };
 
-      # Claude Code configuration
-      claude-code = {
-        lspServers = {
-          gopls = {
-            command = "gopls";
-            args = [ "serve" ];
-            extensionToLanguage = {
-              ".go" = "go";
-              ".mod" = "gomod";
-            };
-          };
-        };
-      };
-
       # Neovim configuration
       nixvim = {
         plugins.lsp.servers = {
@@ -84,21 +70,6 @@ in
             enable = true;
             settings = {
               gopls = goplsConfig;
-            };
-          };
-        };
-      };
-
-      # Opencode configuration
-      opencode = {
-        settings = {
-          lsp = {
-            gopls = {
-              command = [
-                "gopls"
-                "serve"
-              ];
-              initialization = goplsConfig;
             };
           };
         };

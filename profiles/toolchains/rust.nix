@@ -241,18 +241,6 @@ in
         };
       };
 
-      # Claude Code configuration
-      claude-code = {
-        lspServers = {
-          rust-analyzer = {
-            command = "rust-analyzer";
-            extensionToLanguage = {
-              ".rs" = "rust";
-            };
-          };
-        };
-      };
-
       # Neovim configuration
       nixvim = {
         plugins.lsp.servers = {
@@ -261,18 +249,6 @@ in
             installCargo = false;
             installRustc = false;
             settings = rustAnalyzerConfig;
-          };
-        };
-      };
-
-      # Opencode configuration
-      opencode = {
-        settings = {
-          lsp = {
-            rust = {
-              command = [ "rust-analyzer" ];
-              initialization = rustAnalyzerConfig;
-            };
           };
         };
       };

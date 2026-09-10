@@ -32,41 +32,12 @@ in
       };
 
       programs = {
-        # Claude Code configuration
-        claude-code = {
-          lspServers = {
-            yaml-language-server = {
-              command = "yaml-language-server";
-              args = [ "--stdio" ];
-              extensionToLanguage = {
-                ".yaml" = "yaml";
-                ".yml" = "yaml";
-              };
-            };
-          };
-        };
-
         # Neovim configuration
         nixvim = {
           plugins.lsp.servers = {
             yamlls = {
               enable = true;
               settings = yamlConfig;
-            };
-          };
-        };
-
-        # Opencode configuration
-        opencode = {
-          settings = {
-            lsp = {
-              yaml-ls = {
-                command = [
-                  "yaml-language-server"
-                  "--stdio"
-                ];
-                initialization = yamlConfig;
-              };
             };
           };
         };

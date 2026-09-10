@@ -21,20 +21,6 @@
           };
         };
       };
-
-      # Opencode configuration
-      opencode = {
-        settings = {
-          lsp = {
-            dockerfile = {
-              command = [
-                "docker-langserver"
-                "--stdio"
-              ];
-            };
-          };
-        };
-      };
     };
   };
 }

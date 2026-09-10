@@ -58,30 +58,6 @@ in
           };
         };
 
-        # Claude Code configuration
-        claude-code = {
-          lspServers = {
-            jdtls = {
-              command = "jdtls";
-              extensionToLanguage = {
-                ".java" = "java";
-              };
-            };
-          };
-        };
-
-        # Opencode configuration
-        opencode = {
-          settings = {
-            lsp = {
-              jdtls = {
-                command = [ "jdtls" ];
-                initialization = jdtlsConfig;
-              };
-            };
-          };
-        };
-
         # Zed configuration
         zed-editor = {
           userSettings = {
