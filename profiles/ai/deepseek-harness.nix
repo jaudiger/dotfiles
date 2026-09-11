@@ -53,15 +53,23 @@ in
               config:
                 provider: spawn
                 toolName: subagent
-                backgroundMode: continuable
+                backgroundMode: one-shot
+                enableRunInBackground: false
                 maxDepth: 1
+
+            - id: tool-subagent-control
+              disabled: true
 
             - id: tool-subagent-fork
               config:
                 provider: fork
                 toolName: subagent_fork
                 backgroundMode: one-shot
+                enableRunInBackground: false
                 maxDepth: 1
+
+            - id: tool-subagent-list-agents
+              disabled: true
 
             - insert:
                 - id: tool-subagent-oracle
@@ -69,7 +77,8 @@ in
                   config:
                     provider: spawn
                     toolName: subagent_oracle
-                    backgroundMode: continuable
+                    backgroundMode: one-shot
+                    enableRunInBackground: false
                     maxDepth: 1
                     agentOptions:
                       provider: openai-codex
@@ -86,7 +95,8 @@ in
                   config:
                     provider: spawn
                     toolName: subagent_researcher
-                    backgroundMode: continuable
+                    backgroundMode: one-shot
+                    enableRunInBackground: false
                     maxDepth: 1
                     agentOptions:
                       provider: openai-codex
@@ -104,7 +114,8 @@ in
                   config:
                     provider: spawn
                     toolName: subagent_reviewer
-                    backgroundMode: continuable
+                    backgroundMode: one-shot
+                    enableRunInBackground: false
                     maxDepth: 1
                     agentOptions:
                       provider: openai-codex
@@ -115,14 +126,14 @@ in
                     toolFilter:
                       allow:
                         - bash
-                        - send_message
 
                 - id: tool-subagent-scout
                   name: '@deepseek-ai/dsh-tool-subagent'
                   config:
                     provider: spawn
                     toolName: subagent_scout
-                    backgroundMode: continuable
+                    backgroundMode: one-shot
+                    enableRunInBackground: false
                     maxDepth: 1
                     agentOptions:
                       provider: openai-codex
@@ -133,14 +144,14 @@ in
                     toolFilter:
                       allow:
                         - bash
-                        - send_message
 
                 - id: tool-subagent-worker
                   name: '@deepseek-ai/dsh-tool-subagent'
                   config:
                     provider: spawn
                     toolName: subagent_worker
-                    backgroundMode: continuable
+                    backgroundMode: one-shot
+                    enableRunInBackground: false
                     maxDepth: 1
                     agentOptions:
                       provider: openai-codex
@@ -151,7 +162,6 @@ in
                     toolFilter:
                       allow:
                         - bash
-                        - send_message
           '';
           target = ".dsh/cordis.patch.yml";
         };
