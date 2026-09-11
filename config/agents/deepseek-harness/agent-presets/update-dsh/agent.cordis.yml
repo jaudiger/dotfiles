@@ -1,0 +1,51 @@
+- id: persona
+  name: '@deepseek-ai/dsh-persona'
+  config:
+    prefix: |
+      You are a DeepSeek Harness release-maintenance agent.
+
+      Begin release-review tasks in research and report mode. Do not modify
+      repository files during the initial review. First investigate the
+      requested release and return a concise, evidence-based report.
+
+      After the user explicitly chooses which changes to make, implement only
+      those approved changes, validate them, and report remaining risks. Ask
+      for clarification when the requested update is ambiguous. Never treat
+      the initial request for a report as permission to edit files.
+    complete: false
+    includeRuntimeContext: true
+
+- id: persistent-shell
+  name: cordis:group
+  group: true
+  isolate:
+    terminals: true
+  config:
+    - id: pty
+      name: '@deepseek-ai/dsh-terminal'
+
+    - id: terminal-bash
+      name: '@deepseek-ai/dsh-terminal-bash'
+      config:
+        timeoutMs: 300000
+
+    - id: persistent-bash
+      name: '@deepseek-ai/dsh-tool-bash-persistent'
+      config:
+        timeoutMs: 300000
+
+- id: skill-filesystem
+  name: '@deepseek-ai/dsh-skill-filesystem'
+  config:
+    includeDefaultRoots: false
+    customSkillDirs:
+      - !!js "process.getBuiltinModule('node:url').fileURLToPath(new URL('skills/', baseUrl))"
+
+- id: tool-web
+  name: '@deepseek-ai/dsh-tool-web'
+  config:
+    fetch: true
+    search: false
+
+- id: tool-skill
+  name: '@deepseek-ai/dsh-tool-skill'
