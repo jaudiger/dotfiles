@@ -97,7 +97,6 @@ in
                     toolFilter:
                       allow:
                         - bash
-                        - web_search
                         - web_fetch
 
                 - id: tool-subagent-reviewer
