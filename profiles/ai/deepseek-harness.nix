@@ -26,7 +26,7 @@ in
         };
 
         "dshAgentPresets" = {
-          source = ../../config/agents/deepseek-harness/agent-presets;
+          source = ../../config/deepseek-harness/agent-presets;
           target = ".dsh/.agent-presets";
         };
 
