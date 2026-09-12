@@ -9,7 +9,6 @@ let
   host = config.modules.host;
 
   deepseekHarness = pkgs.callPackage ../../pkgs/deepseek-harness.nix { };
-  customPresetsDir = "${host.dotfilesDirectory}/config/agents/deepseek-harness/agent-presets";
 
   # Rules
   rulesDir = ../../config/agents/rules;
@@ -21,6 +20,16 @@ in
       packages = [ deepseekHarness ];
 
       file = {
+        "dshAgentInstructions" = {
+          text = lib.concatMapStringsSep "\n\n" (name: builtins.readFile (rulesDir + "/${name}")) ruleFiles;
+          target = ".dsh/AGENTS.md";
+        };
+
+        "dshAgentPresets" = {
+          source = ../../config/agents/deepseek-harness/agent-presets;
+          target = ".dsh/.agent-presets";
+        };
+
         "dshCordisPatch" = {
           text = ''
             - id: agent-default-model
@@ -31,9 +40,7 @@ in
             - id: agent-presets
               config:
                 default: default
-                roots:
-                  - path: ${customPresetsDir}
-                    trust: system
+                includeShippedRoot: false
 
             - id: llm-pi-ai
               config:
@@ -164,11 +171,6 @@ in
                         - bash
           '';
           target = ".dsh/cordis.patch.yml";
-        };
-
-        "dshAgentInstructions" = {
-          text = lib.concatMapStringsSep "\n\n" (name: builtins.readFile (rulesDir + "/${name}")) ruleFiles;
-          target = ".dsh/AGENTS.md";
         };
       };
 
