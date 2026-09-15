@@ -49,7 +49,7 @@ stdenv.mkDerivation (finalAttrs: {
 
   meta = with lib; {
     description = "A data serialization language for expressing clear API messages, config files, etc";
-    homepage = "https://ziggy-lang.io";
+    homepage = "https://github.com/kristoff-it/ziggy";
     license = licenses.mit;
     maintainers = with maintainers; [ jaudiger ];
   };

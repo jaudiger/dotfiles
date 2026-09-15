@@ -54,7 +54,7 @@ stdenv.mkDerivation (finalAttrs: {
 
   meta = with lib; {
     description = "Fast, Scalable, Flexible Static Site Generator (SSG)";
-    homepage = "https://zine-ssg.io";
+    homepage = "https://github.com/kristoff-it/zine";
     license = licenses.mit;
     maintainers = with maintainers; [ jaudiger ];
   };

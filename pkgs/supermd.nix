@@ -49,6 +49,7 @@ stdenv.mkDerivation (finalAttrs: {
 
   meta = with lib; {
     description = "SuperMD is an extension of Markdown used by https://zine-ssg.io";
+    homepage = "https://github.com/kristoff-it/supermd";
     license = licenses.mit;
     maintainers = with maintainers; [ jaudiger ];
   };

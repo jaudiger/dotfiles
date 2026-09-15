@@ -49,6 +49,7 @@ stdenv.mkDerivation (finalAttrs: {
 
   meta = with lib; {
     description = "HTML Language Server & Templating Language Library";
+    homepage = "https://github.com/kristoff-it/superhtml";
     license = licenses.mit;
     maintainers = with maintainers; [ jaudiger ];
   };
