@@ -40,7 +40,7 @@ stdenv.mkDerivation (finalAttrs: {
 
   buildPhase = ''
     runHook preBuild
-    zig build "''${zigBuildFlags[@]}"
+    zig build ${lib.escapeShellArgs finalAttrs.zigBuildFlags}
     runHook postBuild
   '';
 
