@@ -47,7 +47,7 @@
 
             buildInputs =
               with pkgs;
-              lib.optionals stdenv.isDarwin [
+              lib.optionals stdenv.hostPlatform.isDarwin [
                 apple-sdk_26
               ];
           };

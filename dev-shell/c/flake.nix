@@ -41,7 +41,7 @@
                 rdkafka
                 mongoc
               ]
-              ++ lib.optionals pkgs.stdenv.isDarwin [
+              ++ lib.optionals pkgs.stdenv.hostPlatform.isDarwin [
                 apple-sdk_26
               ];
           };
