@@ -10,7 +10,7 @@
       };
       supermd = prev.callPackage ../../pkgs/supermd.nix { zig_master = prev.zigpkgs.master-2026-06-13; };
       ziggy = prev.callPackage ../../pkgs/ziggy.nix { zig_master = prev.zigpkgs.master-2026-06-13; };
-      zine = prev.callPackage ../../pkgs/zine.nix { zig_master = prev.zigpkgs.master-2026-06-13; };
+      zine = prev.callPackage ../../pkgs/zine.nix { zig_master = prev.zigpkgs.master-2026-07-26; };
     })
   ];
 

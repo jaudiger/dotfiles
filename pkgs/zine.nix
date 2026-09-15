@@ -7,19 +7,19 @@
 
 stdenv.mkDerivation (finalAttrs: {
   pname = "zine";
-  version = "0.12.0";
+  version = "0.14.0";
 
   src = fetchFromGitHub {
     owner = "kristoff-it";
     repo = "zine";
     rev = "v${finalAttrs.version}";
-    hash = "sha256-GcrheiUUhQkmUY9Uy6poIM7t1/5zsNH/wWHjrN8/FFo=";
+    hash = "sha256-jY1jkYfvysFfxrYth4f26eU/TiE7HIp0Rxq9yvCA7fs=";
   };
 
   zigDeps = zig_master.fetchDeps {
     inherit (finalAttrs) src pname version;
     fetchAll = true;
-    hash = "sha256-rnosrZgroQyBXzhhYIZpLjG5BCdHAuHzFCmjxixQdvY=";
+    hash = "sha256-vcluHtnZlKqb8A/7iaChhTv0Qddod/B6DiMMmTS1Bcw=";
   };
 
   nativeBuildInputs = [ zig_master ];
@@ -27,11 +27,6 @@ stdenv.mkDerivation (finalAttrs: {
   preConfigure = ''
     export ZIG_GLOBAL_CACHE_DIR="$TMPDIR/zig-global-cache"
     mkdir -p "$ZIG_GLOBAL_CACHE_DIR"
-  '';
-
-  postPatch = ''
-    # Patch build.zig to return a valid version when git is not available
-    substituteInPlace build.zig --replace 'return .unknown;' "return .{ .tag = \"${finalAttrs.version}\" };"
   '';
 
   postConfigure = ''
@@ -44,7 +39,11 @@ stdenv.mkDerivation (finalAttrs: {
     runHook postBuild
   '';
 
-  zigBuildFlags = [ "-Doptimize=ReleaseFast" ];
+  zigBuildFlags = [
+    "-Doptimize=ReleaseFast"
+    "-Dno-git-version"
+    "-Dversion=${finalAttrs.version}"
+  ];
 
   installPhase = ''
     runHook preInstall
