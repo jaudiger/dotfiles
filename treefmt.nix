@@ -5,6 +5,7 @@
     # JSON / Markdown / TypeScript
     prettier = {
       enable = true;
+      excludes = [ "pkgs/deepseek-harness-package-lock.json" ];
       includes = [
         "*.json"
         "*.md"
