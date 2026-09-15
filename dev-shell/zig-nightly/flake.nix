@@ -42,7 +42,7 @@
         {
           default = pkgs.mkShell {
             nativeBuildInputs = with pkgs; [
-              zigpkgs.master-2026-06-01
+              zigpkgs.master-2026-09-01
             ];
 
             buildInputs =
