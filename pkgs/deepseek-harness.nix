@@ -8,23 +8,23 @@
 
 buildNpmPackage rec {
   pname = "deepseek-harness";
-  version = "0.1.5-rc.2";
+  version = "0.1.6-alpha.1";
 
   src = fetchurl {
     url = "https://registry.npmjs.org/@deepseek-ai/dsh/-/dsh-${version}.tgz";
-    hash = "sha256-9MVIOdaegr8cOlpBqRDDzhQFzZ6dl9dTwMBPQGx9dIA=";
+    hash = "sha256-9K/QE9p0mJygaNN9sdBNVS1/nI1Slv9mxQ1nGApjhPg=";
   };
 
   sourceRoot = "package";
 
-  npmDepsHash = "sha256-bKb9UVBZIBq/OhlRoEok0ArXZlG04+gsPQsKXbjO4e4=";
+  npmDepsHash = "sha256-jhh8Zz0C6qVEBmrYeLRLQ8fFjElAJzZbMtax3fYpdEA=";
 
   nativeBuildInputs = [
     makeWrapper
   ];
 
-  # Regenerate by extracting the npm tarball, removing devDependencies, retaining
-  # peer dependencies required at runtime, and running npm install --package-lock-only --omit=dev.
+  # Regenerate by extracting the npm tarball, removing devDependencies, and
+  # running npm install --package-lock-only --omit=dev.
   postPatch = ''
     sed -i.bak \
       -e '/^  "devDependencies": {/,/^  }$/d' \
@@ -36,7 +36,6 @@ buildNpmPackage rec {
 
   npmInstallFlags = [
     "--omit=dev"
-    "--include=peer"
   ];
 
   dontNpmBuild = true;
