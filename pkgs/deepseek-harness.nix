@@ -2,22 +2,29 @@
   lib,
   buildNpmPackage,
   fetchurl,
+  fetchzip,
   makeWrapper,
-  nodejs,
 }:
 
+let
+  runtimeNode = fetchzip {
+    url = "https://nodejs.org/dist/v24.20.0/node-v24.20.0-darwin-arm64.tar.gz";
+    hash = "sha256-F9UVZf9MU+xzeIyWekw3+nntYSfbj5phU2cQMNjBcus=";
+    stripRoot = true;
+  };
+in
 buildNpmPackage rec {
   pname = "deepseek-harness";
-  version = "0.1.6-alpha.1";
+  version = "0.1.6-alpha.2";
 
   src = fetchurl {
     url = "https://registry.npmjs.org/@deepseek-ai/dsh/-/dsh-${version}.tgz";
-    hash = "sha256-9K/QE9p0mJygaNN9sdBNVS1/nI1Slv9mxQ1nGApjhPg=";
+    hash = "sha256-o8FNF1wFECPc3gePsnOyh7E7S3dlTqkLUtlWy/QJF40=";
   };
 
   sourceRoot = "package";
 
-  npmDepsHash = "sha256-jhh8Zz0C6qVEBmrYeLRLQ8fFjElAJzZbMtax3fYpdEA=";
+  npmDepsHash = "sha256-TXQb17m9OEU0kB9LnZglmMzJt6DfMs0VKjrXVSdGZbw=";
 
   nativeBuildInputs = [
     makeWrapper
@@ -45,7 +52,7 @@ buildNpmPackage rec {
 
     mkdir -p "$out/lib/node_modules/@deepseek-ai/dsh" "$out/bin"
     cp -R . "$out/lib/node_modules/@deepseek-ai/dsh/"
-    makeWrapper "${nodejs}/bin/node" "$out/bin/dsh" \
+    makeWrapper "${runtimeNode}/bin/node" "$out/bin/dsh" \
       --add-flags "--expose-internals" \
       --add-flags "$out/lib/node_modules/@deepseek-ai/dsh/lib/bin.js"
 
