@@ -78,6 +78,18 @@ in
             - id: tool-subagent-list-agents
               disabled: true
 
+            - id: ui-plugin-manager
+              disabled: true
+
+            - id: ui-sidebar-browser
+              disabled: true
+
+            - id: ui-sidebar-files
+              disabled: true
+
+            - id: ui-sidebar-terminal
+              disabled: true
+
             - insert:
                 - id: tool-subagent-oracle
                   name: '@deepseek-ai/dsh-tool-subagent'
