@@ -25,9 +25,9 @@ in
           target = ".dsh/AGENTS.md";
         };
 
-        "dshAgentPresets" = {
-          source = ../../config/deepseek-harness/agent-presets;
-          target = ".dsh/.agent-presets";
+        "dshUpdateDshSkill" = {
+          source = ../../config/deepseek-harness/skills/update-dsh;
+          target = ".dsh/skills/update-dsh";
         };
 
         "dshCordisPatch" = {

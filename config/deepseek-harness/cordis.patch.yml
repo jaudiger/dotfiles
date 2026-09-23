@@ -3,10 +3,10 @@
     provider: openai-codex
     model: gpt-6-luna
 
-- id: agent-presets
+- id: agent-preset-registry
+  name: '@deepseek-ai/dsh-agent-preset-registry'
   config:
     default: default
-    includeShippedRoot: false
 
 - id: llm-pi-ai
   config:
@@ -17,6 +17,18 @@
 - id: plugin-package-inventory-deepseek
   config:
     enabled: false
+
+- id: preset-standard
+  disabled: true
+
+- id: preset-ptc
+  disabled: true
+
+- id: preset-minimal
+  disabled: true
+
+- id: preset-cordis
+  disabled: true
 
 - id: session-telemetry-otel
   config:
@@ -147,3 +159,93 @@
         toolFilter:
           allow:
             - bash
+
+    - id: preset-default
+      name: '@deepseek-ai/dsh-agent-preset'
+      config:
+        id: default
+        name: Default
+        description: Default minimal persistent shell agent with web research tools.
+        plugins:
+          - id: persona
+            name: '@deepseek-ai/dsh-persona'
+            config:
+              prefix: You are a helpful software engineer assistant.
+              complete: true
+              includeRuntimeContext: false
+
+          - id: persistent-shell
+            name: cordis:group
+            group: true
+            isolate:
+              terminals: true
+            config:
+              - id: pty
+                name: '@deepseek-ai/dsh-terminal'
+              - id: terminal-bash
+                name: '@deepseek-ai/dsh-terminal-bash'
+                config:
+                  timeoutMs: 300000
+              - id: persistent-bash
+                name: '@deepseek-ai/dsh-tool-bash-persistent'
+                config:
+                  timeoutMs: 300000
+
+          - id: tool-web
+            name: '@deepseek-ai/dsh-tool-web'
+            config:
+              fetch: true
+              search: false
+
+    - id: preset-update-dsh
+      name: '@deepseek-ai/dsh-agent-preset'
+      config:
+        id: update-dsh
+        name: Update DeepSeek Harness
+        description: Research a DSH release, report findings, then implement explicitly approved updates.
+        plugins:
+          - id: persona
+            name: '@deepseek-ai/dsh-persona'
+            config:
+              prefix: |
+                You are a DeepSeek Harness release-maintenance agent.
+
+                Begin release-review tasks in research and report mode. Do not modify
+                repository files during the initial review. First investigate the
+                requested release and return a concise, evidence-based report.
+
+                After the user explicitly chooses which changes to make, implement only
+                those approved changes, validate them, and report remaining risks. Ask
+                for clarification when the requested update is ambiguous. Never treat
+                the initial request for a report as permission to edit files.
+              complete: false
+              includeRuntimeContext: true
+          - id: persistent-shell
+            name: cordis:group
+            group: true
+            isolate:
+              terminals: true
+            config:
+              - id: pty
+                name: '@deepseek-ai/dsh-terminal'
+              - id: terminal-bash
+                name: '@deepseek-ai/dsh-terminal-bash'
+                config:
+                  timeoutMs: 300000
+              - id: persistent-bash
+                name: '@deepseek-ai/dsh-tool-bash-persistent'
+                config:
+                  timeoutMs: 300000
+          - id: skill-filesystem
+            name: '@deepseek-ai/dsh-skill-filesystem'
+            config:
+              includeDefaultRoots: false
+              customSkillDirs:
+                - !!js "process.env.DSH_HOME + '/skills'"
+          - id: tool-web
+            name: '@deepseek-ai/dsh-tool-web'
+            config:
+              fetch: true
+              search: false
+          - id: tool-skill
+            name: '@deepseek-ai/dsh-tool-skill'

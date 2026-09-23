@@ -16,7 +16,7 @@ Compare the release with the current DeepSeek Harness packaging and configuratio
 - `pkgs/deepseek-harness.nix`
 - `pkgs/deepseek-harness-package-lock.json`
 - `profiles/ai/deepseek-harness.nix`
-- `config/agents/deepseek-harness/` recursively
+- `config/deepseek-harness/` recursively
 
 Focus exclusively on DeepSeek Harness itself and the runtime behavior consumed by this configuration. Inspect, when relevant, the DSH CLI and profile model, Cordis patch and bundle composition, system-prompt and persona assembly, agent presets, skills and skill scoping, model/provider configuration, subagent spawning and lifecycle, tools and permissions, Web sessions, and the headless runner. Do not perform a general review of unrelated dotfiles or other agents.
 
