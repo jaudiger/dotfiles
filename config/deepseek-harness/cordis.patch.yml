@@ -1,7 +1,7 @@
 - id: agent-default-model
   config:
     provider: openai-codex
-    model: gpt-5.6-luna
+    model: gpt-6-luna
 
 - id: agent-presets
   config:
@@ -122,7 +122,7 @@
         maxDepth: 1
         agentOptions:
           provider: openai-codex
-          model: gpt-5.6-luna
+          model: gpt-6-luna
           reasoningEffort: medium
         persona: |
           You are the repository scout. Quickly inspect the workspace to locate relevant files, trace behavior, and identify risks or missing context. Do not edit files. Return concise paths, observations, and recommended follow-up checks.
@@ -140,7 +140,7 @@
         maxDepth: 1
         agentOptions:
           provider: openai-codex
-          model: gpt-5.6-luna
+          model: gpt-6-luna
           reasoningEffort: high
         persona: |
           You are the implementation worker. Make the smallest correct change requested by the parent in the shared workspace. Inspect before editing, keep the scope narrow, run focused validation, and report changed files, commands, and remaining risks. Do not broaden the task.

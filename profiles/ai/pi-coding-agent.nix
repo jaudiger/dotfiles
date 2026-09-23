@@ -9,7 +9,7 @@ let
   host = config.modules.host;
 
   defaultProvider = "openai-codex";
-  defaultModel = "gpt-5.6-luna";
+  defaultModel = "gpt-6-luna";
   defaultThinkingLevel = "high";
 
   # Rules
@@ -68,7 +68,7 @@ in
           subagents = {
             agentOverrides = {
               delegate = {
-                model = "openai-codex/gpt-5.6-luna";
+                model = "openai-codex/gpt-6-luna";
                 thinking = "medium";
                 tools = [
                   "bash"
@@ -103,7 +103,7 @@ in
                 ];
               };
               scout = {
-                model = "openai-codex/gpt-5.6-luna";
+                model = "openai-codex/gpt-6-luna";
                 thinking = "medium";
                 tools = [
                   "bash"
@@ -111,7 +111,7 @@ in
                 ];
               };
               worker = {
-                model = "openai-codex/gpt-5.6-luna";
+                model = "openai-codex/gpt-6-luna";
                 thinking = "high";
                 tools = [
                   "bash"
@@ -122,14 +122,17 @@ in
             defaultModel = "${defaultProvider}/${defaultModel}";
             defaultThinking = defaultThinkingLevel;
             modelScope = {
-              allow = [ "openai-codex/gpt-5.6-*" ];
+              allow = [
+                "openai-codex/gpt-5.6-*"
+                "openai-codex/gpt-6-*"
+              ];
               agents = {
-                delegate.allow = [ "openai-codex/gpt-5.6-luna" ];
+                delegate.allow = [ "openai-codex/gpt-6-luna" ];
                 oracle.allow = [ "openai-codex/gpt-5.6-terra" ];
                 researcher.allow = [ "openai-codex/gpt-5.6-terra" ];
                 reviewer.allow = [ "openai-codex/gpt-5.6-terra" ];
-                scout.allow = [ "openai-codex/gpt-5.6-luna" ];
-                worker.allow = [ "openai-codex/gpt-5.6-luna" ];
+                scout.allow = [ "openai-codex/gpt-6-luna" ];
+                worker.allow = [ "openai-codex/gpt-6-luna" ];
               };
               enforce = true;
               strict = true;
