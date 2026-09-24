@@ -15,16 +15,16 @@ let
 in
 buildNpmPackage rec {
   pname = "deepseek-harness";
-  version = "0.1.7-rc.1";
+  version = "0.1.7-rc.2";
 
   src = fetchurl {
     url = "https://registry.npmjs.org/@deepseek-ai/dsh/-/dsh-${version}.tgz";
-    hash = "sha256-78f5GSOuXnvDWmVP2AqO7p027QWhQc5hCDlzGC14zUI=";
+    hash = "sha256-Xy2nJy2UhavCI+aBB1gJqNkpaXxSMu5EVxjht+Bmv/g=";
   };
 
   sourceRoot = "package";
 
-  npmDepsHash = "sha256-fvqD1T2jtWHoTiLVWiRa8crmMhCVF+7fJ++A9fKcO/4=";
+  npmDepsHash = "sha256-FzCHmn4zXTUEB2yYWXhp9X+GO7H19jGaBrA1wdj5CLY=";
 
   nativeBuildInputs = [
     makeWrapper
