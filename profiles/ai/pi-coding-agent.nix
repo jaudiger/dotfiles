@@ -10,7 +10,7 @@ let
 
   defaultProvider = "openai-codex";
   defaultModel = "gpt-6-luna";
-  defaultThinkingLevel = "high";
+  defaultThinkingLevel = "max";
 
   # Rules
   rulesDir = ../../config/agents/rules;

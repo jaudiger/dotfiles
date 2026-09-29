@@ -12,7 +12,26 @@
   config:
     providers:
       openai-codex:
-        reasoning: high
+        api: openai-responses
+        baseURL: https://chatgpt.com/backend-api
+        reasoning: max
+        models:
+          - id: gpt-6-luna
+            name: GPT-6 Luna
+            input:
+              - text
+              - image
+            contextWindow: 272000
+            maxTokens: 128000
+            reasoningEfforts:
+              off: none
+              minimal: low
+              low: low
+              medium: medium
+              high: high
+              xhigh: xhigh
+              max: max
+          - id: gpt-5.6-terra
 
 - id: plugin-package-inventory-deepseek
   config:
