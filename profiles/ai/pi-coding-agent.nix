@@ -46,7 +46,9 @@ in
           '';
         };
 
-        context = lib.concatMapStringsSep "\n" (name: builtins.readFile (rulesDir + "/${name}")) ruleFiles;
+        appendSystem = lib.concatMapStringsSep "\n" (
+          name: builtins.readFile (rulesDir + "/${name}")
+        ) ruleFiles;
 
         settings = {
           collapseChangelog = true;
