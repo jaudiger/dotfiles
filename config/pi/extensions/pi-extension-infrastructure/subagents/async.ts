@@ -24,14 +24,14 @@ export type AsyncCapabilities = {
 type AsyncLaunchBase = {
   cwd: string;
   reads?: readonly string[];
-  structuredOutputSchema?: Json;
+  outputSchema?: Json;
   timeoutMs?: number;
   capabilities: AsyncCapabilities;
 };
 export type AsyncLaunch = AsyncLaunchBase &
   (
-    | { agent: string; task: string; workflowScript?: never }
-    | { workflowScript: string; agent?: never; task?: never }
+    | { agent: string; task: string; script?: never }
+    | { script: string; agent?: never; task?: never }
   );
 export type AsyncEvidence = { path: string; remove: () => Promise<void> };
 export type AsyncCompletion = {

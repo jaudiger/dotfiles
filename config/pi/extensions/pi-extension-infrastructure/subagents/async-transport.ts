@@ -6,7 +6,7 @@ export type Json = Record<string, unknown>;
 export type Launch = {
   cwd: string;
   reads?: readonly string[];
-  structuredOutputSchema?: Json;
+  outputSchema?: Json;
   timeoutMs?: number;
   capabilities: {
     sessionId: string;
@@ -15,7 +15,7 @@ export type Launch = {
   };
   agent?: string;
   task?: string;
-  workflowScript?: string;
+  script?: string;
 };
 
 type Events = {

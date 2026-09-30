@@ -241,7 +241,7 @@ export function registerGithubPrReviewController(
     label: `${provider.labels.review} review for PR ${owner.review.number}`,
     launch: {
       cwd: owner.review.cwd,
-      workflowScript: workflowTask(owner.review, provider.workflow),
+      script: workflowTask(owner.review, provider.workflow),
       capabilities: {
         sessionId: owner.review.sessionId,
         allowedAgents: ["researcher", "scout"],

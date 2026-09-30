@@ -158,7 +158,7 @@ export function registerSubmitPackage(pi: ExtensionAPI): void {
       cwd: owner.repository,
       agent: "researcher",
       task: researcherTask(owner.prepared, owner.repository),
-      structuredOutputSchema: researcherOutputSchema,
+      outputSchema: researcherOutputSchema,
       timeoutMs: researcherTimeoutMs,
       capabilities: {
         sessionId: owner.sessionId,
