@@ -19,6 +19,12 @@ in
       };
     };
 
+    # Back up conflicting files during Home Manager activation.
+    home-manager = {
+      backupFileExtension = "backup";
+      overwriteBackup = true;
+    };
+
     # Sharing from host
     fileSystems."/home/jaudiger/Development" = {
       device = "share";

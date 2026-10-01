@@ -33,6 +33,12 @@ in
       };
     };
 
+    # Back up conflicting files during Home Manager activation.
+    home-manager = {
+      backupFileExtension = "backup";
+      overwriteBackup = true;
+    };
+
     homebrew = {
       enable = true;
 
