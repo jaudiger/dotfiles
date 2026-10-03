@@ -1,10 +1,10 @@
 {
   "artifactDir": "session",
-  "asyncByDefault": true,
+  "asyncByDefault": false,
   "completionBatch": {
     "enabled": true
   },
-  "resultScanLogging": "activity",
+  "resultScanLogging": "off",
   "fleetView": true,
   "intercomBridge": {
     "mode": "off"
@@ -17,21 +17,17 @@
   "maxActiveAsyncRunsPerSession": 4,
   "maxSubagentDepth": 1,
   "missions": {
-    "enabled": true,
-    "directory": "~/.pi/agent/missions",
-    "globalIndex": true,
-    "retainTerminal": 128
+    "enabled": false
   },
   "parallel": {
     "concurrency": 4,
     "maxTasks": 8
   },
   "scheduledRuns": {
-    "enabled": true,
-    "maxPending": 20
+    "enabled": false
   },
   "toolDescriptionMode": "compact",
   "waitTool": {
-    "enabled": true
+    "enabled": false
   }
 }
