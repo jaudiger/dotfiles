@@ -7,12 +7,41 @@ import {
   MAX_FIND_TEXT_QUERIES,
 } from "./fetch-url";
 
+const rangeSchema = Type.Object(
+  {
+    start: Type.Integer({ minimum: 0 }),
+    end: Type.Integer({ minimum: 0 }),
+  },
+  { additionalProperties: false },
+);
+const matchSchema = Type.Object(
+  {
+    query: Type.String(),
+    start: Type.Integer({ minimum: 0 }),
+    end: Type.Integer({ minimum: 0 }),
+  },
+  { additionalProperties: false },
+);
+const fetchUrlOutputSchema = Type.Object(
+  {
+    url: Type.String(),
+    text: Type.String(),
+    pageSize: Type.Integer({ minimum: 0 }),
+    matches: Type.Optional(Type.Array(matchSchema)),
+    ranges: Type.Optional(Type.Array(rangeSchema)),
+    range: Type.Optional(rangeSchema),
+    requestedRange: Type.Optional(rangeSchema),
+  },
+  { additionalProperties: false },
+);
+
 export default function registerWebTools(pi: ExtensionAPI): void {
   pi.registerTool({
     name: "fetch_url",
     label: "Fetch URL",
     description: "Fetch a URL and return relevant content.",
     promptSnippet: "Use to fetch URL content.",
+    outputSchema: fetchUrlOutputSchema,
     parameters: Type.Union([
       Type.Object(
         {

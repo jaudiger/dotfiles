@@ -28,6 +28,8 @@ interface Match {
   end: number;
 }
 
+type Range = { start: number; end: number };
+
 const extractedTextCache = new Map<string, string>();
 
 function runFetcher(url: string, signal: AbortSignal): Promise<string> {
@@ -252,18 +254,19 @@ function renderRange(
   )}\n${content}`;
 }
 
-function renderMatches(text: string, matches: Match[]): string {
+function renderMatches(
+  text: string,
+  matches: Match[],
+): { text: string; ranges: Range[] } {
   const characters = asCharacters(text);
-  if (matches.length === 0) {
-    return `${formatMetadata(characters.length, [])}\nNo matches found.`;
-  }
+  if (matches.length === 0) return { text: "No matches found.", ranges: [] };
 
   const candidateRanges = matches.map((match) => ({
     start: Math.max(0, match.start - CONTEXT_CHARS),
     end: Math.min(characters.length, match.end + CONTEXT_CHARS),
   }));
   const ranges = mergeRanges(candidateRanges);
-  const selected: Array<{ start: number; end: number }> = [];
+  const selected: Range[] = [];
   let usedChars = 0;
 
   for (const range of ranges) {
@@ -274,10 +277,12 @@ function renderMatches(text: string, matches: Match[]): string {
     usedChars += end - range.start;
   }
 
-  const body = selected
-    .map(({ start, end }) => characters.slice(start, end).join(""))
-    .join("\n\n[... omitted ...]\n\n");
-  return `${formatMetadata(characters.length, selected)}\n${body}`;
+  return {
+    text: selected
+      .map(({ start, end }) => characters.slice(start, end).join(""))
+      .join("\n\n[... omitted ...]\n\n"),
+    ranges: selected,
+  };
 }
 
 function validateParams(params: FetchUrlParams): void {
@@ -332,17 +337,27 @@ export async function executeFetchUrl(
   const pageSize = asCharacters(text).length;
 
   if (params.findText !== undefined) {
+    const matches = findMatches(
+      text,
+      params.findText,
+      params.findMode ?? "exact",
+    );
+    const rendered = renderMatches(text, matches);
     return {
       content: [
         {
           type: "text" as const,
-          text: renderMatches(
-            text,
-            findMatches(text, params.findText, params.findMode ?? "exact"),
-          ),
+          text: `${formatMetadata(pageSize, rendered.ranges)}\n${rendered.text}`,
         },
       ],
       details: { pageSize },
+      structuredContent: {
+        url: params.url,
+        text: rendered.text,
+        pageSize,
+        matches,
+        ranges: rendered.ranges,
+      },
       isError: false,
     };
   }
@@ -377,6 +392,15 @@ export async function executeFetchUrl(
       pageSize,
       range: returnedRange,
       ...(wasClamped ? { requestedRange } : {}),
+    },
+    structuredContent: {
+      url: params.url,
+      text: asCharacters(text)
+        .slice(returnedRange.start, returnedRange.end)
+        .join(""),
+      pageSize,
+      range: returnedRange,
+      ...(requestedRange ? { requestedRange } : {}),
     },
     isError: false,
   };

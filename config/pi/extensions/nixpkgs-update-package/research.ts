@@ -19,6 +19,27 @@ export type ResearchResult = {
   packages: ResearchPackage[];
 };
 
+const researchOutputSchema = Type.Object(
+  {
+    packages: Type.Array(
+      Type.Object(
+        {
+          name: Type.String(),
+          currentVersion: Type.String(),
+          latestVersion: Type.String(),
+          releaseDate: Type.String(),
+          releaseUrl: Type.String(),
+          changelogUrl: Type.String(),
+          sourceTag: Type.String(),
+          dependencyNotes: Type.String(),
+        },
+        { additionalProperties: false },
+      ),
+    ),
+  },
+  { additionalProperties: false },
+);
+
 type ResearchState = {
   sessionId: string;
   packages: string[];
@@ -132,6 +153,7 @@ export function registerResearchTool(
     label: "Nixpkgs update package research",
     description:
       "Launch the read-only researcher for the active Nixpkgs update and return latest stable release metadata.",
+    outputSchema: researchOutputSchema,
     parameters: Type.Object({
       packages: Type.Array(Type.String()),
     }),
@@ -209,6 +231,7 @@ export function registerResearchTool(
         return {
           content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
           details: result,
+          structuredContent: result,
         };
       } catch (error) {
         return {
