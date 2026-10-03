@@ -722,7 +722,6 @@ async function validationBody(prepared: PreparedSubmission): Promise<string> {
     }
     sections.push(
       `### ${step} output (exit ${log.exitCode})`,
-      `Evidence: \`${log.path}\``,
       "<details><summary>Output</summary>",
       "<p>",
       "",

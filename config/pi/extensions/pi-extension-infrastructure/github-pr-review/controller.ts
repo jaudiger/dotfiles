@@ -212,6 +212,7 @@ export function registerGithubPrReviewController(
   let active: ReviewContext | undefined;
   let reviewGeneration = 0;
   let shuttingDown = false;
+  const reviewEvidenceDirectories = new Set<string>();
   const actionToolScope = createToolScope(pi, [provider.tool.name]);
   const asyncJobs = createAsyncJobs(pi, {
     source,
@@ -222,18 +223,34 @@ export function registerGithubPrReviewController(
     active?.reviews.some((item) => item.directory === review.directory) ??
     false;
 
-  const stopReview = async (): Promise<void> => {
-    active = undefined;
-    actionToolScope.release();
-    await asyncJobs.stopAll();
-  };
-
   const removeReviewEvidence = async (directory: string): Promise<boolean> => {
     try {
       await rm(directory, { recursive: true, force: true });
       return true;
     } catch {
       return false;
+    }
+  };
+
+  const cleanupReviewEvidence = async (): Promise<void> => {
+    for (const directory of reviewEvidenceDirectories) {
+      if (await removeReviewEvidence(directory)) {
+        reviewEvidenceDirectories.delete(directory);
+      } else {
+        console.error(
+          `Could not remove review evidence directory: ${directory}`,
+        );
+      }
+    }
+  };
+
+  const stopReview = async (): Promise<void> => {
+    active = undefined;
+    actionToolScope.release();
+    try {
+      await asyncJobs.stopAll();
+    } finally {
+      await cleanupReviewEvidence();
     }
   };
 
@@ -392,13 +409,16 @@ export function registerGithubPrReviewController(
             ctx.sessionManager.getSessionId(),
             request,
           );
+          reviewEvidenceDirectories.add(review.directory);
           if (shuttingDown) {
             await rm(review.directory, { recursive: true, force: true });
+            reviewEvidenceDirectories.delete(review.directory);
             await stopReview();
             return;
           }
           if (active !== session) {
             await rm(review.directory, { recursive: true, force: true });
+            reviewEvidenceDirectories.delete(review.directory);
             return;
           }
           session.reviews = [...session.reviews, review];
@@ -465,6 +485,7 @@ export function registerGithubPrReviewController(
         cwd: review.cwd,
       }));
       const progress = progressFor(ctx);
+      let mutationCompleted = false;
       try {
         await provider.mutations.before(params.action, targets, ctx);
         session.state = "mutating";
@@ -476,6 +497,7 @@ export function registerGithubPrReviewController(
           params.action === "merge"
             ? await provider.mutations.merge(targets, ctx, progress)
             : await provider.mutations.checkout(session.reviews, ctx, progress);
+        mutationCompleted = true;
         try {
           provider.mutations.beforeMutationRefresh?.(ctx, progress);
           session.candidates = (await provider.listCandidates(ctx.cwd)).filter(
@@ -490,6 +512,7 @@ export function registerGithubPrReviewController(
         actionToolScope.release();
         session.generation += 1;
         session.state = "stale";
+        if (mutationCompleted) await cleanupReviewEvidence();
         ctx.ui.setStatus(provider.identity.statusKey, undefined);
       }
     },
@@ -521,9 +544,11 @@ export function registerGithubPrReviewController(
 
   pi.on("session_shutdown", async () => {
     shuttingDown = true;
-    active = undefined;
-    actionToolScope.release();
-    await asyncJobs.shutdown();
+    try {
+      await stopReview();
+    } finally {
+      await asyncJobs.shutdown();
+    }
   });
 
   return {
