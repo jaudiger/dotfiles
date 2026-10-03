@@ -6,6 +6,9 @@
   },
   "resultScanLogging": "activity",
   "fleetView": true,
+  "intercomBridge": {
+    "mode": "off"
+  },
   "inlineToolDisplay": "summary",
   "mainWindowRenderer": {
     "horizontalSpacing": 0,
