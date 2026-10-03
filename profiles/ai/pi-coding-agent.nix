@@ -71,22 +71,22 @@ in
             agentOverrides = {
               delegate = {
                 model = "openai-codex/gpt-6-luna";
-                thinking = "medium";
+                thinking = "high";
                 tools = [
                   "bash"
                   "contact_supervisor"
                 ];
               };
               oracle = {
-                model = "openai-codex/gpt-5.6-terra";
-                thinking = "xhigh";
+                model = "openai-codex/gpt-6.1-sol";
+                thinking = "high";
                 tools = [
                   "bash"
                 ];
               };
               researcher = {
-                model = "openai-codex/gpt-5.6-terra";
-                thinking = "medium";
+                model = "openai-codex/gpt-6.1-sol";
+                thinking = "low";
                 tools = [
                   "bash"
                   "fetch_url"
@@ -96,7 +96,7 @@ in
                 ];
               };
               reviewer = {
-                model = "openai-codex/gpt-5.6-terra";
+                model = "openai-codex/gpt-6.1-sol";
                 thinking = "high";
                 tools = [
                   "bash"
@@ -105,7 +105,7 @@ in
               };
               scout = {
                 model = "openai-codex/gpt-6-luna";
-                thinking = "medium";
+                thinking = "xhigh";
                 tools = [
                   "bash"
                   "contact_supervisor"
@@ -113,7 +113,7 @@ in
               };
               worker = {
                 model = "openai-codex/gpt-6-luna";
-                thinking = "high";
+                thinking = "xhigh";
                 tools = [
                   "bash"
                   "contact_supervisor"
@@ -124,14 +124,14 @@ in
             defaultThinking = defaultThinkingLevel;
             modelScope = {
               allow = [
-                "openai-codex/gpt-5.6-*"
                 "openai-codex/gpt-6-*"
+                "openai-codex/gpt-6.1-*"
               ];
               agents = {
                 delegate.allow = [ "openai-codex/gpt-6-luna" ];
-                oracle.allow = [ "openai-codex/gpt-5.6-terra" ];
-                researcher.allow = [ "openai-codex/gpt-5.6-terra" ];
-                reviewer.allow = [ "openai-codex/gpt-5.6-terra" ];
+                oracle.allow = [ "openai-codex/gpt-6.1-sol" ];
+                researcher.allow = [ "openai-codex/gpt-6.1-sol" ];
+                reviewer.allow = [ "openai-codex/gpt-6.1-sol" ];
                 scout.allow = [ "openai-codex/gpt-6-luna" ];
                 worker.allow = [ "openai-codex/gpt-6-luna" ];
               };
