@@ -195,6 +195,10 @@ in
             source = ../../config/pi/packages/pi-subagents.json;
             target = ".pi/agent/extensions/subagent/config.json";
           };
+          "piSystemPrompt" = {
+            target = ".pi/agent/SYSTEM.md";
+            text = "You are a helpful software engineer assistant.";
+          };
         };
       };
     };
