@@ -60,9 +60,6 @@ export type AsyncJobs = {
   shutdown: () => Promise<void>;
 };
 
-type Events = {
-  on(event: string, handler: (value: unknown) => void): (() => void) | void;
-};
 type RecordState = {
   key: string;
   job: AsyncJob;
@@ -87,9 +84,6 @@ type RecordState = {
 const terminalWaitMs = 5_000;
 const earlyEventTtlMs = 30_000;
 
-function eventsFor(pi: ExtensionAPI): Events {
-  return pi.events as unknown as Events;
-}
 function genericFailure(job: AsyncJob, reason: string): AsyncReport {
   return {
     content: `${job.label} did not finish safely: ${reason}. Evidence retained at ${job.evidence.path}.`,
@@ -107,7 +101,7 @@ export function createAsyncJobs(
   pi: ExtensionAPI,
   options: { source: string; customType: string },
 ): AsyncJobs {
-  const events = eventsFor(pi);
+  const events = pi.events;
   const jobs = new Map<string, RecordState>();
   const byRun = new Map<string, RecordState>();
   const earlyCompletions = new Map<
@@ -189,18 +183,8 @@ export function createAsyncJobs(
 
     initialization = discover(pi, options.source).then((found) => {
       if (shuttingDown) return;
-      const completionUnsubscribe = events.on(
-        found.completionEvent,
-        handleCompletion,
-      );
-      if (typeof completionUnsubscribe === "function")
-        subscriptions.add(completionUnsubscribe);
-      const terminalUnsubscribe = events.on(
-        found.terminalEvent,
-        handleTerminal,
-      );
-      if (typeof terminalUnsubscribe === "function")
-        subscriptions.add(terminalUnsubscribe);
+      subscriptions.add(events.on(found.completionEvent, handleCompletion));
+      subscriptions.add(events.on(found.terminalEvent, handleTerminal));
     });
     // Discovery failures are reported by the first job that needs the service.
     void initialization.catch(() => undefined);

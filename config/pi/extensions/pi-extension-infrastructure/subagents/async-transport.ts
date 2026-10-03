@@ -18,10 +18,6 @@ export type Launch = {
   script?: string;
 };
 
-type Events = {
-  on(event: string, handler: (value: unknown) => void): (() => void) | void;
-  emit(event: string, value: unknown): void;
-};
 type Ready = { ready: boolean; waiters: Set<() => void> };
 type DispatchState = "not-dispatched" | "uncertain";
 export type SpawnOutcome =
@@ -43,9 +39,6 @@ const wireVersion = 1;
 const readyStates = new WeakMap<object, Ready>();
 const requestTimeoutMs = 30_000;
 
-function eventsFor(pi: ExtensionAPI): Events {
-  return pi.events as unknown as Events;
-}
 function object(value: unknown): Record<string, unknown> {
   return value && typeof value === "object" && !Array.isArray(value)
     ? (value as Record<string, unknown>)
@@ -70,7 +63,7 @@ function dispatchError(message: string, state: DispatchState, cause?: unknown) {
 }
 
 export function registerReady(pi: ExtensionAPI): void {
-  const events = eventsFor(pi);
+  const events = pi.events;
   if (readyStates.has(events)) return;
   const state: Ready = { ready: false, waiters: new Set() };
   readyStates.set(events, state);
@@ -109,14 +102,14 @@ function request(
   signal?: AbortSignal,
 ): Promise<Json> {
   registerReady(pi);
-  const events = eventsFor(pi);
+  const events = pi.events;
   const state = readyStates.get(events)!;
   const requestId = `${source}-${crypto.randomUUID()}`;
   const responseEvent = `${replyPrefix}${requestId}`;
   return new Promise((resolve, reject) => {
     let settled = false;
     let emitted = false;
-    let unsubscribe: (() => void) | void;
+    let unsubscribe: (() => void) | undefined;
     let abortHandler: (() => void) | undefined;
     const finish = (callback: () => void) => {
       if (settled) return;
