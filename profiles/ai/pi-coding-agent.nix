@@ -89,7 +89,6 @@ in
                 thinking = "medium";
                 tools = [
                   "bash"
-                  "web_search"
                   "fetch_url"
                 ];
                 subagentOnlyExtensions = [

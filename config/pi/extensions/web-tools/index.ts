@@ -6,33 +6,8 @@ import {
   MAX_FIND_TEXT_LENGTH,
   MAX_FIND_TEXT_QUERIES,
 } from "./fetch-url";
-import { executeWebSearch } from "./web-search";
 
 export default function registerWebTools(pi: ExtensionAPI): void {
-  pi.registerTool({
-    name: "web_search",
-    label: "Web Search",
-    description: "Search the web and return results.",
-    promptSnippet: "Use for web research questions.",
-    parameters: Type.Object(
-      {
-        queries: Type.Array(Type.String()),
-      },
-      { additionalProperties: false },
-    ),
-    async execute(_toolCallId, params, signal) {
-      return executeWebSearch(params.queries, signal);
-    },
-    renderCall(args, theme) {
-      return new Text(
-        theme.fg("toolTitle", theme.bold("web_search ")) +
-          theme.fg("accent", JSON.stringify(args.queries ?? [])),
-        0,
-        0,
-      );
-    },
-  });
-
   pi.registerTool({
     name: "fetch_url",
     label: "Fetch URL",
