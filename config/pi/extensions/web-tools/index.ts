@@ -5,6 +5,7 @@ import {
   executeFetchUrl,
   MAX_FIND_TEXT_LENGTH,
   MAX_FIND_TEXT_QUERIES,
+  MAX_MATCHES,
 } from "./fetch-url";
 
 const rangeSchema = Type.Object(
@@ -27,9 +28,9 @@ const fetchUrlOutputSchema = Type.Object(
     url: Type.String(),
     text: Type.String(),
     pageSize: Type.Integer({ minimum: 0 }),
-    matches: Type.Optional(Type.Array(matchSchema)),
-    ranges: Type.Optional(Type.Array(rangeSchema)),
-    range: Type.Optional(rangeSchema),
+    matches: Type.Array(matchSchema, { maxItems: MAX_MATCHES }),
+    matchesTruncated: Type.Boolean(),
+    ranges: Type.Array(rangeSchema, { maxItems: MAX_MATCHES }),
     requestedRange: Type.Optional(rangeSchema),
   },
   { additionalProperties: false },

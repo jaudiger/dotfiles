@@ -3,6 +3,7 @@ import asyncio
 import re
 import sys
 from typing import Any
+from urllib.parse import urlsplit
 
 import trafilatura
 from playwright.async_api import TimeoutError as PlaywrightTimeoutError
@@ -12,6 +13,8 @@ NAVIGATION_TIMEOUT_MS = 30_000
 CONTENT_READY_TIMEOUT_MS = 5_000
 SETTLE_DELAY_MS = 750
 MIN_CANDIDATE_CHARS = 32
+MAX_FETCHED_TEXT_BYTES = 2 * 1024 * 1024
+MAX_DOCUMENT_BYTES = 8 * 1024 * 1024
 HTML_CONTENT_TYPES = {"text/html", "application/xhtml+xml"}
 TEXT_CONTENT_TYPES = {
     "application/ecmascript",
@@ -26,6 +29,38 @@ TEXT_CONTENT_TYPES = {
     "text/event-stream",
 }
 CONTENT_ROOTS_SELECTOR = "article, main, [role='main'], pre"
+
+
+def validate_url(url: str) -> None:
+    try:
+        parsed = urlsplit(url)
+        hostname = parsed.hostname
+    except ValueError as error:
+        raise ValueError("URL must be an absolute HTTP or HTTPS URL") from error
+    if (
+        parsed.scheme.lower() not in {"http", "https"}
+        or not parsed.netloc
+        or not hostname
+    ):
+        raise ValueError("URL must be an absolute HTTP or HTTPS URL")
+
+
+def ensure_response_size(response: Any, maximum: int) -> None:
+    content_length = response.headers.get("content-length")
+    if content_length is None:
+        return
+    try:
+        size = int(content_length)
+    except ValueError:
+        return
+    if size > maximum:
+        raise ValueError(f"response exceeds the {maximum}-byte limit")
+
+
+def ensure_text_size(text: str, maximum: int = MAX_FETCHED_TEXT_BYTES) -> str:
+    if len(text.encode("utf-8")) > maximum:
+        raise ValueError(f"fetched content exceeds the {maximum}-byte limit")
+    return text
 
 
 def media_type(content_type: str) -> str:
@@ -51,11 +86,16 @@ def response_charset(content_type: str) -> str:
 
 
 def decode_response_body(body: bytes, content_type: str) -> str:
+    if len(body) > MAX_FETCHED_TEXT_BYTES:
+        raise ValueError(
+            f"fetched content exceeds the {MAX_FETCHED_TEXT_BYTES}-byte limit"
+        )
     charset = response_charset(content_type)
     try:
-        return body.decode(charset).strip()
+        text = body.decode(charset).strip()
     except (LookupError, UnicodeDecodeError):
-        return body.decode("utf-8", errors="replace").strip()
+        text = body.decode("utf-8", errors="replace").strip()
+    return ensure_text_size(text)
 
 
 def extract_html(html: str) -> str | None:
@@ -127,6 +167,7 @@ async def semantic_candidates(page: Any) -> list[dict[str, Any]]:
 
 
 async def fetch_url(url: str) -> str:
+    validate_url(url)
     async with async_playwright() as playwright:
         browser = await playwright.webkit.launch(headless=True)
         context = await browser.new_context(
@@ -141,29 +182,44 @@ async def fetch_url(url: str) -> str:
             response = await page.goto(
                 url,
                 timeout=NAVIGATION_TIMEOUT_MS,
-                wait_until="domcontentloaded",
+                wait_until="commit",
             )
+            validate_url(page.url)
             content_type = response.headers.get("content-type", "") if response else ""
+            if response:
+                ensure_response_size(response, MAX_DOCUMENT_BYTES)
 
             if (
                 response
                 and is_text_content(content_type)
                 and not is_html_content(content_type)
             ):
+                ensure_response_size(response, MAX_FETCHED_TEXT_BYTES)
                 return decode_response_body(await response.body(), content_type)
 
+            await page.wait_for_load_state(
+                "domcontentloaded", timeout=NAVIGATION_TIMEOUT_MS
+            )
             await wait_for_content(page)
+            validate_url(page.url)
             html = await page.content()
+            if (
+                len(html) > MAX_DOCUMENT_BYTES
+                or len(html.encode("utf-8")) > MAX_DOCUMENT_BYTES
+            ):
+                raise ValueError(
+                    f"document exceeds the {MAX_DOCUMENT_BYTES}-byte limit"
+                )
             if is_html_content(content_type):
                 extracted = extract_html(html)
                 if extracted:
-                    return extracted
+                    return ensure_text_size(extracted)
 
             semantic = select_semantic_candidate(await semantic_candidates(page))
             if semantic:
-                return semantic
+                return ensure_text_size(semantic)
 
-            return (await page.locator("body").inner_text()).strip()
+            return ensure_text_size((await page.locator("body").inner_text()).strip())
         finally:
             await context.close()
             await browser.close()

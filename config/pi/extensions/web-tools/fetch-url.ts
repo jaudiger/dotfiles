@@ -4,6 +4,10 @@ import { fileURLToPath } from "node:url";
 const FETCHER_PATH = fileURLToPath(new URL("./fetch-url.py", import.meta.url));
 const PYTHON_PATH = process.env.PI_WEB_TOOLS_PYTHON ?? "python3";
 const MAX_OUTPUT_CHARS = 8192;
+const MAX_CACHED_TEXT_BYTES = 16 * 1024 * 1024;
+const MAX_CACHED_TEXT_ENTRIES = 256;
+const MAX_STDERR_BYTES = 8192;
+export const MAX_MATCHES = 128;
 export const MAX_FIND_TEXT_LENGTH = 1024;
 export const MAX_FIND_TEXT_QUERIES = 16;
 const DEFAULT_RANGE_END = MAX_OUTPUT_CHARS;
@@ -30,7 +34,13 @@ interface Match {
 
 type Range = { start: number; end: number };
 
-const extractedTextCache = new Map<string, string>();
+interface CachedText {
+  text: string;
+  size: number;
+}
+
+const extractedTextCache = new Map<string, CachedText>();
+let cachedTextBytes = 0;
 
 function runFetcher(url: string, signal: AbortSignal): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -41,9 +51,17 @@ function runFetcher(url: string, signal: AbortSignal): Promise<string> {
     });
     const stdout: Buffer[] = [];
     const stderr: Buffer[] = [];
+    let stderrBytes = 0;
 
+    // The Python fetcher owns the stdout size limit.
     child.stdout.on("data", (chunk: Buffer) => stdout.push(chunk));
-    child.stderr.on("data", (chunk: Buffer) => stderr.push(chunk));
+    child.stderr.on("data", (chunk: Buffer) => {
+      const remaining = MAX_STDERR_BYTES - stderrBytes;
+      if (remaining <= 0) return;
+      const captured = chunk.subarray(0, remaining);
+      stderr.push(captured);
+      stderrBytes += captured.length;
+    });
     child.once("error", reject);
     child.once("close", (code) => {
       if (code !== 0) {
@@ -60,12 +78,48 @@ function runFetcher(url: string, signal: AbortSignal): Promise<string> {
   });
 }
 
-async function getExtractedText(url: string, signal: AbortSignal) {
+function getCachedText(url: string): string | undefined {
   const cached = extractedTextCache.get(url);
+  if (cached === undefined) return undefined;
+  extractedTextCache.delete(url);
+  extractedTextCache.set(url, cached);
+  return cached.text;
+}
+
+function cacheExtractedText(url: string, text: string): void {
+  const size =
+    Buffer.byteLength(url, "utf8") + Buffer.byteLength(text, "utf8") + 64;
+  if (size > MAX_CACHED_TEXT_BYTES) return;
+
+  const previous = extractedTextCache.get(url);
+  if (previous !== undefined) {
+    cachedTextBytes -= previous.size;
+    extractedTextCache.delete(url);
+  }
+
+  while (
+    cachedTextBytes + size > MAX_CACHED_TEXT_BYTES ||
+    extractedTextCache.size >= MAX_CACHED_TEXT_ENTRIES
+  ) {
+    const oldest = extractedTextCache.entries().next().value;
+    if (oldest === undefined) break;
+    const [oldestUrl, oldestText] = oldest;
+    extractedTextCache.delete(oldestUrl);
+    cachedTextBytes -= oldestText.size;
+  }
+
+  extractedTextCache.set(url, { text, size });
+  cachedTextBytes += size;
+}
+
+async function getExtractedText(url: string, signal: AbortSignal) {
+  const cached = getCachedText(url);
   if (cached !== undefined) return cached;
 
   const text = await runFetcher(url, signal);
-  extractedTextCache.set(url, text);
+  const cachedDuringFetch = getCachedText(url);
+  if (cachedDuringFetch !== undefined) return cachedDuringFetch;
+  cacheExtractedText(url, text);
   return text;
 }
 
@@ -73,8 +127,23 @@ function asCharacters(text: string): string[] {
   return Array.from(text);
 }
 
-function characterOffset(text: string, codeUnitOffset: number): number {
-  return Array.from(text.slice(0, codeUnitOffset)).length;
+function createCharacterOffsetCounter(
+  text: string,
+): (target: number) => number {
+  let codeUnitOffset = 0;
+  let characterOffset = 0;
+
+  return (target) => {
+    while (codeUnitOffset < target) {
+      const codePoint = text.codePointAt(codeUnitOffset);
+      if (codePoint === undefined) break;
+      const nextOffset = codeUnitOffset + (codePoint > 0xffff ? 2 : 1);
+      if (nextOffset > target) return characterOffset + 1;
+      codeUnitOffset = nextOffset;
+      characterOffset++;
+    }
+    return characterOffset;
+  };
 }
 
 function escapeRegExp(value: string): string {
@@ -85,8 +154,10 @@ function findLiteralMatches(
   text: string,
   query: string,
   caseInsensitive: boolean,
+  maxMatches: number,
 ): Match[] {
   if (!query) return [];
+  const characterOffset = createCharacterOffsetCounter(text);
   if (caseInsensitive) {
     const matches: Match[] = [];
     const pattern = new RegExp(escapeRegExp(query), "giu");
@@ -96,9 +167,10 @@ function findLiteralMatches(
       const end = start + match[0].length;
       matches.push({
         query,
-        start: characterOffset(text, start),
-        end: characterOffset(text, end),
+        start: characterOffset(start),
+        end: characterOffset(end),
       });
+      if (matches.length >= maxMatches) break;
     }
 
     return matches;
@@ -114,9 +186,10 @@ function findLiteralMatches(
     const sourceEnd = codeUnitOffset + query.length;
     matches.push({
       query,
-      start: characterOffset(text, codeUnitOffset),
-      end: characterOffset(text, sourceEnd),
+      start: characterOffset(codeUnitOffset),
+      end: characterOffset(sourceEnd),
     });
+    if (matches.length >= maxMatches) break;
     offset = sourceEnd;
   }
 
@@ -124,39 +197,35 @@ function findLiteralMatches(
 }
 
 function fuzzyText(value: string): string {
-  return value
-    .toLocaleLowerCase()
-    .replace(/[^\p{Letter}\p{Number}]+/gu, " ")
-    .trim()
-    .replace(/\s+/g, " ");
+  return fuzzyTextWithMap(value).characters.join("");
 }
 
 function fuzzyTextWithMap(value: string): {
   characters: string[];
   characterOffsets: number[];
 } {
-  const characters = asCharacters(value);
   const normalized: string[] = [];
   const characterOffsets: number[] = [];
+  let sourceOffset = 0;
   let separatorPending = false;
 
-  for (let index = 0; index < characters.length; index++) {
-    const character = characters[index];
+  for (const character of value) {
     if (/^[\p{Letter}\p{Number}]$/u.test(character)) {
       if (separatorPending && normalized.length > 0) {
         normalized.push(" ");
-        characterOffsets.push(index);
+        characterOffsets.push(sourceOffset);
       }
       for (const normalizedCharacter of Array.from(
         character.toLocaleLowerCase(),
       )) {
         normalized.push(normalizedCharacter);
-        characterOffsets.push(index);
+        characterOffsets.push(sourceOffset);
       }
       separatorPending = false;
     } else if (normalized.length > 0) {
       separatorPending = true;
     }
+    sourceOffset++;
   }
 
   while (normalized.at(-1) === " ") {
@@ -167,7 +236,11 @@ function fuzzyTextWithMap(value: string): {
   return { characters: normalized, characterOffsets };
 }
 
-function findFuzzyMatches(text: string, query: string): Match[] {
+function findFuzzyMatches(
+  text: string,
+  query: string,
+  maxMatches: number,
+): Match[] {
   const normalizedQuery = Array.from(fuzzyText(query));
   if (normalizedQuery.length === 0) return [];
 
@@ -179,16 +252,27 @@ function findFuzzyMatches(text: string, query: string): Match[] {
     searchOffset <= normalized.characters.length - normalizedQuery.length;
     searchOffset++
   ) {
-    const candidate = normalized.characters.slice(
-      searchOffset,
-      searchOffset + normalizedQuery.length,
-    );
-    if (candidate.join("") !== normalizedQuery.join("")) continue;
+    let matchesQuery = true;
+    for (
+      let queryOffset = 0;
+      queryOffset < normalizedQuery.length;
+      queryOffset++
+    ) {
+      if (
+        normalized.characters[searchOffset + queryOffset] !==
+        normalizedQuery[queryOffset]
+      ) {
+        matchesQuery = false;
+        break;
+      }
+    }
+    if (!matchesQuery) continue;
 
     const normalizedEnd = searchOffset + normalizedQuery.length;
     const start = normalized.characterOffsets[searchOffset];
     const end = normalized.characterOffsets[normalizedEnd - 1] + 1;
     matches.push({ query, start, end });
+    if (matches.length >= maxMatches) break;
   }
 
   return matches;
@@ -198,14 +282,36 @@ function findMatches(
   text: string,
   findText: string | string[],
   findMode: FindMode,
-): Match[] {
+): { matches: Match[]; truncated: boolean } {
   const queries = typeof findText === "string" ? [findText] : findText;
-  const matches = queries.flatMap((query) => {
-    if (findMode === "fuzzy") return findFuzzyMatches(text, query);
-    return findLiteralMatches(text, query, findMode === "case-insensitive");
-  });
+  const matches: Match[] = [];
 
-  return matches.sort((left, right) => left.start - right.start);
+  for (const query of queries) {
+    const remaining = MAX_MATCHES - matches.length;
+    const limit = remaining + 1;
+    const found =
+      findMode === "fuzzy"
+        ? findFuzzyMatches(text, query, limit)
+        : findLiteralMatches(
+            text,
+            query,
+            findMode === "case-insensitive",
+            limit,
+          );
+    if (found.length > remaining) {
+      matches.push(...found.slice(0, remaining));
+      return {
+        matches: matches.sort((left, right) => left.start - right.start),
+        truncated: true,
+      };
+    }
+    matches.push(...found);
+  }
+
+  return {
+    matches: matches.sort((left, right) => left.start - right.start),
+    truncated: false,
+  };
 }
 
 function mergeRanges(
@@ -337,17 +443,19 @@ export async function executeFetchUrl(
   const pageSize = asCharacters(text).length;
 
   if (params.findText !== undefined) {
-    const matches = findMatches(
+    const result = findMatches(
       text,
       params.findText,
       params.findMode ?? "exact",
     );
-    const rendered = renderMatches(text, matches);
+    const rendered = renderMatches(text, result.matches);
     return {
       content: [
         {
           type: "text" as const,
-          text: `${formatMetadata(pageSize, rendered.ranges)}\n${rendered.text}`,
+          text: `${formatMetadata(pageSize, rendered.ranges)}\n${rendered.text}${
+            result.truncated ? "\n[Additional matches omitted.]" : ""
+          }`,
         },
       ],
       details: { pageSize },
@@ -355,7 +463,8 @@ export async function executeFetchUrl(
         url: params.url,
         text: rendered.text,
         pageSize,
-        matches,
+        matches: result.matches,
+        matchesTruncated: result.truncated,
         ranges: rendered.ranges,
       },
       isError: false,
@@ -399,7 +508,9 @@ export async function executeFetchUrl(
         .slice(returnedRange.start, returnedRange.end)
         .join(""),
       pageSize,
-      range: returnedRange,
+      matches: [],
+      matchesTruncated: false,
+      ranges: [returnedRange],
       ...(requestedRange ? { requestedRange } : {}),
     },
     isError: false,
