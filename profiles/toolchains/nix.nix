@@ -32,13 +32,13 @@ in
               options =
                 if isDarwin then
                   {
-                    darwin.expr = ''(builtins.getFlake "${host.dotfilesDirectory}").darwinConfigurations.darwin-aarch64.options'';
-                    home-manager.expr = ''(builtins.getFlake "${host.dotfilesDirectory}").darwinConfigurations.darwin-aarch64.options.home-manager'';
+                    darwin.expr = ''(builtins.getFlake "git+file://${host.dotfilesDirectory}").darwinConfigurations.darwin-aarch64.options'';
+                    home-manager.expr = ''(builtins.getFlake "git+file://${host.dotfilesDirectory}").darwinConfigurations.darwin-aarch64.options.home-manager'';
                   }
                 else
                   {
-                    nixos.expr = ''(builtins.getFlake "${host.dotfilesDirectory}").nixosConfigurations.nixos-aarch64.options'';
-                    home-manager.expr = ''(builtins.getFlake "${host.dotfilesDirectory}").nixosConfigurations.nixos-aarch64.options.home-manager'';
+                    nixos.expr = ''(builtins.getFlake "git+file://${host.dotfilesDirectory}").nixosConfigurations.nixos-aarch64.options'';
+                    home-manager.expr = ''(builtins.getFlake "git+file://${host.dotfilesDirectory}").nixosConfigurations.nixos-aarch64.options.home-manager'';
                   };
             };
           };
