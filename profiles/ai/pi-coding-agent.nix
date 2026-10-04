@@ -170,7 +170,6 @@ in
           markdown = {
             mermaid = "streaming";
           };
-          tuiMode = "fullscreen";
         };
       };
 
