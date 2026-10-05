@@ -5,15 +5,14 @@ import type {
   ExtensionContext,
 } from "@earendil-works/pi-coding-agent";
 import {
-  createAsyncJobs,
-  type AsyncCompletion,
-  type AsyncJob,
-} from "../pi-extension-infrastructure/subagents/async.js";
+  createAgentJobs,
+  type AgentJob,
+} from "../pi-extension-infrastructure/subagents/jobs.js";
+import { oracleAgent } from "../pi-extension-infrastructure/subagents/roles.js";
 import { prepareContext, removeDirectory } from "./evidence.js";
 import { parsePr, text } from "./parsing.js";
 import type { PendingRun, PreparedContext } from "./types.js";
 
-const source = "brioche-packages-debug-pr-failure";
 const repositoriesRoot = join(homedir(), "Development", "git-repositories");
 const briochePackagesRepository = join(
   repositoriesRoot,
@@ -40,31 +39,23 @@ function errorMessage(error: unknown): string {
 }
 
 export function registerDebugPrFailure(pi: ExtensionAPI) {
-  const asyncJobs = createAsyncJobs(pi, {
-    source,
+  const agentJobs = createAgentJobs(pi, {
     customType: "brioche-debug-pr-failure",
+    maxConcurrentJobs: 4,
   });
-  const taskFor = (
-    owner: DebugOwner,
-    ctx: ExtensionContext,
-    task: string,
-  ): AsyncJob => ({
+  let shuttingDown = false;
+  const preparations = new Set<Promise<void>>();
+  const taskFor = (owner: DebugOwner, task: string): AgentJob => ({
     label: `Investigation for PR ${owner.pr}`,
     launch: {
       cwd: briochePackagesRepository,
-      agent: "oracle",
-      task,
-      reads: [
+      readRoots: [
         owner.directory,
-        briochePackagesRepository,
         briocheSourceRepository,
         briocheRuntimeUtilsRepository,
       ],
-      capabilities: {
-        sessionId: ctx.sessionManager.getSessionId(),
-        allowedAgents: ["oracle"],
-        allowedTools: ["bash"],
-      },
+      config: oracleAgent,
+      task,
     },
     evidence: {
       path: owner.directory,
@@ -73,49 +64,82 @@ export function registerDebugPrFailure(pi: ExtensionAPI) {
           throw new Error("Could not remove debug evidence directory.");
       },
     },
-    complete: async (completion: AsyncCompletion) => ({
-      content: `Investigation completed for PR ${owner.pr}.\n\n${completion.text || "The subagent returned no report."}${completion.artifacts.length ? `\n\nSubagent artifacts:\n${completion.artifacts.join("\n")}` : ""}`,
-      details: {
-        pr: owner.pr,
-        ...(completion.artifacts.length
-          ? { artifactPaths: completion.artifacts }
-          : {}),
-      },
+    complete: async (completion: string) => ({
+      content: `Investigation completed for PR ${owner.pr}.\n\n${completion}`,
+      details: { pr: owner.pr },
     }),
   });
+
+  async function investigate(
+    args: string,
+    ctx: ExtensionContext,
+  ): Promise<void> {
+    const pr = parsePr(args);
+    if (!pr) {
+      ctx.ui.notify(
+        "Usage: /brioche-packages:debug-pr-failure <PR number or URL>",
+        "warning",
+      );
+      return;
+    }
+    let prepared: PreparedContext | undefined;
+    try {
+      ctx.ui.notify(`Preparing failure artifacts for PR ${pr}...`, "info");
+      prepared = await prepareContext(pr, briochePackagesRepository);
+      if (shuttingDown) {
+        await removeDirectory(prepared.directory);
+        return;
+      }
+      const context = prepared;
+      const packageName = text(context.metadata.package) || "unknown";
+      const task = [
+        investigationInstructions,
+        "",
+        `Investigate Brioche package PR ${pr} for package ${packageName}.`,
+        "Inspect these configured read-only roots:",
+        context.directory,
+        briochePackagesRepository,
+        briocheSourceRepository,
+        briocheRuntimeUtilsRepository,
+        "Return your findings for the parent agent.",
+      ].join("\n");
+      const owner: DebugOwner = { directory: context.directory, pr };
+      void agentJobs
+        .start(ctx, taskFor(owner, task))
+        .catch((error: unknown) => {
+          if (!shuttingDown) ctx.ui.notify(errorMessage(error), "error");
+        });
+      ctx.ui.notify(
+        `Prepared ${context.summary}. Started investigation for PR ${pr} in ${basename(context.directory)}.`,
+        "info",
+      );
+    } catch (error) {
+      if (prepared) {
+        try {
+          await removeDirectory(prepared.directory);
+        } catch {}
+      }
+      if (!shuttingDown) ctx.ui.notify(errorMessage(error), "error");
+    }
+  }
 
   pi.registerCommand("brioche-packages:debug-pr-failure", {
     description: "Investigate a Brioche package PR merge queue failure",
     handler: async (args, ctx: ExtensionContext) => {
-      const pr = parsePr(args);
-      if (!pr) {
-        ctx.ui.notify(
-          "Usage: /brioche-packages:debug-pr-failure <PR number or URL>",
-          "warning",
-        );
-        return;
-      }
-      let prepared: PreparedContext | undefined;
+      if (shuttingDown) return;
+      const preparation = investigate(args, ctx);
+      preparations.add(preparation);
       try {
-        ctx.ui.notify(`Preparing failure artifacts for PR ${pr}...`, "info");
-        prepared = await prepareContext(pr, briochePackagesRepository);
-        const context = prepared;
-        const packageName = text(context.metadata.package) || "unknown";
-        const task = `${investigationInstructions}\n\nInvestigate Brioche package PR ${pr} for package ${packageName}. The temporary evidence and package, Brioche, and runtime utility repositories are supplied as read-only context. Return your findings for the parent agent.`;
-        const owner: DebugOwner = { directory: context.directory, pr };
-        void asyncJobs.start(taskFor(owner, ctx, task));
-        ctx.ui.notify(
-          `Prepared ${context.summary}. Started investigation for PR ${pr} in ${basename(context.directory)}.`,
-          "info",
-        );
-      } catch (error) {
-        if (prepared) await removeDirectory(prepared.directory);
-        ctx.ui.notify(errorMessage(error), "error");
+        await preparation;
+      } finally {
+        preparations.delete(preparation);
       }
     },
   });
 
   pi.on("session_shutdown", async () => {
-    await asyncJobs.shutdown();
+    shuttingDown = true;
+    await Promise.allSettled([...preparations]);
+    await agentJobs.shutdown();
   });
 }

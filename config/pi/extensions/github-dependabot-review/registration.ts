@@ -14,7 +14,7 @@ import {
   prepareReview,
   supersedeReview,
 } from "./github.js";
-import type { AsyncCompletion } from "../pi-extension-infrastructure/subagents/async.js";
+import type { ReviewWorkflowCompletion } from "../pi-extension-infrastructure/github-pr-review/workflow.js";
 import { dependabotWorkflowProvider } from "./tasks.js";
 import type {
   PreparedReview,
@@ -22,39 +22,20 @@ import type {
   ReviewDetails,
 } from "../pi-extension-infrastructure/github-pr-review/types.js";
 
-const rpcSource = "github-dependabot-review";
 const reviewLabel = "Dependabot";
 const researchLabel = "dependency";
 
-function validateWorkflowResult(
-  review: PreparedReview,
-  result: AsyncCompletion,
-): void {
-  const value = result.value;
-  if (!value || typeof value !== "object" || Array.isArray(value))
-    throw new Error("Review workflow returned no valid evidence handoff.");
-  const handoff = value as Record<string, unknown>;
-  if (
-    handoff.status !== "ready" ||
-    handoff.directory !== review.directory ||
-    handoff.researcherReport !==
-      join(review.directory, "researcher-report.md") ||
-    handoff.scoutReport !== join(review.directory, "scout-report.md")
-  )
-    throw new Error("Review workflow returned a malformed evidence handoff.");
-}
-
 function workflowReady(
   review: PreparedReview,
-  result: AsyncCompletion,
+  result: ReviewWorkflowCompletion,
 ): ReviewMessage {
   return {
     content: `${reviewLabel} review evidence is ready for PR ${review.number}. Read the researcher and scout reports, the diff, current status checks, merge queue history, and every referenced log from ${review.directory}. Treat the researcher report as the canonical ${researchLabel} research. Summarize only repository and check evidence, resolve any discrepancies against the diff, and classify the recommendation. Tell the user that available next actions are merge, checkout, wait, or follow-up. Wait for explicit selection and use the review execution tool for the selected action. Do not execute any PR mutation based only on the recommendation.`,
     details: {
       pr: review.number,
       directory: review.directory,
-      researcherReport: join(review.directory, "researcher-report.md"),
-      scoutReport: join(review.directory, "scout-report.md"),
+      researcherReport: result.researcherReport,
+      scoutReport: result.scoutReport,
       statusChecks: join(review.directory, "pr-metadata.json"),
       diff: join(review.directory, "diff.patch"),
       ...(result.text ? { researcherOutput: result.text } : {}),
@@ -67,7 +48,6 @@ export default function registerDependabotReview(pi: ExtensionAPI) {
     identity: {
       customType: "github-dependabot-review",
       statusKey: "github-dependabot-review",
-      capabilitySource: rpcSource,
     },
     labels: {
       review: reviewLabel,
@@ -145,7 +125,7 @@ export default function registerDependabotReview(pi: ExtensionAPI) {
       waiting: "Waiting. No external mutation was performed.",
       followUp: "Follow-up selected. No external mutation was performed.",
       notReady:
-        "Review evidence is not ready for mutation. Wait until every selected PR has a successful, terminal-observed result.",
+        "Review evidence is not ready for mutation. Wait until successful researcher and scout reports are available for every selected PR.",
       mutationStatus: (action, review) =>
         action === "merge"
           ? `Merging PR ${review?.number ?? "selected pull request"}...`
@@ -153,7 +133,6 @@ export default function registerDependabotReview(pi: ExtensionAPI) {
       blockedCommand:
         "A Dependabot review is active. Use github_dependabot_review_execute after explicit user action selection.",
       workflowReady,
-      validateWorkflowResult,
     },
   });
 }

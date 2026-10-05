@@ -1,4 +1,4 @@
-import type { ReviewWorkflowProvider } from "../pi-extension-infrastructure/github-pr-review/workflow-script.js";
+import type { ReviewWorkflowProvider } from "../pi-extension-infrastructure/github-pr-review/workflow.js";
 import type { PreparedReview } from "../pi-extension-infrastructure/github-pr-review/types.js";
 
 export function researcherTask(review: PreparedReview): string {
@@ -12,5 +12,4 @@ export function scoutTask(review: PreparedReview): string {
 export const dependabotWorkflowProvider: ReviewWorkflowProvider = {
   researcherTask,
   scoutTask,
-  reviewMetadata: () => ({}),
 };

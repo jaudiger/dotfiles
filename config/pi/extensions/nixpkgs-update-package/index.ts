@@ -3,7 +3,6 @@ import type {
   ExtensionContext,
 } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
-import { cancelDelegatedRequests } from "../pi-extension-infrastructure/subagents/delegation.js";
 import { createToolScope } from "../pi-extension-infrastructure/tool-scope.js";
 import { registerResearchTool, type ResearchResult } from "./research.js";
 import { collectNixpkgsContext, type NixpkgsContext } from "./context.js";
@@ -109,12 +108,12 @@ export default function (pi: ExtensionAPI) {
     shuttingDown ? undefined : active,
   );
 
-  registerResearchTool(pi, {
+  const cancelResearch = registerResearchTool(pi, {
     getActive: () => active,
-    setResearch: (result) => {
-      if (active) {
-        active.research = result;
-        active.phase = "editing";
+    setResearch: (result, owner) => {
+      if (active === owner && owner.phase === "research") {
+        owner.research = result;
+        owner.phase = "editing";
       }
     },
     repository,
@@ -340,7 +339,7 @@ export default function (pi: ExtensionAPI) {
 
   pi.on("session_shutdown", async () => {
     shuttingDown = true;
-    cancelDelegatedRequests(pi);
+    await cancelResearch();
     await Promise.allSettled([...verificationPromises]);
     clearActive();
   });

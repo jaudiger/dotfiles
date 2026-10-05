@@ -1,6 +1,7 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
-import { runDelegatedText } from "../pi-extension-infrastructure/subagents/delegation.js";
+import { runReadOnlyPiAgent } from "../pi-extension-infrastructure/subagents/agent.js";
+import { researcherAgent } from "../pi-extension-infrastructure/subagents/roles.js";
 import type { NixpkgsContext } from "./context.js";
 import type { WorkflowPhase } from "./workflow.js";
 
@@ -77,8 +78,6 @@ function parseResearch(
   value: string,
   expectedPackages: string[],
 ): ResearchResult {
-  if (!value.trim() || value.trim() !== value)
-    throw new Error("Nixpkgs researcher returned empty or padded output.");
   let parsed: unknown;
   try {
     parsed = JSON.parse(value) as unknown;
@@ -145,9 +144,14 @@ export function registerResearchTool(
   options: {
     repository: string;
     getActive: () => ResearchState | undefined;
-    setResearch: (result: ResearchResult) => void;
+    setResearch: (result: ResearchResult, owner: ResearchState) => void;
   },
-): void {
+): () => Promise<void> {
+  const activeRuns = new Set<{
+    controller: AbortController;
+    completed: Promise<void>;
+    finish: () => void;
+  }>();
   pi.registerTool({
     name: "nixpkgs_update_package_research",
     label: "Nixpkgs update package research",
@@ -198,36 +202,46 @@ export function registerResearchTool(
           details: {},
           isError: true,
         };
+      if (activeRuns.size > 0)
+        return {
+          content: [
+            { type: "text", text: "Nixpkgs research is already running." },
+          ],
+          details: {},
+          isError: true,
+        };
 
+      const controller = new AbortController();
+      let finish!: () => void;
+      const completed = new Promise<void>((resolve) => {
+        finish = resolve;
+      });
+      const run = { controller, completed, finish };
+      const abort = () => controller.abort();
+      activeRuns.add(run);
+      if (_signal?.aborted) controller.abort();
+      else _signal?.addEventListener("abort", abort, { once: true });
       try {
-        const result = parseResearch(
-          await runDelegatedText(
-            pi,
-            {
-              agent: "researcher",
-              task: researcherTask(active),
-              context: "fresh",
-              cwd: active.context.repository,
-              artifacts: false,
-            },
-            {
-              sourcePrefix: "nixpkgs-update-package",
-              nodeId: "researcher",
-              timeoutMs: 30 * 60 * 1000,
-              signal: _signal,
-              capabilityScope: {
-                sessionId: active.sessionId,
-                source: "nixpkgs-update-package",
-                ceiling: {
-                  allowedAgents: ["researcher"],
-                  allowedTools: ["bash", "fetch_url"],
-                },
-              },
-            },
-          ),
-          active.packages,
-        );
-        options.setResearch(result);
+        const output = await runReadOnlyPiAgent({
+          context: ctx,
+          config: researcherAgent,
+          cwd: active.context.repository,
+          prompt: researcherTask(active),
+          evidenceFiles: [],
+          includeFetchUrl: true,
+          signal: controller.signal,
+          timeoutMs: 30 * 60 * 1000,
+        });
+        const current = options.getActive();
+        if (
+          controller.signal.aborted ||
+          current !== active ||
+          current.sessionId !== ctx.sessionManager.getSessionId() ||
+          current.phase !== "research"
+        )
+          throw new Error("The active Nixpkgs update changed during research.");
+        const result = parseResearch(output, active.packages);
+        options.setResearch(result, active);
         return {
           content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
           details: result,
@@ -244,7 +258,16 @@ export function registerResearchTool(
           details: {},
           isError: true,
         };
+      } finally {
+        _signal?.removeEventListener("abort", abort);
+        activeRuns.delete(run);
+        finish();
       }
     },
   });
+  return async () => {
+    const runs = [...activeRuns];
+    for (const run of runs) run.controller.abort();
+    await Promise.all(runs.map((run) => run.completed));
+  };
 }

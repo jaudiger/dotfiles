@@ -8,14 +8,10 @@ import { Type } from "typebox";
 import { pickReview } from "./picker.js";
 import { createToolScope } from "../tool-scope.js";
 import {
-  createAsyncJobs,
-  type AsyncCompletion,
-  type AsyncJob,
-} from "../subagents/async.js";
-import {
-  workflowTask,
+  runReviewWorkflow,
+  type ReviewWorkflowCompletion,
   type ReviewWorkflowProvider,
-} from "./workflow-script.js";
+} from "./workflow.js";
 import type {
   Json,
   MutationTarget,
@@ -36,11 +32,10 @@ type ReviewMutationAction = "merge" | "checkout" | "supersede";
  * controller to a particular pull-request source.
  */
 export type GithubPrReviewControllerProvider = {
-  /** Stable names used for status, custom messages, and capability ceilings. */
+  /** Stable names used for status and custom messages. */
   identity: {
     customType: string;
     statusKey: string;
-    capabilitySource: string;
   };
   labels: {
     review: string;
@@ -148,13 +143,8 @@ export type GithubPrReviewControllerProvider = {
     blockedCommand: string;
     workflowReady: (
       review: PreparedReview,
-      result: AsyncCompletion,
+      result: ReviewWorkflowCompletion,
     ) => ReviewMessage;
-    /** Validate the workflow handoff before evidence is considered ready. */
-    validateWorkflowResult?: (
-      review: PreparedReview,
-      result: AsyncCompletion,
-    ) => void;
   };
 };
 
@@ -193,6 +183,13 @@ type ReviewOwner = {
   generation: number;
 };
 
+type RunningWorkflow = {
+  controller: AbortController;
+  promise: Promise<void>;
+};
+
+const maxReviewWorkflows = 4;
+
 export type GithubPrReviewController = {
   readonly active: ReviewContext | undefined;
   readonly shuttingDown: boolean;
@@ -208,16 +205,12 @@ export function registerGithubPrReviewController(
   pi: ExtensionAPI,
   provider: GithubPrReviewControllerProvider,
 ): GithubPrReviewController {
-  const source = provider.identity.capabilitySource;
   let active: ReviewContext | undefined;
   let reviewGeneration = 0;
   let shuttingDown = false;
   const reviewEvidenceDirectories = new Set<string>();
+  const runningWorkflows = new Set<RunningWorkflow>();
   const actionToolScope = createToolScope(pi, [provider.tool.name]);
-  const asyncJobs = createAsyncJobs(pi, {
-    source,
-    customType: provider.identity.customType,
-  });
 
   const isActiveReview = (review: PreparedReview): boolean =>
     active?.reviews.some((item) => item.directory === review.directory) ??
@@ -247,66 +240,71 @@ export function registerGithubPrReviewController(
   const stopReview = async (): Promise<void> => {
     active = undefined;
     actionToolScope.release();
+    const workflows = [...runningWorkflows];
+    for (const workflow of workflows) workflow.controller.abort();
     try {
-      await asyncJobs.stopAll();
+      await Promise.all(workflows.map((workflow) => workflow.promise));
     } finally {
       await cleanupReviewEvidence();
     }
   };
 
-  const taskFor = (owner: ReviewOwner): AsyncJob => ({
-    label: `${provider.labels.review} review for PR ${owner.review.number}`,
-    launch: {
-      cwd: owner.review.cwd,
-      script: workflowTask(owner.review, provider.workflow),
-      capabilities: {
-        sessionId: owner.review.sessionId,
-        allowedAgents: ["researcher", "scout"],
-        allowedTools: ["bash", "fetch_url"],
-      },
-    },
-    evidence: {
-      path: owner.review.directory,
-      remove: async () => {
-        if (!(await removeReviewEvidence(owner.review.directory)))
-          throw new Error("Could not remove review evidence directory.");
-      },
-    },
-    complete: async (result: AsyncCompletion) => {
-      const current = active;
-      if (
-        !current ||
-        current.generation !== owner.generation ||
-        !isActiveReview(owner.review)
-      )
-        return {
-          content: `${provider.labels.review} review became stale.`,
-          retainEvidence: true,
-        };
-      provider.text.validateWorkflowResult?.(owner.review, result);
-      const stillCurrent = active;
-      if (
-        !stillCurrent ||
-        stillCurrent.generation !== owner.generation ||
-        !isActiveReview(owner.review)
-      )
-        return {
-          content: `${provider.labels.review} review became stale.`,
-          retainEvidence: true,
-        };
-      stillCurrent.readyDirectories.add(owner.review.directory);
-      if (
-        stillCurrent.reviews.every((review) =>
-          stillCurrent.readyDirectories.has(review.directory),
+  const sendWorkflowMessage = (message: ReviewMessage): void => {
+    try {
+      pi.sendMessage(
+        {
+          customType: provider.identity.customType,
+          content: message.content,
+          details: message.details ?? {},
+          display: true,
+        },
+        { triggerTurn: false, deliverAs: "followUp" },
+      );
+    } catch {
+      // A completed workflow must not reopen a finalized session.
+    }
+  };
+
+  const isCurrentOwner = (owner: ReviewOwner): boolean =>
+    active?.generation === owner.generation && isActiveReview(owner.review);
+
+  const startWorkflow = (owner: ReviewOwner, ctx: ExtensionContext): void => {
+    const controller = new AbortController();
+    const running: RunningWorkflow = {
+      controller,
+      promise: Promise.resolve(),
+    };
+    runningWorkflows.add(running);
+    running.promise = runReviewWorkflow(
+      owner.review,
+      provider.workflow,
+      ctx,
+      controller.signal,
+    )
+      .then((result) => {
+        if (controller.signal.aborted || !isCurrentOwner(owner)) return;
+        const current = active!;
+        current.readyDirectories.add(owner.review.directory);
+        if (
+          current.reviews.every((review) =>
+            current.readyDirectories.has(review.directory),
+          )
         )
-      )
-        stillCurrent.state = "ready";
-      return {
-        ...provider.text.workflowReady(owner.review, result),
-        retainEvidence: true,
-      };
-    },
-  });
+          current.state = "ready";
+        sendWorkflowMessage(provider.text.workflowReady(owner.review, result));
+      })
+      .catch((error: unknown) => {
+        if (controller.signal.aborted || !isCurrentOwner(owner)) return;
+        const reason = error instanceof Error ? error.message : String(error);
+        sendWorkflowMessage({
+          content: `${provider.labels.review} review did not finish safely: ${reason}. Evidence retained at ${owner.review.directory}.`,
+          details: { evidenceDirectory: owner.review.directory },
+        });
+      })
+      .finally(() => {
+        runningWorkflows.delete(running);
+      });
+  };
 
   const progressFor = (ctx: ExtensionContext) => (message: string) =>
     ctx.ui.setStatus(provider.identity.statusKey, message);
@@ -390,6 +388,10 @@ export function registerGithubPrReviewController(
           requests = candidates.map((candidate) => candidate.url);
         } else requests = [requestedPullRequest];
 
+        if (requests.length > maxReviewWorkflows)
+          throw new Error(
+            `Select no more than ${maxReviewWorkflows} pull requests for one review run.`,
+          );
         progress(provider.text.preparingEvidence(requests.length));
         ctx.ui.notify(provider.text.preparingEvidence(requests.length), "info");
         const session: ReviewContext = {
@@ -433,10 +435,8 @@ export function registerGithubPrReviewController(
         const reviews = session.reviews;
         if (provider.text.researchStarted)
           progress(provider.text.researchStarted);
-        const reviewJobs = reviews.map((review) =>
-          taskFor({ review, generation: session.generation }),
-        );
-        void asyncJobs.start(...reviewJobs);
+        for (const review of reviews)
+          startWorkflow({ review, generation: session.generation }, ctx);
         ctx.ui.notify(
           provider.text.startedReview(reviews.map(reviewUrl)),
           "info",
@@ -469,13 +469,23 @@ export function registerGithubPrReviewController(
       if (!active || active.sessionId !== ctx.sessionManager.getSessionId())
         return {
           content: [{ type: "text", text: provider.text.noActiveReview }],
+          details: undefined,
         };
       if (params.action === "wait")
-        return { content: [{ type: "text", text: provider.text.waiting }] };
+        return {
+          content: [{ type: "text", text: provider.text.waiting }],
+          details: undefined,
+        };
       if (params.action === "follow-up")
-        return { content: [{ type: "text", text: provider.text.followUp }] };
+        return {
+          content: [{ type: "text", text: provider.text.followUp }],
+          details: undefined,
+        };
       if (active.state !== "ready")
-        return { content: [{ type: "text", text: provider.text.notReady }] };
+        return {
+          content: [{ type: "text", text: provider.text.notReady }],
+          details: undefined,
+        };
 
       const session = active;
       const targets = session.reviews.map((review) => ({
@@ -507,7 +517,7 @@ export function registerGithubPrReviewController(
         } catch {
           session.state = "stale";
         }
-        return { content: [{ type: "text", text }] };
+        return { content: [{ type: "text", text }], details: undefined };
       } finally {
         actionToolScope.release();
         session.generation += 1;
@@ -544,11 +554,7 @@ export function registerGithubPrReviewController(
 
   pi.on("session_shutdown", async () => {
     shuttingDown = true;
-    try {
-      await stopReview();
-    } finally {
-      await asyncJobs.shutdown();
-    }
+    await stopReview();
   });
 
   return {
