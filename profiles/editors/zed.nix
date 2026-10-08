@@ -193,6 +193,7 @@ in
         sticky_scroll = {
           enabled = true;
         };
+        suggest_extensions = false;
         tab_bar = {
           show = false;
           show_nav_history_buttons = false;
