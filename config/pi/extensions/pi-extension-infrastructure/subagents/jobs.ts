@@ -257,5 +257,16 @@ export function createAgentJobs(
     return shutdownPromise;
   }
 
+  pi.on("agent_settled", async (event, context) => {
+    if (!event.aborted) return;
+    const sessionId = currentSessionId(context);
+    if (!sessionId) return;
+    const records = [...active].filter(
+      (record) => record.sessionId === sessionId,
+    );
+    for (const record of records) record.controller.abort();
+    await Promise.all(records.map((record) => record.done));
+  });
+
   return { start, shutdown };
 }

@@ -552,6 +552,16 @@ export function registerGithubPrReviewController(
       };
   });
 
+  pi.on("agent_settled", async (event, ctx) => {
+    if (
+      !event.aborted ||
+      shuttingDown ||
+      active?.sessionId !== ctx.sessionManager.getSessionId()
+    )
+      return;
+    await stopReview();
+  });
+
   pi.on("session_shutdown", async () => {
     shuttingDown = true;
     await stopReview();

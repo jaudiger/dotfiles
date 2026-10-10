@@ -9,7 +9,7 @@ export default function (pi: ExtensionAPI) {
     isTui = ctx.mode === "tui";
   });
 
-  pi.on("agent_settled", () => {
-    if (isTui) process.stdout.write(TERMINAL_BELL);
+  pi.on("agent_settled", (event) => {
+    if (isTui && !event.aborted) process.stdout.write(TERMINAL_BELL);
   });
 }

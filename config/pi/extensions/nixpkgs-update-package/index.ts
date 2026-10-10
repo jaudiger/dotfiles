@@ -228,8 +228,20 @@ export default function (pi: ExtensionAPI) {
     },
   });
 
-  pi.on("agent_settled", async (_event, ctx) => {
+  pi.on("agent_settled", async (event, ctx) => {
     if (shuttingDown || !ownsWorkflow(active, ctx)) return;
+    if (event.aborted) {
+      const update = active;
+      await cancelResearch();
+      if (shuttingDown || active !== update) return;
+      clearActive();
+      report(
+        pi,
+        "The Nixpkgs update workflow was canceled. Any recipe edits already made remain in the working tree.",
+        { repository, packages: update.packages },
+      );
+      return;
+    }
     if (
       active.phase !== "editing" ||
       active.publicationRunning ||
