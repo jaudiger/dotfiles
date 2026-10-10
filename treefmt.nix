@@ -5,13 +5,12 @@
     # JSON / Markdown / TypeScript
     prettier = {
       enable = true;
-      excludes = [ "pkgs/deepseek-harness-package-lock.json" ];
       includes = [
         "*.json"
         "*.md"
         "*.ts"
-        "*.tsx"
       ];
+
       settings = {
         proseWrap = "never";
         # Tiny printWidth keeps all Markdown tables in the compact delimiter form.
@@ -50,7 +49,11 @@
     # YAML
     yamlfmt = {
       enable = true;
-      excludes = [ "secrets/**/*.yaml" ];
+      excludes = [
+        "pkgs/deepseek-harness-pnpm-lock.yaml"
+        "pkgs/deepseek-harness-pnpm-workspace.yaml"
+        "secrets/**/*.yaml"
+      ];
 
       settings.formatter = {
         retain_line_breaks_single = true;

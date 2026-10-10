@@ -1,9 +1,12 @@
 {
   lib,
-  buildNpmPackage,
+  fetchPnpmDeps,
   fetchurl,
   fetchzip,
   makeWrapper,
+  pnpm_11,
+  pnpmConfigHook,
+  stdenvNoCC,
 }:
 
 let
@@ -12,44 +15,54 @@ let
     hash = "sha256-F9UVZf9MU+xzeIyWekw3+nntYSfbj5phU2cQMNjBcus=";
     stripRoot = true;
   };
+
+  pnpmSourceFiles = ''
+    cp ${./deepseek-harness-pnpm-lock.yaml} pnpm-lock.yaml
+    cp ${./deepseek-harness-pnpm-workspace.yaml} pnpm-workspace.yaml
+    cp ${./deepseek-harness-pi-ai-1.0.2.patch} patches-pi-ai.patch
+  '';
 in
-buildNpmPackage rec {
+stdenvNoCC.mkDerivation (finalAttrs: {
   pname = "deepseek-harness";
-  version = "0.2.1-alpha.1";
+  version = "0.2.1-alpha.2";
 
   src = fetchurl {
-    url = "https://registry.npmjs.org/@deepseek-ai/dsh/-/dsh-${version}.tgz";
-    hash = "sha256-hX+TqmyFy9kr40IjgOVRbyNtxcSc2gQFqVjL3xhl6Ns=";
+    url = "https://registry.npmjs.org/@deepseek-ai/dsh/-/dsh-${finalAttrs.version}.tgz";
+    hash = "sha256-5MrTlEE9avk8wfq40ZjvmV4bp8vXvEM4bfXtfvS2ktA=";
   };
 
   sourceRoot = "package";
 
-  npmDepsHash = "sha256-z3TvmVDhcN4IiYJ5SnU1m5bg1yCfoC3/cA0kpf8Tbi8=";
+  pnpmInstallFlags = [ "--prod" ];
+
+  pnpmDeps = fetchPnpmDeps {
+    inherit (finalAttrs)
+      pname
+      version
+      src
+      sourceRoot
+      pnpmInstallFlags
+      ;
+    pnpm = pnpm_11;
+    fetcherVersion = 4;
+    hash = "sha256-Sx/MGVZ0It3dKSv+HgIaW/TD9lyOSBFon88f4kEoO0A=";
+    prePatch = pnpmSourceFiles;
+  };
 
   nativeBuildInputs = [
     makeWrapper
+    pnpm_11
+    pnpmConfigHook
   ];
 
-  # Regenerate by extracting the npm tarball, removing devDependencies, and
-  # running npm install --package-lock-only --omit=dev.
-  postPatch = ''
-    sed -i.bak \
-      -e '/^  "devDependencies": {/,/^  }$/d' \
-      -e '/^  "dependencies": {/,/^  },$/s/^  },$/  }/' \
-      package.json
-    rm package.json.bak
-    cp ${./deepseek-harness-package-lock.json} package-lock.json
-  '';
+  postPatch = pnpmSourceFiles;
 
-  npmInstallFlags = [
-    "--omit=dev"
-  ];
-
-  dontNpmBuild = true;
+  dontBuild = true;
 
   installPhase = ''
     runHook preInstall
 
+    rm pnpm-lock.yaml pnpm-workspace.yaml patches-pi-ai.patch
     mkdir -p "$out/lib/node_modules/@deepseek-ai/dsh" "$out/bin"
     cp -R . "$out/lib/node_modules/@deepseek-ai/dsh/"
     makeWrapper "${runtimeNode}/bin/node" "$out/bin/dsh" \
@@ -67,4 +80,4 @@ buildNpmPackage rec {
     maintainers = [ lib.maintainers.jaudiger ];
     platforms = lib.platforms.unix;
   };
-}
+})

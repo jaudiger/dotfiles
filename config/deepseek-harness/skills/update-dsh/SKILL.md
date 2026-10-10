@@ -14,9 +14,13 @@ This workflow has two phases:
 Compare the release with the current DeepSeek Harness packaging and configuration at these paths, relative to the repository root:
 
 - `pkgs/deepseek-harness.nix`
-- `pkgs/deepseek-harness-package-lock.json`
+- `pkgs/deepseek-harness-pnpm-lock.yaml`
+- `pkgs/deepseek-harness-pnpm-workspace.yaml`
+- `pkgs/deepseek-harness-pi-ai-1.0.2.patch`
 - `profiles/ai/deepseek-harness.nix`
 - `config/deepseek-harness/` recursively
+
+The Nix package installs dependencies with PNPM. Account for `fetchPnpmDeps`, the pinned `pnpm_11` toolchain, `pnpmConfigHook`, the production install flags, and the workspace lock and patch files when assessing packaging changes. The PNPM lock, workspace file, and patch are copied into the unpacked release source during dependency fetching and patching, then removed before installation. Do not refer to the removed npm package lockfile or recommend npm lockfile regeneration. For approved package updates, verify the upstream tarball hash, PNPM dependency hash, lockfile and workspace contents, patch applicability, and the resulting `dsh` wrapper.
 
 Focus exclusively on DeepSeek Harness itself and the runtime behavior consumed by this configuration. Inspect, when relevant, the DSH CLI and profile model, Cordis patch and bundle composition, system-prompt and persona assembly, agent presets, skills and skill scoping, model/provider configuration, subagent spawning and lifecycle, tools and permissions, Web sessions, and the headless runner. Do not perform a general review of unrelated dotfiles or other agents.
 

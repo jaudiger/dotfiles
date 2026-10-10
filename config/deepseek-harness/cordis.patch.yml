@@ -12,24 +12,7 @@
   config:
     providers:
       openai-codex:
-        api: openai-responses
-        baseURL: https://chatgpt.com/backend-api
         reasoning: max
-        models:
-          - id: gpt-6.1-sol
-            name: GPT-6.1 Sol
-            input:
-              - text
-              - image
-            contextWindow: 272000
-            maxTokens: 128000
-            reasoningEfforts:
-              low: low
-              medium: medium
-              high: high
-              xhigh: xhigh
-              max: max
-          - id: gpt-6-luna
 
 - id: plugin-package-inventory-deepseek
   config:
@@ -55,8 +38,6 @@
   config:
     provider: spawn
     toolName: subagent
-    backgroundMode: one-shot
-    enableRunInBackground: false
     maxDepth: 1
 
 - id: tool-subagent-control
@@ -66,8 +47,6 @@
   config:
     provider: fork
     toolName: subagent_fork
-    backgroundMode: one-shot
-    enableRunInBackground: false
     maxDepth: 1
 
 - id: tool-subagent-list-agents
@@ -91,8 +70,6 @@
       config:
         provider: spawn
         toolName: subagent_oracle
-        backgroundMode: one-shot
-        enableRunInBackground: false
         maxDepth: 1
         agentOptions:
           provider: openai-codex
@@ -109,8 +86,6 @@
       config:
         provider: spawn
         toolName: subagent_researcher
-        backgroundMode: one-shot
-        enableRunInBackground: false
         maxDepth: 1
         agentOptions:
           provider: openai-codex
@@ -128,8 +103,6 @@
       config:
         provider: spawn
         toolName: subagent_reviewer
-        backgroundMode: one-shot
-        enableRunInBackground: false
         maxDepth: 1
         agentOptions:
           provider: openai-codex
@@ -146,8 +119,6 @@
       config:
         provider: spawn
         toolName: subagent_scout
-        backgroundMode: one-shot
-        enableRunInBackground: false
         maxDepth: 1
         agentOptions:
           provider: openai-codex
@@ -164,8 +135,6 @@
       config:
         provider: spawn
         toolName: subagent_worker
-        backgroundMode: one-shot
-        enableRunInBackground: false
         maxDepth: 1
         agentOptions:
           provider: openai-codex
