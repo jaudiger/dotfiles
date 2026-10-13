@@ -1,4 +1,5 @@
 {
+  "activeRunsPrompt": false,
   "artifactDir": "session",
   "asyncByDefault": false,
   "completionBatch": {
