@@ -16,7 +16,7 @@ Compare the release with the current DeepSeek Harness packaging and configuratio
 - `pkgs/deepseek-harness.nix`
 - `pkgs/deepseek-harness-pnpm-lock.yaml`
 - `pkgs/deepseek-harness-pnpm-workspace.yaml`
-- `pkgs/deepseek-harness-pi-ai-1.0.2.patch`
+- `pkgs/deepseek-harness-pi-ai.patch`
 - `profiles/ai/deepseek-harness.nix`
 - `config/deepseek-harness/` recursively
 
