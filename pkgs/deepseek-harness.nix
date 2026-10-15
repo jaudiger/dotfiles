@@ -19,16 +19,16 @@ let
   pnpmSourceFiles = ''
     cp ${./deepseek-harness-pnpm-lock.yaml} pnpm-lock.yaml
     cp ${./deepseek-harness-pnpm-workspace.yaml} pnpm-workspace.yaml
-    cp ${./deepseek-harness-pi-ai-1.0.2.patch} patches-pi-ai.patch
+    cp ${./deepseek-harness-pi-ai-1.1.0.patch} patches-pi-ai.patch
   '';
 in
 stdenvNoCC.mkDerivation (finalAttrs: {
   pname = "deepseek-harness";
-  version = "0.2.1-alpha.2";
+  version = "0.2.1-alpha.3";
 
   src = fetchurl {
     url = "https://registry.npmjs.org/@deepseek-ai/dsh/-/dsh-${finalAttrs.version}.tgz";
-    hash = "sha256-5MrTlEE9avk8wfq40ZjvmV4bp8vXvEM4bfXtfvS2ktA=";
+    hash = "sha256-Cy/3uMnb9MBKOIOiSpt6bNzPOfNrLceZNiOacWpXxdc=";
   };
 
   sourceRoot = "package";
@@ -45,7 +45,7 @@ stdenvNoCC.mkDerivation (finalAttrs: {
       ;
     pnpm = pnpm_11;
     fetcherVersion = 4;
-    hash = "sha256-Sx/MGVZ0It3dKSv+HgIaW/TD9lyOSBFon88f4kEoO0A=";
+    hash = "sha256-ZE9L1dd2zyuWjPqyQtXwRvciV2UYTAzEZwpqfRrFSLU=";
     prePatch = pnpmSourceFiles;
   };
 
