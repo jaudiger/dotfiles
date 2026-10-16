@@ -207,6 +207,7 @@ export function registerGithubPrReviewController(
 ): GithubPrReviewController {
   let active: ReviewContext | undefined;
   let reviewGeneration = 0;
+  let commandStarting = false;
   let shuttingDown = false;
   const reviewEvidenceDirectories = new Set<string>();
   const runningWorkflows = new Set<RunningWorkflow>();
@@ -309,146 +310,161 @@ export function registerGithubPrReviewController(
   const progressFor = (ctx: ExtensionContext) => (message: string) =>
     ctx.ui.setStatus(provider.identity.statusKey, message);
 
-  pi.registerCommand(provider.command.name, {
-    description: provider.command.description,
-    handler: async (args, ctx) => {
-      const requestedPullRequest = args.trim() || undefined;
-      if (shuttingDown) return;
-      await stopReview();
-      if (shuttingDown) return;
-      const progress = progressFor(ctx);
-      let requests: string[] = [];
-      let candidates: ReviewCandidate[] = [];
-      try {
-        progress(
-          requestedPullRequest
-            ? provider.text.preparingRequested
-            : provider.text.loadingCandidates,
+  const runReviewCommand = async (
+    args: string,
+    ctx: ExtensionContext,
+  ): Promise<void> => {
+    const requestedPullRequest = args.trim() || undefined;
+    if (shuttingDown) return;
+    await stopReview();
+    if (shuttingDown) return;
+    const progress = progressFor(ctx);
+    let requests: string[] = [];
+    let candidates: ReviewCandidate[] = [];
+    try {
+      progress(
+        requestedPullRequest
+          ? provider.text.preparingRequested
+          : provider.text.loadingCandidates,
+      );
+      if (!requestedPullRequest) {
+        ctx.ui.notify(provider.text.loadingCandidates, "info");
+        candidates = (await provider.listCandidates(ctx.cwd)).filter(
+          provider.candidateEligibility,
         );
-        if (!requestedPullRequest) {
-          ctx.ui.notify(provider.text.loadingCandidates, "info");
-          candidates = (await provider.listCandidates(ctx.cwd)).filter(
-            provider.candidateEligibility,
-          );
-          if (candidates.length === 0)
-            throw new Error(provider.text.noCandidates);
-          const selected = await pickReview(
-            ctx,
-            candidates,
-            (candidate) => provider.loadDiff(candidate, ctx.cwd),
-            (candidate) => provider.loadDetails(candidate, ctx.cwd),
-            provider.showQueuePosition,
-            provider.showRepositoryDescription ?? false,
-          );
-          if (!selected || selected.candidates.length === 0) return;
-          if (shuttingDown) return;
-          candidates = selected.candidates;
-          if (selected.mode !== "review") {
-            const action = selected.mode === "merge" ? "merge" : "supersede";
-            progress(
-              provider.text.preparingSelected(candidates.length, action),
-            );
-            provider.mutations.beforePickerPreparation?.(
-              action,
-              candidates.length,
-              ctx,
-            );
-            const targets = await Promise.all(
-              candidates.map((candidate, index) => {
-                provider.mutations.pickerPreparationProgress?.(
-                  action,
-                  candidate,
-                  index,
-                  candidates.length,
-                  progress,
-                );
-                return provider.prepareMutationTarget(candidate, ctx.cwd);
-              }),
-            );
-            if (shuttingDown) return;
-            await provider.mutations.before(action, targets, ctx);
-            let text: string;
-            if (action === "merge")
-              text = await provider.mutations.merge(targets, ctx, progress);
-            else if (provider.mutations.supersede)
-              text = await provider.mutations.supersede(targets, ctx, progress);
-            else
-              throw new Error(
-                "This provider does not support superseding pull requests.",
-              );
-            provider.mutations.beforePickerRefresh?.(ctx, progress);
-            try {
-              await provider.listCandidates(ctx.cwd);
-            } catch {
-              // Refreshing the picker is best effort after a mutation.
-            }
-            provider.mutations.afterPickerMutation?.(text, ctx);
-            return;
-          }
-          requests = candidates.map((candidate) => candidate.url);
-        } else requests = [requestedPullRequest];
-
-        if (requests.length > maxReviewWorkflows)
-          throw new Error(
-            `Select no more than ${maxReviewWorkflows} pull requests for one review run.`,
-          );
-        progress(provider.text.preparingEvidence(requests.length));
-        ctx.ui.notify(provider.text.preparingEvidence(requests.length), "info");
-        const session: ReviewContext = {
-          sessionId: ctx.sessionManager.getSessionId(),
+        if (candidates.length === 0)
+          throw new Error(provider.text.noCandidates);
+        const selected = await pickReview(
+          ctx,
           candidates,
-          reviews: [],
-          generation: ++reviewGeneration,
-          state: "preparing",
-          readyDirectories: new Set(),
-        };
-        active = session;
-        actionToolScope.acquire();
-        for (const [index, request] of requests.entries()) {
-          progress(`Preparing evidence ${index + 1} of ${requests.length}...`);
-          const review = await provider.prepareReview(
-            ctx.cwd,
-            ctx.sessionManager.getSessionId(),
-            request,
+          (candidate) => provider.loadDiff(candidate, ctx.cwd),
+          (candidate) => provider.loadDetails(candidate, ctx.cwd),
+          provider.showQueuePosition,
+          provider.showRepositoryDescription ?? false,
+        );
+        if (!selected || selected.candidates.length === 0) return;
+        if (shuttingDown) return;
+        candidates = selected.candidates;
+        if (selected.mode !== "review") {
+          const action = selected.mode === "merge" ? "merge" : "supersede";
+          progress(provider.text.preparingSelected(candidates.length, action));
+          provider.mutations.beforePickerPreparation?.(
+            action,
+            candidates.length,
+            ctx,
           );
-          reviewEvidenceDirectories.add(review.directory);
-          if (shuttingDown) {
-            await rm(review.directory, { recursive: true, force: true });
-            reviewEvidenceDirectories.delete(review.directory);
-            await stopReview();
-            return;
+          const targets = await Promise.all(
+            candidates.map((candidate, index) => {
+              provider.mutations.pickerPreparationProgress?.(
+                action,
+                candidate,
+                index,
+                candidates.length,
+                progress,
+              );
+              return provider.prepareMutationTarget(candidate, ctx.cwd);
+            }),
+          );
+          if (shuttingDown) return;
+          await provider.mutations.before(action, targets, ctx);
+          let text: string;
+          if (action === "merge")
+            text = await provider.mutations.merge(targets, ctx, progress);
+          else if (provider.mutations.supersede)
+            text = await provider.mutations.supersede(targets, ctx, progress);
+          else
+            throw new Error(
+              "This provider does not support superseding pull requests.",
+            );
+          provider.mutations.beforePickerRefresh?.(ctx, progress);
+          try {
+            await provider.listCandidates(ctx.cwd);
+          } catch {
+            // Refreshing the picker is best effort after a mutation.
           }
-          if (active !== session) {
-            await rm(review.directory, { recursive: true, force: true });
-            reviewEvidenceDirectories.delete(review.directory);
-            return;
-          }
-          session.reviews = [...session.reviews, review];
+          provider.mutations.afterPickerMutation?.(text, ctx);
+          return;
         }
+        requests = candidates.map((candidate) => candidate.url);
+      } else requests = [requestedPullRequest];
+
+      if (requests.length > maxReviewWorkflows)
+        throw new Error(
+          `Select no more than ${maxReviewWorkflows} pull requests for one review run.`,
+        );
+      progress(provider.text.preparingEvidence(requests.length));
+      ctx.ui.notify(provider.text.preparingEvidence(requests.length), "info");
+      const session: ReviewContext = {
+        sessionId: ctx.sessionManager.getSessionId(),
+        candidates,
+        reviews: [],
+        generation: ++reviewGeneration,
+        state: "preparing",
+        readyDirectories: new Set(),
+      };
+      active = session;
+      actionToolScope.acquire();
+      for (const [index, request] of requests.entries()) {
+        progress(`Preparing evidence ${index + 1} of ${requests.length}...`);
+        const review = await provider.prepareReview(
+          ctx.cwd,
+          ctx.sessionManager.getSessionId(),
+          request,
+        );
+        reviewEvidenceDirectories.add(review.directory);
         if (shuttingDown) {
+          await rm(review.directory, { recursive: true, force: true });
+          reviewEvidenceDirectories.delete(review.directory);
           await stopReview();
           return;
         }
-        session.state = "researching";
-        if (provider.text.startingResearch)
-          progress(provider.text.startingResearch(session.reviews.length));
-        const reviews = session.reviews;
-        if (provider.text.researchStarted)
-          progress(provider.text.researchStarted);
-        for (const review of reviews)
-          startWorkflow({ review, generation: session.generation }, ctx);
-        ctx.ui.notify(
-          provider.text.startedReview(reviews.map(reviewUrl)),
-          "info",
-        );
-      } catch (error) {
+        if (active !== session) {
+          await rm(review.directory, { recursive: true, force: true });
+          reviewEvidenceDirectories.delete(review.directory);
+          return;
+        }
+        session.reviews = [...session.reviews, review];
+      }
+      if (shuttingDown) {
         await stopReview();
-        ctx.ui.notify(
-          error instanceof Error ? error.message : String(error),
-          "error",
-        );
+        return;
+      }
+      session.state = "researching";
+      if (provider.text.startingResearch)
+        progress(provider.text.startingResearch(session.reviews.length));
+      const reviews = session.reviews;
+      if (provider.text.researchStarted)
+        progress(provider.text.researchStarted);
+      for (const review of reviews)
+        startWorkflow({ review, generation: session.generation }, ctx);
+      ctx.ui.notify(
+        provider.text.startedReview(reviews.map(reviewUrl)),
+        "info",
+      );
+    } catch (error) {
+      await stopReview();
+      ctx.ui.notify(
+        error instanceof Error ? error.message : String(error),
+        "error",
+      );
+    } finally {
+      ctx.ui.setStatus(provider.identity.statusKey, undefined);
+    }
+  };
+
+  pi.registerCommand(provider.command.name, {
+    description: provider.command.description,
+    handler: async (args, ctx) => {
+      if (shuttingDown) return;
+      if (commandStarting) {
+        ctx.ui.notify("A review command is already starting.", "warning");
+        return;
+      }
+      commandStarting = true;
+      try {
+        await runReviewCommand(args, ctx);
       } finally {
-        ctx.ui.setStatus(provider.identity.statusKey, undefined);
+        commandStarting = false;
       }
     },
   });

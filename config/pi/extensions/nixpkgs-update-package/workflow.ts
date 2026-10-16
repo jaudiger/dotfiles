@@ -130,7 +130,8 @@ export function registerWorkflowGuidance(
   pi: ExtensionAPI,
   getActive: () => ActiveWorkflow | undefined,
 ): void {
-  pi.on("before_agent_start", (_event, ctx) => {
+  pi.on("before_agent_start", (event, ctx) => {
+    if (event.messageType !== "user") return;
     const active = getActive();
     if (!ownsWorkflow(active, ctx)) return;
 

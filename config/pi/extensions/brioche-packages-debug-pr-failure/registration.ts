@@ -41,8 +41,9 @@ function errorMessage(error: unknown): string {
 export function registerDebugPrFailure(pi: ExtensionAPI) {
   const agentJobs = createAgentJobs(pi, {
     customType: "brioche-debug-pr-failure",
-    maxConcurrentJobs: 4,
+    maxConcurrentJobs: 1,
   });
+  let investigationActive = false;
   let shuttingDown = false;
   const preparations = new Set<Promise<void>>();
   const taskFor = (owner: DebugOwner, task: string): AgentJob => ({
@@ -82,6 +83,15 @@ export function registerDebugPrFailure(pi: ExtensionAPI) {
       );
       return;
     }
+    if (investigationActive) {
+      ctx.ui.notify(
+        "A Brioche package failure investigation is already in progress.",
+        "warning",
+      );
+      return;
+    }
+    investigationActive = true;
+    let jobStarted = false;
     let prepared: PreparedContext | undefined;
     try {
       ctx.ui.notify(`Preparing failure artifacts for PR ${pr}...`, "info");
@@ -104,10 +114,14 @@ export function registerDebugPrFailure(pi: ExtensionAPI) {
         "Return your findings for the parent agent.",
       ].join("\n");
       const owner: DebugOwner = { directory: context.directory, pr };
+      jobStarted = true;
       void agentJobs
         .start(ctx, taskFor(owner, task))
         .catch((error: unknown) => {
           if (!shuttingDown) ctx.ui.notify(errorMessage(error), "error");
+        })
+        .finally(() => {
+          investigationActive = false;
         });
       ctx.ui.notify(
         `Prepared ${context.summary}. Started investigation for PR ${pr} in ${basename(context.directory)}.`,
@@ -120,6 +134,8 @@ export function registerDebugPrFailure(pi: ExtensionAPI) {
         } catch {}
       }
       if (!shuttingDown) ctx.ui.notify(errorMessage(error), "error");
+    } finally {
+      if (!jobStarted) investigationActive = false;
     }
   }
 

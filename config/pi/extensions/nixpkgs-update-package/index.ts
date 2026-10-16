@@ -90,6 +90,7 @@ function publicationMessage(result: PublicationResult): string {
 
 export default function (pi: ExtensionAPI) {
   let active: ActiveUpdate | undefined;
+  let starting = false;
   let shuttingDown = false;
   const verificationPromises = new Set<Promise<void>>();
   const nixpkgsToolScope = createToolScope(pi, [
@@ -122,7 +123,7 @@ export default function (pi: ExtensionAPI) {
   pi.registerCommand("nixpkgs:update-package", {
     description: "Update Nixpkgs recipes and prepare a draft pull request",
     handler: async (args, ctx: ExtensionContext) => {
-      if (shuttingDown || active) {
+      if (shuttingDown || active || starting) {
         ctx.ui.notify("A Nixpkgs update is already in progress.", "warning");
         return;
       }
@@ -136,8 +137,10 @@ export default function (pi: ExtensionAPI) {
         return;
       }
 
+      starting = true;
       try {
         const context = await collectNixpkgsContext(repository, packages, pi);
+        if (shuttingDown) return;
         active = {
           sessionId: ctx.sessionManager.getSessionId(),
           packages,
@@ -147,6 +150,7 @@ export default function (pi: ExtensionAPI) {
           publicationArmed: false,
           publicationRunning: false,
         };
+        starting = false;
         nixpkgsToolScope.acquire();
         report(pi, contextMessage(context, packages), {
           repository,
@@ -154,6 +158,7 @@ export default function (pi: ExtensionAPI) {
           recipePaths: context.recipePaths,
         });
         pi.sendUserMessage(workflowPrompt(context, packages), {
+          deliverAs: "followUp",
           expandPromptTemplates: false,
         });
         ctx.ui.notify("Nixpkgs update workflow started.", "info");
@@ -164,6 +169,8 @@ export default function (pi: ExtensionAPI) {
           error instanceof Error ? error.message : String(error),
           "error",
         );
+      } finally {
+        starting = false;
       }
     },
   });

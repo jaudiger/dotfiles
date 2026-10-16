@@ -135,6 +135,7 @@ function hasMutation(error: unknown): boolean {
 
 export function registerSubmitPackage(pi: ExtensionAPI): void {
   let activeDirectory: string | undefined;
+  let startingSubmission = false;
   let shuttingDown = false;
   const agentJobs = createAgentJobs(pi, {
     customType: "brioche-package-submit",
@@ -225,7 +226,7 @@ export function registerSubmitPackage(pi: ExtensionAPI): void {
   pi.registerCommand("brioche-packages:submit-package", {
     description: "Validate a Brioche package and submit its pull request",
     handler: async (args, ctx: ExtensionContext) => {
-      if (shuttingDown || activeDirectory) {
+      if (shuttingDown || activeDirectory || startingSubmission) {
         ctx.ui.notify(
           "A Brioche package submission is already in progress.",
           "warning",
@@ -243,6 +244,7 @@ export function registerSubmitPackage(pi: ExtensionAPI): void {
         return;
       }
 
+      startingSubmission = true;
       ctx.ui.notify(
         `Running Brioche package preflight for ${packageName}...`,
         "info",
@@ -255,6 +257,7 @@ export function registerSubmitPackage(pi: ExtensionAPI): void {
           repository: ctx.cwd,
         };
         activeDirectory = prepared.directory;
+        startingSubmission = false;
         if (shuttingDown) {
           await removeSubmissionDirectory(prepared.directory);
           activeDirectory = undefined;
@@ -297,6 +300,8 @@ export function registerSubmitPackage(pi: ExtensionAPI): void {
             activeDirectory = undefined;
         }
         ctx.ui.notify(errorMessage(error), "error");
+      } finally {
+        startingSubmission = false;
       }
     },
   });

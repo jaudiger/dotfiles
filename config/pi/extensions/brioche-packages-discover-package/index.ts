@@ -20,6 +20,9 @@ function metadataValue(
 
 export default function (pi: ExtensionAPI) {
   const temporaryDirectories = new Set<string>();
+  let discoveryActive = false;
+  let settlementCount = 0;
+  let discoverySettlementTarget: number | undefined;
 
   pi.registerCommand("brioche-packages:discover-package", {
     description: "Discover recently updated packages for Brioche",
@@ -29,12 +32,18 @@ export default function (pi: ExtensionAPI) {
         ctx.ui.notify(usage, "warning");
         return;
       }
+      if (discoveryActive) {
+        ctx.ui.notify("Package discovery is already in progress.", "warning");
+        return;
+      }
+      discoveryActive = true;
 
       let result: DiscoveryResult;
       try {
         ctx.ui.notify("Running package discovery...", "info");
         result = await runDiscovery(ctx.cwd, options);
       } catch (error) {
+        discoveryActive = false;
         ctx.ui.notify(
           error instanceof Error ? error.message : String(error),
           "error",
@@ -43,9 +52,11 @@ export default function (pi: ExtensionAPI) {
       }
 
       temporaryDirectories.add(result.directory);
+      const settlementTarget = settlementCount + 1;
+      discoverySettlementTarget = settlementTarget;
       const failed = metadataValue(result, "failed", "{}");
       const excludedCount = metadataValue(result, "excluded_count");
-      pi.sendMessage(
+      void pi.sendMessage(
         {
           customType: "brioche-packages-discovery",
           content: `Package discovery completed with ${result.packageCount} candidates. Read ${result.outputPath} for the complete JSON output before responding. Discovery metadata: excluded_count=${excludedCount}, failed=${failed}. The command was run once with --exclude-defaults; do not run it again. Review the candidates, gather complementary information with the researcher subagent when useful, and present the result as a concise markdown table with package, source, candidate recipe type, candidate recipe build dependencies, version, and description. Mention failed sources, their issue messages, or other limitations after the table.`,
@@ -68,12 +79,22 @@ export default function (pi: ExtensionAPI) {
   });
 
   pi.on("agent_settled", async () => {
+    settlementCount += 1;
+    if (
+      discoverySettlementTarget !== undefined &&
+      settlementCount >= discoverySettlementTarget
+    ) {
+      discoverySettlementTarget = undefined;
+      discoveryActive = false;
+    }
     const directories = [...temporaryDirectories];
     temporaryDirectories.clear();
     await Promise.all(directories.map(removeDiscoveryDirectory));
   });
 
   pi.on("session_shutdown", async () => {
+    discoveryActive = false;
+    discoverySettlementTarget = undefined;
     const directories = [...temporaryDirectories];
     temporaryDirectories.clear();
     await Promise.all(directories.map(removeDiscoveryDirectory));
