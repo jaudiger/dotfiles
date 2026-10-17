@@ -33,48 +33,46 @@ _:
         };
 
         views = {
-          views = {
-            "v1/pods" = {
-              sortColumn = "NAMESPACE:asc";
-              columns = [
-                "NAMESPACE"
-                "NAME"
-                "READY"
-                "STATUS"
-                "RESTARTS"
-                "CPU"
-                "%CPU/L"
-                "MEM"
-                "%MEM/L"
-                "NODE"
-                "AGE"
-                # Hide the following columns
-                "PF|H"
-                "%CPU/R|H"
-                "%MEM/R|H"
-                "IP|H"
-              ];
-            };
+          "v1/pods" = {
+            sortColumn = "NAMESPACE:asc";
+            columns = [
+              "NAMESPACE"
+              "NAME"
+              "READY"
+              "STATUS"
+              "RESTARTS"
+              "CPU"
+              "%CPU/L"
+              "MEM"
+              "%MEM/L"
+              "NODE"
+              "AGE"
+              # Hide the following columns
+              "PF|H"
+              "%CPU/R|H"
+              "%MEM/R|H"
+              "IP|H"
+            ];
+          };
 
-            "v1/nodes" = {
-              sortColumn = "NAMESPACE:asc";
-              columns = [
-                "NAME"
-                "STATUS"
-                "TAINTS"
-                "VERSION"
-                "PODS"
-                "CPU/A"
-                "%CPU"
-                "MEM/A"
-                "%MEM"
-                "AGE"
-                # Hide the following columns
-                "ROLE|H"
-                "CPU|H"
-                "MEM|H"
-              ];
-            };
+          "v1/nodes" = {
+            sortColumn = "NAMESPACE:asc";
+            columns = [
+              "NAME"
+              "STATUS"
+              "TAINTS"
+              "VERSION"
+              "PODS"
+              "CPU/A"
+              "%CPU"
+              "MEM/A"
+              "%MEM"
+              "AGE"
+              # Hide the following columns
+              "ROLE|H"
+              "CPU|H"
+              "MEM|H"
+            ];
           };
         };
 
