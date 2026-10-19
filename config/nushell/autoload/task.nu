@@ -316,6 +316,20 @@ export def task-log [
   --tail (-t)      # Follow the output as it is printing. Only works with 1 task. When used in conjunction with `--last`, the last N lines will be printed before starting to wait for output.
   --detailed (-d)  # Include all fields, don't simplify output.
 ] {
+  def resolve-nu-task [cmd: string] {
+    let nu_task_path = (
+      $cmd
+      | parse --regex "^nu(?: .*?)? '?(.+?-nu-task)'?$"
+      | get -o 0.capture0
+    )
+
+    if $nu_task_path != null and ($nu_task_path | path exists) {
+      open --raw $nu_task_path | str trim | nu-highlight
+    } else {
+      $cmd
+    }
+  }
+
   def process_raw [raw: string] {
     let full = (
       $raw
@@ -325,10 +339,19 @@ export def task-log [
       | flatten --all
     )
 
+    # Print actual command rather than nu running a script
+    let resolved = (
+      $full
+      # Don't print the same command twice if they are the same
+      | if $in.command? == $in.original_command? { reject original_command } else {}
+      | update command? { resolve-nu-task $in }
+      | update original_command? { resolve-nu-task $in }
+    )
+
     if $detailed {
-      $full | move --last status
+      $resolved | move --last status
     } else {
-      $full | select id label group status
+      $resolved | select id label group status
     }
   }
 
