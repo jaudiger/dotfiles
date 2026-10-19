@@ -24,11 +24,11 @@ let
 in
 stdenvNoCC.mkDerivation (finalAttrs: {
   pname = "deepseek-harness";
-  version = "0.2.1-alpha.4";
+  version = "0.2.1-rc.2";
 
   src = fetchurl {
     url = "https://registry.npmjs.org/@deepseek-ai/dsh/-/dsh-${finalAttrs.version}.tgz";
-    hash = "sha256-n0/g9GbXaZ3dRobulpLsEMbZ+Yp9F1/V5V3gGy9kyNY=";
+    hash = "sha256-QOPQJcAkDEMW/0Le6b7cdwnA+ziuoQVDtHB27Sr1Lh0=";
   };
 
   sourceRoot = "package";
@@ -45,7 +45,7 @@ stdenvNoCC.mkDerivation (finalAttrs: {
       ;
     pnpm = pnpm_11;
     fetcherVersion = 4;
-    hash = "sha256-eXMcj64h1q3DCsQUVoSmZ82qzDShOIW4LCXXk64/dpQ=";
+    hash = "sha256-j39bXApbJYG9iR6yvAaNEprTdih4wvlyo1q4pghbmyY=";
     prePatch = pnpmSourceFiles;
   };
 
