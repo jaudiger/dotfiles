@@ -259,7 +259,7 @@ export function registerGithubPrReviewController(
           details: message.details ?? {},
           display: true,
         },
-        { triggerTurn: false, deliverAs: "followUp" },
+        { triggerTurn: true, deliverAs: "followUp" },
       );
     } catch {
       // A completed workflow must not reopen a finalized session.
