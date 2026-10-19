@@ -23,10 +23,10 @@ in
           algorithm = "fuzzy";
           case_sensitive = true;
           external = {
-            completer = mkNushellInline "{|spans: list<string>|
-                ^carapace $spans.0 nushell ...$spans
+            completer = mkNushellInline "{|place: record|
+                ^carapace ($place.command | first) nushell ...$place.command
                   | from json
-                  | if ($in | default [] | where (value =~ '^-.*ERR$') | is-empty) { $in } else { null }
+                  | if ($in | default [] | where value =~ '^-.*ERR$' | is-empty) { $in } else { null }
             }";
           };
         };

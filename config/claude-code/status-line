@@ -111,7 +111,7 @@ def status_line [input: record]: nothing -> nothing {
 # Status line function for Claude Code UI
 def main [
     ...args: any # Additional arguments
-]: nothing -> nothing {
+]: any -> nothing {
     # Read and parse JSON from stdin
     let input = $in | from json
 
