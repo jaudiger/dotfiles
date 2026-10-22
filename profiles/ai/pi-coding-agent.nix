@@ -64,7 +64,7 @@ in
             ../../config/pi/extensions
           ];
           packages = [
-            "npm:pi-subagents@0.79.2"
+            "npm:pi-subagents@0.80.0"
           ];
           quietStartup = true;
           showCacheMissNotices = true;

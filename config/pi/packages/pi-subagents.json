@@ -5,12 +5,12 @@
   "completionBatch": {
     "enabled": true
   },
-  "resultScanLogging": "off",
+  "enableSlashCommands": false,
   "fleetView": true,
+  "inlineToolDisplay": "summary",
   "intercomBridge": {
     "mode": "off"
   },
-  "inlineToolDisplay": "summary",
   "mainWindowRenderer": {
     "horizontalSpacing": 0
   },
@@ -23,6 +23,7 @@
     "concurrency": 4,
     "maxTasks": 8
   },
+  "resultScanLogging": "off",
   "scheduledRuns": {
     "enabled": false
   },
