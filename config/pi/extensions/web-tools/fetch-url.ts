@@ -428,8 +428,10 @@ function validateParams(params: FetchUrlParams): void {
   const { start, end } = params.range;
   if (!Number.isInteger(start) || !Number.isInteger(end))
     throw new Error("range start and end must be integers");
-  if (start < 0 || end < 0 || start > end)
-    throw new Error("range must contain non-negative start and end values");
+  if (start < 0 || end < 0)
+    throw new Error("range start and end must be non-negative");
+  if (start > end)
+    throw new Error("range end must be greater than or equal to start");
   if (end - start > MAX_OUTPUT_CHARS)
     throw new Error(`range cannot exceed ${MAX_OUTPUT_CHARS} characters`);
 }

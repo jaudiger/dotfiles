@@ -81,6 +81,16 @@ def is_text_content(content_type: str) -> bool:
     )
 
 
+def ensure_supported_content_type(content_type: str) -> None:
+    normalized = media_type(content_type)
+    if (
+        normalized
+        and not is_html_content(normalized)
+        and not is_text_content(normalized)
+    ):
+        raise ValueError(f"unsupported content type: {normalized}")
+
+
 def response_charset(content_type: str) -> str:
     match = re.search(r"(?:^|;)\s*charset=([^;]+)", content_type, re.IGNORECASE)
     return match.group(1).strip().strip("\"'") if match else "utf-8"
@@ -226,6 +236,7 @@ async def fetch_url(url: str) -> str:
                 ensure_response_size(response, MAX_FETCHED_TEXT_BYTES)
                 return decode_response_body(await response.body(), content_type)
 
+            ensure_supported_content_type(content_type)
             await page.wait_for_load_state(
                 "domcontentloaded", timeout=NAVIGATION_TIMEOUT_MS
             )
