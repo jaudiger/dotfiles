@@ -6,6 +6,7 @@ from typing import Any
 from urllib.parse import urlsplit
 
 import trafilatura
+from playwright.async_api import Error as PlaywrightError
 from playwright.async_api import TimeoutError as PlaywrightTimeoutError
 from playwright.async_api import async_playwright
 
@@ -225,7 +226,21 @@ async def fetch_url(url: str) -> str:
             await browser.close()
 
 
+def error_message(error: PlaywrightError | ValueError) -> str:
+    if isinstance(error, PlaywrightError) and "Download is starting" in str(error):
+        return (
+            "unsupported format: the URL starts a file download, "
+            "but downloaded files are not supported"
+        )
+    message = str(error).strip()
+    return message or type(error).__name__
+
+
 if __name__ == "__main__":
     if len(sys.argv) != 2:
         raise SystemExit("expected exactly one URL")
-    print(asyncio.run(fetch_url(sys.argv[1])), end="")
+    try:
+        print(asyncio.run(fetch_url(sys.argv[1])), end="")
+    except (PlaywrightError, ValueError) as error:
+        print(error_message(error), file=sys.stderr)
+        raise SystemExit(1) from None
