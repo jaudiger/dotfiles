@@ -179,13 +179,41 @@ async def fetch_url(url: str) -> str:
         )
         page = await context.new_page()
         page.set_default_navigation_timeout(NAVIGATION_TIMEOUT_MS)
+        navigation_response = None
+
+        def capture_navigation_response(response: Any) -> None:
+            nonlocal navigation_response
+            if (
+                response.request.is_navigation_request()
+                and response.frame == page.main_frame
+            ):
+                navigation_response = response
+
+        page.on("response", capture_navigation_response)
         try:
-            response = await page.goto(
-                url,
-                timeout=NAVIGATION_TIMEOUT_MS,
-                wait_until="commit",
-            )
+            try:
+                response = await page.goto(
+                    url,
+                    timeout=NAVIGATION_TIMEOUT_MS,
+                    wait_until="commit",
+                )
+            except PlaywrightError:
+                if (
+                    navigation_response is not None
+                    and navigation_response.status == 204
+                ):
+                    validate_url(page.url)
+                    return ""
+                raise
+            if response is None:
+                response = navigation_response
             validate_url(page.url)
+            if response and response.status >= 400:
+                raise ValueError(
+                    f"HTTP request failed with status {response.status} for {url}"
+                )
+            if response and response.status == 204:
+                return ""
             content_type = response.headers.get("content-type", "") if response else ""
             if response:
                 ensure_response_size(response, MAX_DOCUMENT_BYTES)
