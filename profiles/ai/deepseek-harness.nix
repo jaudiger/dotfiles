@@ -13,6 +13,9 @@ let
   # Rules
   rulesDir = ../../config/agents/rules;
   ruleFiles = builtins.sort (a: b: a < b) (builtins.attrNames (builtins.readDir rulesDir));
+  sharedRulesPrompt = lib.concatMapStringsSep "\n\n" (
+    name: builtins.readFile (rulesDir + "/${name}")
+  ) ruleFiles;
 in
 {
   modules.home-manager = {
@@ -21,7 +24,7 @@ in
 
       file = {
         "dshAgentInstructions" = {
-          text = lib.concatMapStringsSep "\n\n" (name: builtins.readFile (rulesDir + "/${name}")) ruleFiles;
+          text = sharedRulesPrompt;
           target = ".dsh/AGENTS.md";
         };
 

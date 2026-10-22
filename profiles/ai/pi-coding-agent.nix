@@ -15,6 +15,9 @@ let
   # Rules
   rulesDir = ../../config/agents/rules;
   ruleFiles = builtins.sort (a: b: a < b) (builtins.attrNames (builtins.readDir rulesDir));
+  sharedRulesPrompt = lib.concatMapStringsSep "\n" (
+    name: builtins.readFile (rulesDir + "/${name}")
+  ) ruleFiles;
 
   # Web tools
   webToolsPython = pkgs.python3.withPackages (
@@ -46,9 +49,7 @@ in
           '';
         };
 
-        appendSystem = lib.concatMapStringsSep "\n" (
-          name: builtins.readFile (rulesDir + "/${name}")
-        ) ruleFiles;
+        appendSystem = sharedRulesPrompt;
 
         settings = {
           collapseChangelog = true;
@@ -63,7 +64,7 @@ in
             ../../config/pi/extensions
           ];
           packages = [
-            "npm:pi-subagents@0.79.1"
+            "npm:pi-subagents@0.79.2"
           ];
           quietStartup = true;
           showCacheMissNotices = true;
@@ -137,6 +138,8 @@ in
                 systemPromptMode = "replace";
                 systemPrompt = ''
                   You are the implementation worker. Make the smallest correct change requested by the parent in the shared workspace. Inspect before editing, keep the scope narrow, run focused validation, and report changed files, commands, and remaining risks. Do not broaden the task.
+
+                  ${sharedRulesPrompt}
                 '';
               };
             };
