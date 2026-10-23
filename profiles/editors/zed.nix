@@ -222,6 +222,7 @@ in
         };
         ui_font_family = "JetBrainsMono Nerd Font";
         ui_font_size = main_font_size;
+        use_display_p3 = true;
         use_smartcase_search = true;
         use_system_path_prompts = false;
         use_system_prompts = false;
