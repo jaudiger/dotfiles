@@ -14,6 +14,8 @@ in
     programs.nushell = {
       enable = true;
 
+      loadSessionVariables = true;
+
       # Only overridden values should be set, to find them:
       # let defaults = nu -n -c "$env.config = {}; $env.config | reject color_config keybindings menus | to nuon" | from nuon | transpose key default
       # let current = $env.config | reject color_config keybindings menus | transpose key current
