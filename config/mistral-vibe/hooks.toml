@@ -1,8 +1,0 @@
-[[hooks]]
-name = "auto-approve-safe-commands"
-type = "pre_tool"
-match = "bash"
-command = "nu --stdin ${HOME}/.vibe/hooks/auto-approve-safe-commands/mod.nu mistral"
-timeout = 60.0
-strict = true
-description = "Allow classified read-only shell commands without approval."

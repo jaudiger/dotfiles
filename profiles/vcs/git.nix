@@ -133,7 +133,6 @@ in
         ".envrc"
         ".gemini"
         ".mcp.json"
-        ".vibe"
         ".vscode"
         ".zed"
         "AGENTS.md"
