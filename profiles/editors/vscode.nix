@@ -44,7 +44,6 @@ in
           claude-desktop = true;
         };
         "chat.renderRelatedFiles" = true;
-        "claudeCode.preferredLocation" = "panel";
         "cmake.configureOnOpen" = false;
         "cmake.pinnedCommands" = [
           "workbench.action.tasks.configureTaskRunner"

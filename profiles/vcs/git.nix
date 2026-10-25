@@ -129,7 +129,6 @@ in
 
       ignores = host.ignores ++ [
         ".agents"
-        ".claude"
         ".devcontainer"
         ".envrc"
         ".gemini"
@@ -138,7 +137,6 @@ in
         ".vscode"
         ".zed"
         "AGENTS.md"
-        "CLAUDE.md"
       ];
 
       includes = [
