@@ -2,7 +2,7 @@
   imports = [
     ./bat.nix
     ./carapace.nix
-    ./difftastic.nix
+    ./delta.nix
     ./eza.nix
     ./fzf.nix
     ./ghostty.nix
