@@ -2,6 +2,7 @@
   "activeRunsPrompt": false,
   "artifactDir": "session",
   "asyncByDefault": false,
+  "autoResume": false,
   "completionBatch": {
     "enabled": true
   },
