@@ -10,6 +10,10 @@ let
 in
 {
   homebrew = lib.mkIf isDarwin {
+    taps = [
+      "iann0036/iamlive"
+    ];
+
     brews = [ "iann0036/iamlive/iamlive" ];
   };
 }

@@ -55,10 +55,6 @@ in
         cleanup = "zap";
       };
 
-      taps = [
-        "iann0036/iamlive"
-      ];
-
       greedyCasks = true;
     };
 
