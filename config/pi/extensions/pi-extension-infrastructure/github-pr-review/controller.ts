@@ -473,6 +473,7 @@ export function registerGithubPrReviewController(
     name: provider.tool.name,
     label: provider.tool.label,
     description: provider.tool.description,
+    defaultActive: false,
     parameters: Type.Object({
       action: Type.Union([
         Type.Literal("merge"),

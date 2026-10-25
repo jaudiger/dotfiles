@@ -88,6 +88,7 @@ export function registerCommandTool(
     label: "Nixpkgs update package command",
     description:
       "Run one safe, read-only Nixpkgs update command. Use prefetch for source hashes, hash-convert for SRI conversion, build for a package build, and log for a derivation log. Arbitrary shell commands are intentionally unavailable during this workflow.",
+    defaultActive: false,
     parameters: Type.Object({
       action: Type.Union(actions.map((action) => Type.Literal(action))),
       value: Type.String(),

@@ -157,6 +157,7 @@ export function registerResearchTool(
     label: "Nixpkgs update package research",
     description:
       "Launch the read-only researcher for the active Nixpkgs update and return latest stable release metadata.",
+    defaultActive: false,
     outputSchema: researchOutputSchema,
     parameters: Type.Object({
       packages: Type.Array(Type.String()),

@@ -180,6 +180,7 @@ export default function (pi: ExtensionAPI) {
     label: "Nixpkgs update package execute",
     description:
       "Execute the explicitly approved complete Nixpkgs publication action. This creates the Git branch, signed commits, draft pull request, assignment, and nixpkgs-review result.",
+    defaultActive: false,
     parameters: Type.Object({ action: Type.Literal("publish") }),
     async execute(_toolCallId, _params, signal, _onUpdate, ctx) {
       if (!ownsWorkflow(active, ctx))
