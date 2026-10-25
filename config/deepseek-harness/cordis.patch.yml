@@ -8,6 +8,9 @@
   config:
     default: default
 
+- id: entry-customization
+  disabled: true
+
 - id: llm-pi-ai
   config:
     providers:
