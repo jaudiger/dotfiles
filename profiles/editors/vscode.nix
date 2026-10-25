@@ -40,9 +40,6 @@ in
         "chat.detectParticipant.enabled" = true;
         "chat.editor.wordWrap" = "on";
         "chat.mcp.autostart" = "newAndOutdated";
-        "chat.mcp.discovery.enabled" = {
-          claude-desktop = true;
-        };
         "chat.renderRelatedFiles" = true;
         "cmake.configureOnOpen" = false;
         "cmake.pinnedCommands" = [
