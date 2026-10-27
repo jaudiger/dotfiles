@@ -58,6 +58,7 @@
               (subpath "/bin")
               (subpath "/nix/store")
               (subpath "/opt/homebrew/bin")
+              (subpath "/opt/homebrew/Cellar")
               (subpath "/private/tmp")
               (subpath "/private/var/folders")
               (subpath "/tmp")
