@@ -42,13 +42,16 @@
         {
           default = pkgs.mkShell {
             nativeBuildInputs = with pkgs; [
-              (rust-bin.nightly."2026-10-01".minimal.override {
-                extensions = [
-                  "rust-src"
-                  "clippy"
-                  "llvm-tools-preview"
-                ];
-              })
+              (rust-bin.selectLatestNightlyWith (
+                toolchain:
+                toolchain.minimal.override {
+                  extensions = [
+                    "rust-src"
+                    "clippy"
+                    "llvm-tools-preview"
+                  ];
+                }
+              ))
 
               pkg-config
             ];
