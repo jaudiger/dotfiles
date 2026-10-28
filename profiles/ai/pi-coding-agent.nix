@@ -190,6 +190,7 @@ in
           extensions = [
             ../../config/pi/extensions
           ];
+          hideThinkingBlock = true;
           quietStartup = true;
           showCacheMissNotices = true;
           thinkingBudgets = {
