@@ -24,6 +24,7 @@ in
         font-family = "JetBrainsMono Nerd Font";
         font-size = 11.5;
 
+        copy-on-select = "primary";
         cursor-color = "cell-foreground";
         cursor-text = "cell-background";
         minimum-contrast = 1.05;
