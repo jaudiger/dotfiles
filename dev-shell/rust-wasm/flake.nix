@@ -62,12 +62,7 @@
               wasm-pack
             ];
 
-            buildInputs =
-              with pkgs;
-              [ openssl ]
-              ++ lib.optionals pkgs.stdenv.hostPlatform.isDarwin [
-                apple-sdk_27
-              ];
+            buildInputs = with pkgs; [ openssl ];
           };
         }
       );

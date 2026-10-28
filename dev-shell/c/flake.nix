@@ -31,17 +31,12 @@
           default = pkgs.mkShell {
             nativeBuildInputs = [ ];
 
-            buildInputs =
-              with pkgs;
-              [
-                curl.dev
-                gtest.dev
-                json_c.dev
-                libmicrohttpd.dev
-              ]
-              ++ lib.optionals pkgs.stdenv.hostPlatform.isDarwin [
-                apple-sdk_27
-              ];
+            buildInputs = with pkgs; [
+              curl.dev
+              gtest.dev
+              json_c.dev
+              libmicrohttpd.dev
+            ];
           };
         }
       );

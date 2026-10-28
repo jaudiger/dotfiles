@@ -44,12 +44,6 @@
             nativeBuildInputs = with pkgs; [
               zigpkgs.master
             ];
-
-            buildInputs =
-              with pkgs;
-              lib.optionals stdenv.hostPlatform.isDarwin [
-                apple-sdk_27
-              ];
           };
         }
       );

@@ -1,14 +1,10 @@
 {
   inputs,
-  config,
   pkgs,
-  lib,
   ...
 }:
 
 let
-  isDarwin = config.nixpkgs.hostPlatform.isDarwin;
-
   # Shared LSP configuration for rust-analyzer
   rustAnalyzerConfig = {
     cargo = {
@@ -217,14 +213,6 @@ in
 
         tokio-console
       ];
-
-      sessionVariables =
-        with pkgs;
-        lib.mkMerge [
-          (lib.mkIf isDarwin {
-            LIBRARY_PATH = "$LIBRARY_PATH\${LIBRARY_PATH:+:}" + "${darwin.libiconv}/lib";
-          })
-        ];
     };
 
     programs = {
