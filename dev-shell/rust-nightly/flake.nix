@@ -57,7 +57,7 @@
               with pkgs;
               [ openssl ]
               ++ lib.optionals pkgs.stdenv.hostPlatform.isDarwin [
-                apple-sdk_26
+                apple-sdk_27
               ];
           };
         }

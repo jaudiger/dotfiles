@@ -38,11 +38,9 @@
                 gtest.dev
                 json_c.dev
                 libmicrohttpd.dev
-                rdkafka
-                mongoc
               ]
               ++ lib.optionals pkgs.stdenv.hostPlatform.isDarwin [
-                apple-sdk_26
+                apple-sdk_27
               ];
           };
         }
