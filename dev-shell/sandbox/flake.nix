@@ -63,7 +63,10 @@
               (subpath "/private/tmp")
               (subpath "/private/var/folders")
               (subpath "/tmp")
+              ; Allow Python managed toolchain
               (subpath "/Users/jaudiger/.local/share/uv")
+              ; Allow Go managed toolchain
+              (subpath "/Users/jaudiger/go/pkg/mod/golang.org")
               (subpath "/usr/bin")
               (literal "/usr/sbin")
               (subpath "/var/folders")
