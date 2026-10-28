@@ -82,8 +82,7 @@ in
 
       envFile.text = ''
         $env.NU_LIB_DIRS = [
-            ($nu.home-dir | path join "Development" "git-repositories" "jaudiger" "personal-scripts")
-            ($nu.home-dir | path join "Development")
+            ($nu.home-dir | path join "Development" "git-repositories" "jaudiger")
         ]
       '';
     };
