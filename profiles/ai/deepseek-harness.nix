@@ -16,6 +16,10 @@ let
   sharedRulesPrompt = lib.concatMapStringsSep "\n\n" (
     name: builtins.readFile (rulesDir + "/${name}")
   ) ruleFiles;
+
+  # Configurations
+  basePatch = builtins.readFile ../../config/deepseek-harness/profiles/shared/base.patch.yml;
+  subagentPresetsPatch = builtins.readFile ../../config/deepseek-harness/profiles/shared/subagent-presets.patch.yml;
 in
 {
   modules.home-manager = {
@@ -33,20 +37,47 @@ in
           target = ".dsh/skills/update-dsh";
         };
 
-        "dshCordisPatch" = {
+        "dshAcpCordisPatch" = {
+          source = ../../config/deepseek-harness/profiles/shared/base.patch.yml;
+          target = ".dsh/profiles/acp/cordis.patch.yml";
+        };
+
+        "dshDefaultCordisPatch" = {
           source = ../../config/deepseek-harness/profiles/default/cordis.patch.yml;
           target = ".dsh/cordis.patch.yml";
         };
 
         "dshHeadlessCordisPatch" = {
-          source = ../../config/deepseek-harness/profiles/headless/cordis.patch.yml;
+          text = lib.concatStrings [
+            basePatch
+            "\n"
+            (builtins.readFile ../../config/deepseek-harness/profiles/headless/cordis.patch.yml)
+            "\n"
+            subagentPresetsPatch
+          ];
           target = ".dsh/profiles/headless/cordis.patch.yml";
+        };
+
+        "dshSdkCordisPatch" = {
+          source = ../../config/deepseek-harness/profiles/shared/base.patch.yml;
+          target = ".dsh/profiles/sdk/cordis.patch.yml";
+        };
+
+        "dshWebCordisPatch" = {
+          text = lib.concatStrings [
+            basePatch
+            "\n"
+            (builtins.readFile ../../config/deepseek-harness/profiles/web/cordis.patch.yml)
+            "\n"
+            subagentPresetsPatch
+          ];
+          target = ".dsh/profiles/web/cordis.patch.yml";
         };
       };
 
       sessionVariables = {
         DSH_HOME = "${host.homeDirectory}/.dsh";
-        DSH_TELEMETRY_MODE = "DISABLED";
+        DSH_TELEMETRY_DISABLED = "1";
       };
     };
   };

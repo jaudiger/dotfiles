@@ -3,3 +3,15 @@
 
 - id: authorization
   disabled: false
+
+- insert:
+    - id: agent-preset-registry
+      name: '@deepseek-ai/dsh-agent-preset-registry'
+      config:
+        default: headless-default
+    - id: preset-headless-default
+      name: '@deepseek-ai/dsh-agent-preset'
+      config:
+        id: headless-default
+        name: Headless Default
+        plugins: []
