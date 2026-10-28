@@ -85,8 +85,6 @@ in
   '';
 
   modules.host.shell.nonPortableAliases = {
-    nix-fmt = "treefmt";
-
     nix-full-update = "nix flake update --flake ${host.dotfilesDirectory}; nix-update";
     nix-update-dev-shell = "nix flake update --flake ${host.dotfilesDirectory}/dev-shell/c; nix flake update --flake ${host.dotfilesDirectory}/dev-shell/rust-nightly; nix flake update --flake ${host.dotfilesDirectory}/dev-shell/rust-wasm; nix flake update --flake ${host.dotfilesDirectory}/dev-shell/sandbox; nix flake update --flake ${host.dotfilesDirectory}/dev-shell/zig-nightly";
     nix-clean = "nix-collect-garbage -d";
