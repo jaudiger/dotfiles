@@ -34,8 +34,13 @@ in
         };
 
         "dshCordisPatch" = {
-          source = ../../config/deepseek-harness/cordis.patch.yml;
+          source = ../../config/deepseek-harness/profiles/default/cordis.patch.yml;
           target = ".dsh/cordis.patch.yml";
+        };
+
+        "dshHeadlessCordisPatch" = {
+          source = ../../config/deepseek-harness/profiles/headless/cordis.patch.yml;
+          target = ".dsh/profiles/headless/cordis.patch.yml";
         };
       };
 
