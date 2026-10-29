@@ -101,11 +101,8 @@ let
       thinking = "xhigh";
       tools = [ "bash" ];
       extensions = [ ];
-      systemPrompt = ''
-        Implementation worker: in the shared workspace, make the smallest correct change requested by the parent. Inspect before editing. Keep scope narrow. Run focused validation. Report changed files, commands, and remaining risks.
-
-        ${sharedRulesPrompt}
-      '';
+      systemPrompt = "Implementation worker: in the shared workspace, make the smallest correct change requested by the parent. Inspect before editing. Keep scope narrow. Run focused validation. Report changed files, commands, and remaining risks.";
+      appendSystemPrompt = sharedRulesPrompt;
     };
   };
 
@@ -117,8 +114,9 @@ let
         tools=${lib.escapeShellArg (lib.concatStringsSep "," agent.tools)}
         workspace_access="${lib.escapeShellArg agent.workspaceAccess}"
         ${lib.optionalString (
-          builtins.match ".*[$`].*" agent.systemPrompt != null
+          builtins.match ".*[$`].*" (agent.appendSystemPrompt or "") != null
         ) "# shellcheck disable=SC2016"}
+        append_system_prompt=${lib.escapeShellArg (agent.appendSystemPrompt or "")}
         system_prompt=${lib.escapeShellArg agent.systemPrompt}
         extensions=(
       ${lib.concatMapStringsSep "\n" (extension: "  ${lib.escapeShellArg extension}") agent.extensions}
@@ -153,7 +151,7 @@ let
         --print
         --no-session
         --no-extensions
-        --append-system-prompt ""
+        --append-system-prompt "$append_system_prompt"
         --model "$model"
         --thinking "$thinking"
         --tools "$tools"
