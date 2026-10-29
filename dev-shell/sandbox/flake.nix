@@ -1,5 +1,5 @@
 {
-  description = "C devshell";
+  description = "Sandbox devshell";
 
   inputs = {
     # Use as the main nixpkgs repository (to get the latest packages)
@@ -25,71 +25,82 @@
       mkSandbox =
         { pkgs }:
         let
-          sandboxProfile = pkgs.writeText "restrictive.sb" ''
-            (version 1)
-            (deny default)
+          mkSandboxProfile =
+            readOnly:
+            pkgs.writeText "restrictive.sb" ''
+              (version 1)
+              (deny default)
 
-            (allow file-read*)
-            (allow file-write*
-              (subpath "/dev/null")
-              (subpath "/dev/stderr")
-              (subpath "/dev/stdout")
-              (subpath "/private/tmp")
-              (subpath "/private/var/folders")
-              (subpath "/tmp")
-              (subpath "/Users/jaudiger/.cache")
-              (subpath "/Users/jaudiger/.local/share/uv")
-              (subpath "/Users/jaudiger/.npm")
-              (subpath "/var/folders")
-              (subpath (param "PWD")))
-            (allow mach-lookup
-              ; Allow credential verification and user identity lookups through macOS system services.
-              (global-name "com.apple.bsd.dirhelper")
-              (global-name "com.apple.cfprefsd.agent")
-              (global-name "com.apple.cfprefsd.daemon")
-              (global-name "com.apple.ocspd")
-              (global-name "com.apple.securityd.xpc")
-              (global-name "com.apple.SecurityServer")
-              (global-name "com.apple.system.opendirectoryd.libinfo")
-              (global-name "com.apple.sysmond")
-              (global-name "com.apple.trustd")
-              (global-name "com.apple.trustd.agent")
-              (global-name "com.apple.xpcd"))
-            (allow process-exec
-              (subpath "/bin")
-              (subpath "/nix/store")
-              (subpath "/opt/homebrew/bin")
-              (subpath "/opt/homebrew/Cellar")
-              (subpath "/private/tmp")
-              (subpath "/private/var/folders")
-              (subpath "/tmp")
-              ; Allow Python managed toolchain
-              (subpath "/Users/jaudiger/.local/share/uv")
-              ; Allow Go managed toolchain
-              (subpath "/Users/jaudiger/go/pkg/mod/golang.org")
-              (subpath "/usr/bin")
-              (literal "/usr/sbin")
-              (subpath "/var/folders")
-              (subpath (param "PWD")))
-            (allow process-fork)
-            (allow signal)
-            (allow process-info-listpids)
-            (allow process-info-pidinfo)
-            (allow process-info-pidfdinfo)
-            (allow sysctl-read)
+              (allow file-read*)
+              (allow file-write*
+                (subpath "/dev/null")
+                (subpath "/dev/stderr")
+                (subpath "/dev/stdout")
+                (subpath "/private/tmp")
+                (subpath "/private/var/folders")
+                (subpath "/tmp")
+                (subpath "/Users/jaudiger/.cache")
+                (subpath "/Users/jaudiger/.local/share/uv")
+                (subpath "/Users/jaudiger/.npm")
+                (subpath "/var/folders")
+                ${pkgs.lib.optionalString (!readOnly) ''(subpath (param "PWD"))''})
+              (allow mach-lookup
+                ; Allow credential verification and user identity lookups through macOS system services.
+                (global-name "com.apple.bsd.dirhelper")
+                (global-name "com.apple.cfprefsd.agent")
+                (global-name "com.apple.cfprefsd.daemon")
+                (global-name "com.apple.ocspd")
+                (global-name "com.apple.securityd.xpc")
+                (global-name "com.apple.SecurityServer")
+                (global-name "com.apple.system.opendirectoryd.libinfo")
+                (global-name "com.apple.sysmond")
+                (global-name "com.apple.trustd")
+                (global-name "com.apple.trustd.agent")
+                (global-name "com.apple.xpcd"))
+              (allow process-exec
+                (subpath "/bin")
+                (subpath "/nix/store")
+                (subpath "/opt/homebrew/bin")
+                (subpath "/opt/homebrew/Cellar")
+                (subpath "/private/tmp")
+                (subpath "/private/var/folders")
+                (subpath "/tmp")
+                ; Allow Python managed toolchain
+                (subpath "/Users/jaudiger/.local/share/uv")
+                ; Allow Go managed toolchain
+                (subpath "/Users/jaudiger/go/pkg/mod/golang.org")
+                (subpath "/usr/bin")
+                (literal "/usr/sbin")
+                (subpath "/var/folders")
+                (subpath (param "PWD")))
+              (allow process-fork)
+              (allow signal)
+              (allow process-info-listpids)
+              (allow process-info-pidinfo)
+              (allow process-info-pidfdinfo)
+              (allow sysctl-read)
 
-            (allow network*)
-          '';
-          sandboxRunner = pkgs.writeShellScriptBin "sandbox-run" ''
-            if [ "$#" -eq 0 ]; then
-              set -- ${pkgs.runtimeShell}
-            fi
+              (allow network*)
+            '';
+          mkSandboxRunner =
+            readOnly:
+            let
+              profile = mkSandboxProfile readOnly;
+              name = if readOnly then "sandbox-run-read-only" else "sandbox-run";
+            in
+            pkgs.writeShellScriptBin name ''
+              if [ "$#" -eq 0 ]; then
+                set -- ${pkgs.runtimeShell}
+              fi
 
-            exec /usr/bin/sandbox-exec \
-              -D "PWD=$(pwd -P)" \
-              -f ${sandboxProfile} \
-              "$@"
-          '';
+              exec /usr/bin/sandbox-exec \
+                -D "PWD=$(pwd -P)" \
+                -f ${profile} \
+                "$@"
+            '';
+          sandboxProfile = mkSandboxProfile false;
+          sandboxRunner = mkSandboxRunner false;
+          readOnlySandboxRunner = mkSandboxRunner true;
         in
         {
           devShell = pkgs.mkShell {
@@ -101,6 +112,11 @@
             type = "app";
             program = "${sandboxRunner}/bin/sandbox-run";
             meta.description = "Run a command in the macOS sandbox";
+          };
+          readOnlyApp = {
+            type = "app";
+            program = "${readOnlySandboxRunner}/bin/sandbox-run-read-only";
+            meta.description = "Run a command without write access to the workspace";
           };
         };
     in
@@ -122,6 +138,7 @@
         in
         {
           default = sandbox.app;
+          read-only = sandbox.readOnlyApp;
         }
       );
     };
