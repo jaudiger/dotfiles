@@ -5,7 +5,7 @@ import {
   type ExtensionAPI,
 } from "@earendil-works/pi-coding-agent";
 
-const SANDBOX_COMMAND = "pi-bash-sandbox";
+const SANDBOX_COMMAND = "pi-sandbox";
 const SANDBOX_BASH_COMMAND = "/bin/bash";
 
 function shellQuote(value: string): string {
