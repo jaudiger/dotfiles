@@ -55,13 +55,6 @@ let
 
   # Subagent
   subagentAgents = {
-    delegate = {
-      model = "openai-codex/gpt-6-luna";
-      thinking = "high";
-      tools = [ "bash" ];
-      extensions = [ sandboxBashExtension ];
-      systemPrompt = "You are a delegated task agent. Complete only the assigned task. Keep the scope narrow and report results, validation, and unresolved risks.";
-    };
     oracle = {
       model = "openai-codex/gpt-6.1-sol";
       thinking = "high";
