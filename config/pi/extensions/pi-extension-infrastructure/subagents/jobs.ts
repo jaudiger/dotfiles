@@ -23,7 +23,6 @@ export type AgentJob = {
   label: string;
   launch: {
     cwd: string;
-    readRoots?: readonly string[];
     config: PiAgentConfig;
     task: string;
     includeFetchUrl?: boolean;
@@ -155,12 +154,11 @@ export function createAgentJobs(
         context: record.context,
         config: record.job.launch.config,
         cwd: record.job.launch.cwd,
-        readRoots: record.job.launch.readRoots,
-        evidenceFiles: [],
         includeFetchUrl: record.job.launch.includeFetchUrl ?? false,
         prompt: record.job.launch.task,
         signal: record.controller.signal,
         timeoutMs: record.job.launch.timeoutMs,
+        settings: pi.getSettings(),
       });
       if (
         record.controller.signal.aborted ||

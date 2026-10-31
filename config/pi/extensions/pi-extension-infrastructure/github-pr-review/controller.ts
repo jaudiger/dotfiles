@@ -281,6 +281,7 @@ export function registerGithubPrReviewController(
       provider.workflow,
       ctx,
       controller.signal,
+      pi.getSettings(),
     )
       .then((result) => {
         if (controller.signal.aborted || !isCurrentOwner(owner)) return;

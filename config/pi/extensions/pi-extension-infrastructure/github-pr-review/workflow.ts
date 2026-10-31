@@ -1,7 +1,11 @@
 import { resolve } from "node:path";
 import { writeFile } from "node:fs/promises";
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
-import { runReadOnlyPiAgent, type PiAgentConfig } from "../subagents/agent.js";
+import {
+  runReadOnlyPiAgent,
+  type PiAgentConfig,
+  type PiAgentSettings,
+} from "../subagents/agent.js";
 import { researcherAgent, repositoryScoutAgent } from "../subagents/roles.js";
 import type { PreparedReview } from "./types.js";
 
@@ -48,6 +52,7 @@ export async function runReviewWorkflow(
   provider: ReviewWorkflowProvider,
   context: ExtensionContext,
   signal: AbortSignal,
+  settings: PiAgentSettings,
 ): Promise<ReviewWorkflowCompletion> {
   const artifacts = reviewWorkflowArtifacts(review);
   const agents = provider.agents ?? defaultAgents;
@@ -75,9 +80,9 @@ export async function runReviewWorkflow(
     config: agents.researcher,
     cwd: review.cwd,
     prompt: researcherPrompt,
-    evidenceFiles: researcherEvidence,
     includeFetchUrl: true,
     signal,
+    settings,
   });
   await writeFile(artifacts.researcherReport, `${researcherReport}\n`, {
     encoding: "utf8",
@@ -98,9 +103,9 @@ export async function runReviewWorkflow(
     config: agents.scout,
     cwd: review.cwd,
     prompt: scoutPrompt,
-    evidenceFiles: scoutEvidence,
     includeFetchUrl: false,
     signal,
+    settings,
   });
   await writeFile(artifacts.scoutReport, `${scoutReport}\n`, {
     encoding: "utf8",

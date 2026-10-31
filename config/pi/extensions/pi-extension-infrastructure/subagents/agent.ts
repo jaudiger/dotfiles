@@ -1,19 +1,14 @@
-import { realpath } from "node:fs/promises";
-import { homedir } from "node:os";
-import { isAbsolute, join, relative, resolve, sep } from "node:path";
-import { fileURLToPath } from "node:url";
 import {
-  Agent,
-  type AgentTool,
-  type AgentToolUpdateCallback,
-  type BeforeToolCallContext,
-  type StreamFn,
-  type ThinkingLevel,
-} from "@earendil-works/pi-agent-core";
-import {
-  convertToLlm,
-  createReadOnlyTools,
+  createAgentSession,
+  createExtensionRuntime,
+  getAgentDir,
+  SessionManager,
+  SettingsManager,
+  type AgentSession,
+  type CreateAgentSessionOptions,
   type ExtensionContext,
+  type ResourceLoader,
+  type ToolDefinition,
 } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
 import {
@@ -25,7 +20,7 @@ import {
 
 export type PiAgentConfig = {
   model: string;
-  thinkingLevel: ThinkingLevel;
+  thinkingLevel: NonNullable<CreateAgentSessionOptions["thinkingLevel"]>;
   systemPrompt: string;
 };
 
@@ -34,12 +29,13 @@ export type ReadOnlyPiAgentOptions = {
   config: PiAgentConfig;
   cwd: string;
   prompt: string;
-  evidenceFiles: readonly string[];
-  readRoots?: readonly string[];
   includeFetchUrl: boolean;
   signal: AbortSignal;
   timeoutMs?: number;
+  settings: PiAgentSettings;
 };
+
+export type PiAgentSettings = ReturnType<SettingsManager["getSettings"]>;
 
 const maxConcurrentPiAgents = 4;
 const globalPiAgentRunsKey = Symbol.for(
@@ -97,7 +93,7 @@ const fetchUrlParameters = Type.Object(
   { additionalProperties: false },
 );
 
-function createFetchUrlTool(): AgentTool<typeof fetchUrlParameters> {
+function createFetchUrlTool(): ToolDefinition<typeof fetchUrlParameters> {
   return {
     name: "fetch_url",
     label: "Fetch URL",
@@ -117,161 +113,24 @@ function createFetchUrlTool(): AgentTool<typeof fetchUrlParameters> {
   };
 }
 
-function within(root: string, candidate: string): boolean {
-  const path = relative(root, candidate);
-  return (
-    path === "" ||
-    (path !== ".." && !path.startsWith(`..${sep}`) && !isAbsolute(path))
-  );
-}
-
-function normalizeWindowsShellPath(filePath: string): string {
-  if (
-    !filePath.startsWith("/") ||
-    filePath.startsWith("//") ||
-    filePath.includes("\\")
-  )
-    return filePath;
-  const match = filePath.match(/^\/(?:mnt\/|cygdrive\/)?([a-z])(?:\/(.*))?$/i);
-  if (!match) return filePath;
-  const suffix = match[2]?.replaceAll("/", "\\");
-  return `${match[1].toUpperCase()}:\\${suffix ?? ""}`;
-}
-
-function resolveToolPath(filePath: string, cwd: string): string {
-  let normalized = filePath.replace(
-    /[\u00A0\u2000-\u200A\u202F\u205F\u3000]/g,
-    " ",
-  );
-  if (normalized.startsWith("@")) normalized = normalized.slice(1);
-  if (process.platform === "win32")
-    normalized = normalizeWindowsShellPath(normalized);
-  if (normalized === "~") normalized = homedir();
-  else if (normalized.startsWith("~/"))
-    normalized = join(homedir(), normalized.slice(2));
-  if (/^file:\/\//.test(normalized)) normalized = fileURLToPath(normalized);
-  return resolve(cwd, normalized);
-}
-
-function isProtectedPath(filePath: string): boolean {
-  return filePath
-    .replaceAll("\\", "/")
-    .split("/")
-    .some((part) => part.startsWith(".env"));
-}
-
-function containsProtectedGrepResults(text: string): boolean {
-  return text.split("\n").some((line) => {
-    const match = line.match(/^(.*?)(?:[:\-])\d+(?:[:\-]) /);
-    return match !== null && isProtectedPath(match[1]);
-  });
-}
-
-function protectGrepResults(tool: AgentTool): AgentTool {
-  if (tool.name !== "grep") return tool;
-  let foundProtectedResults = false;
-  const blockedResult = {
-    content: [
-      {
-        type: "text" as const,
-        text: "Search results from protected paths were blocked.",
-      },
-    ],
-    details: undefined,
-    isError: true,
+function createResourceLoader(systemPrompt: string): ResourceLoader {
+  const extensionsResult = {
+    extensions: [],
+    errors: [],
+    runtime: createExtensionRuntime(),
   };
   return {
-    ...tool,
-    execute: async (toolCallId, params, signal, onUpdate) => {
-      foundProtectedResults = false;
-      const guardedUpdate = onUpdate
-        ? (partial: Parameters<AgentToolUpdateCallback>[0]) => {
-            const containsProtectedPath = partial.content.some(
-              (item) =>
-                item.type === "text" && containsProtectedGrepResults(item.text),
-            );
-            if (containsProtectedPath) foundProtectedResults = true;
-            onUpdate(foundProtectedResults ? blockedResult : partial);
-          }
-        : undefined;
-      const result = await tool.execute(
-        toolCallId,
-        params,
-        signal,
-        guardedUpdate,
-      );
-      const containsProtectedPath = result.content.some(
-        (item) =>
-          item.type === "text" && containsProtectedGrepResults(item.text),
-      );
-      if (containsProtectedPath) foundProtectedResults = true;
-      return foundProtectedResults ? blockedResult : result;
-    },
-  };
-}
-
-async function allowedReadPaths(
-  cwd: string,
-  readRoots: readonly string[],
-  evidenceFiles: readonly string[],
-): Promise<{ repositoryRoots: Set<string>; evidencePaths: Set<string> }> {
-  const repositoryRoots = new Set(
-    await Promise.all([cwd, ...readRoots].map((path) => realpath(path))),
-  );
-  const evidencePaths = new Set(
-    await Promise.all(evidenceFiles.map((path) => realpath(path))),
-  );
-  return { repositoryRoots, evidencePaths };
-}
-
-function createReadPathGuard(
-  repositoryRoots: ReadonlySet<string>,
-  evidencePaths: ReadonlySet<string>,
-) {
-  return async ({ toolCall }: BeforeToolCallContext) => {
-    if (toolCall.name === "fetch_url") return undefined;
-
-    const args = toolCall.arguments as { path?: unknown };
-    let requestedPath: string;
-    try {
-      requestedPath =
-        typeof args.path === "string"
-          ? resolveToolPath(
-              args.path,
-              repositoryRoots.values().next().value ?? process.cwd(),
-            )
-          : (repositoryRoots.values().next().value ?? process.cwd());
-    } catch {
-      return {
-        block: true,
-        reason: "This agent can only read its configured roots and evidence.",
-      };
-    }
-    let actualPath: string;
-    try {
-      actualPath = await realpath(requestedPath);
-    } catch {
-      return {
-        block: true,
-        reason: "This agent can only read its configured roots and evidence.",
-      };
-    }
-
-    if (isProtectedPath(requestedPath) || isProtectedPath(actualPath))
-      return {
-        block: true,
-        reason: "Paths beginning with .env are protected.",
-      };
-
-    if (
-      [...repositoryRoots].some((root) => within(root, actualPath)) ||
-      evidencePaths.has(actualPath)
-    )
-      return undefined;
-    return {
-      block: true,
-      reason: "This agent can only read its configured roots and evidence.",
-    };
+    getExtensions: () => extensionsResult,
+    getSkills: () => ({ skills: [], diagnostics: [] }),
+    getPrompts: () => ({ prompts: [], diagnostics: [] }),
+    getThemes: () => ({ themes: [], diagnostics: [] }),
+    getAgentsFiles: () => ({ agentsFiles: [] }),
+    getSystemPrompt: () => systemPrompt,
+    getSystemPromptSource: () => undefined,
+    getAppendSystemPrompt: () => [],
+    getAppendSystemPromptSources: () => [],
+    extendResources: () => undefined,
+    reload: async () => undefined,
   };
 }
 
@@ -285,15 +144,11 @@ function modelReference(reference: string): { provider: string; id: string } {
   };
 }
 
-function agentOutput(agent: Agent): string {
-  let finalMessage: (typeof agent.state.messages)[number] | undefined;
-  for (const message of [...agent.state.messages].reverse()) {
-    if (message.role === "assistant") {
-      finalMessage = message;
-      break;
-    }
-  }
-  if (!finalMessage || finalMessage.role !== "assistant")
+function agentOutput(session: AgentSession): string {
+  const finalMessage = [...session.messages]
+    .reverse()
+    .find((message) => message.role === "assistant");
+  if (finalMessage?.role !== "assistant")
     throw new Error("Agent returned no final response.");
   if (["error", "aborted", "length"].includes(finalMessage.stopReason))
     throw new Error(
@@ -309,76 +164,162 @@ function agentOutput(agent: Agent): string {
   return output;
 }
 
+type AgentRunStopReason = "cancelled" | "timed-out";
+
+function agentRunStopError(
+  reason: AgentRunStopReason,
+  timeoutMs: number,
+): Error {
+  return reason === "timed-out"
+    ? new Error(`Agent run timed out after ${timeoutMs} milliseconds.`)
+    : new Error("Agent run was cancelled.");
+}
+
 export async function runReadOnlyPiAgent({
   context,
   config,
   cwd,
   prompt,
-  evidenceFiles,
-  readRoots = [],
   includeFetchUrl,
   signal,
   timeoutMs,
+  settings,
 }: ReadOnlyPiAgentOptions): Promise<string> {
   const releaseCapacity = reservePiAgentRun();
+  let session: AgentSession | undefined;
+  let stopRequested = false;
+  let stopReason: AgentRunStopReason | undefined;
+  let transferred = false;
+  const effectiveTimeoutMs = timeoutMs ?? 30 * 60 * 1000;
+  let resolveStop!: (reason: AgentRunStopReason) => void;
+  const stopped = new Promise<AgentRunStopReason>((resolve) => {
+    resolveStop = resolve;
+  });
+  const stop = (reason: AgentRunStopReason) => {
+    if (stopReason) return;
+    stopReason = reason;
+    stopRequested = true;
+    resolveStop(reason);
+    void session?.abort().catch(() => undefined);
+  };
+  const abort = () => stop("cancelled");
+  const timeout = setTimeout(() => stop("timed-out"), effectiveTimeoutMs);
+  signal.addEventListener("abort", abort, { once: true });
+  const clearInterruption = () => {
+    clearTimeout(timeout);
+    signal.removeEventListener("abort", abort);
+  };
+  let unsubscribe: () => void = () => {};
+
   try {
+    if (signal.aborted) stop("cancelled");
+    if (stopReason) throw agentRunStopError(stopReason, effectiveTimeoutMs);
     const { provider, id } = modelReference(config.model);
     const model = context.modelRegistry.find(provider, id);
     if (!model)
       throw new Error(`Agent model ${config.model} is not available.`);
 
-    const tools: AgentTool[] = [
-      ...createReadOnlyTools(cwd).map(protectGrepResults),
-      ...(includeFetchUrl ? [createFetchUrlTool()] : []),
-    ];
-    const { repositoryRoots, evidencePaths } = await allowedReadPaths(
+    const creation = createAgentSession({
+      agentDir: getAgentDir(),
       cwd,
-      readRoots,
-      evidenceFiles,
-    );
-    const streamFn: StreamFn = (requestedModel, transcript, options) =>
-      context.modelRegistry.streamSimple(requestedModel, transcript, options);
-    const agent = new Agent({
-      initialState: {
-        systemPrompt: config.systemPrompt,
-        model,
-        thinkingLevel: config.thinkingLevel,
-        tools,
-      },
-      convertToLlm,
-      streamFn,
-      beforeToolCall: createReadPathGuard(repositoryRoots, evidencePaths),
-      toolExecution: "sequential",
+      model,
+      thinkingLevel: config.thinkingLevel,
+      noTools: "all",
+      tools: [
+        "read",
+        "grep",
+        "find",
+        "ls",
+        ...(includeFetchUrl ? ["fetch_url"] : []),
+      ],
+      customTools: includeFetchUrl ? [createFetchUrlTool()] : [],
+      resourceLoader: createResourceLoader(config.systemPrompt),
+      sessionManager: SessionManager.inMemory(cwd),
+      settingsManager: SettingsManager.inMemory({
+        ...settings,
+        cacheWarming: "off",
+        compaction: { ...settings.compaction, enabled: false },
+      }),
     });
-    const effectiveTimeoutMs = timeoutMs ?? 30 * 60 * 1000;
-    let timedOut = false;
-    const abort = () => agent.abort();
-    const timeout = setTimeout(() => {
-      timedOut = true;
-      agent.abort();
-    }, effectiveTimeoutMs);
-    signal.addEventListener("abort", abort, { once: true });
-
-    try {
-      if (signal.aborted) throw new Error("Agent run was cancelled.");
-      await agent.prompt(prompt);
-      if (timedOut)
-        throw new Error(
-          `Agent run timed out after ${effectiveTimeoutMs} milliseconds.`,
-        );
-      if (signal.aborted) throw new Error("Agent run was cancelled.");
-      return agentOutput(agent);
-    } catch (error) {
-      if (timedOut)
-        throw new Error(
-          `Agent run timed out after ${effectiveTimeoutMs} milliseconds.`,
-        );
-      throw error;
-    } finally {
-      clearTimeout(timeout);
-      signal.removeEventListener("abort", abort);
+    const creationOutcome = await Promise.race([
+      creation.then(
+        (result) => ({ kind: "created" as const, result }),
+        (error: unknown) => ({ kind: "failed" as const, error }),
+      ),
+      stopped.then((reason) => ({ kind: "stopped" as const, reason })),
+    ]);
+    if (creationOutcome.kind === "stopped") {
+      transferred = true;
+      clearInterruption();
+      void creation
+        .then(
+          ({ session: lateSession }) => {
+            try {
+              lateSession.dispose();
+            } finally {
+              releaseCapacity();
+            }
+          },
+          () => releaseCapacity(),
+        )
+        .catch(() => undefined);
+      throw agentRunStopError(creationOutcome.reason, effectiveTimeoutMs);
     }
+    if (creationOutcome.kind === "failed") throw creationOutcome.error;
+    session = creationOutcome.result.session;
+    unsubscribe = session.subscribe((event) => {
+      if (event.type === "agent_start" && (stopRequested || signal.aborted))
+        void session?.abort().catch(() => undefined);
+    });
+    if (stopReason) throw agentRunStopError(stopReason, effectiveTimeoutMs);
+
+    const promptRun = session.prompt(prompt, { expandPromptTemplates: false });
+    const promptOutcome = await Promise.race([
+      promptRun.then(
+        () => ({ kind: "completed" as const }),
+        (error: unknown) => ({ kind: "failed" as const, error }),
+      ),
+      stopped.then((reason) => ({ kind: "stopped" as const, reason })),
+    ]);
+    if (promptOutcome.kind === "stopped") {
+      transferred = true;
+      clearInterruption();
+      const activeSession = session;
+      const stopSubscription = unsubscribe;
+      void promptRun
+        .then(
+          () => undefined,
+          () => undefined,
+        )
+        .then(() => {
+          try {
+            stopSubscription();
+          } finally {
+            try {
+              activeSession?.dispose();
+            } finally {
+              releaseCapacity();
+            }
+          }
+        })
+        .catch(() => undefined);
+      throw agentRunStopError(promptOutcome.reason, effectiveTimeoutMs);
+    }
+    if (promptOutcome.kind === "failed") throw promptOutcome.error;
+    if (stopReason) throw agentRunStopError(stopReason, effectiveTimeoutMs);
+    return agentOutput(session);
+  } catch (error) {
+    if (stopReason) throw agentRunStopError(stopReason, effectiveTimeoutMs);
+    throw error;
   } finally {
-    releaseCapacity();
+    if (!transferred) {
+      clearInterruption();
+      unsubscribe();
+      try {
+        session?.dispose();
+      } finally {
+        releaseCapacity();
+      }
+    }
   }
 }

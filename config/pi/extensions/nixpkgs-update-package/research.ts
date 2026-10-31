@@ -228,10 +228,10 @@ export function registerResearchTool(
           config: researcherAgent,
           cwd: active.context.repository,
           prompt: researcherTask(active),
-          evidenceFiles: [],
           includeFetchUrl: true,
           signal: controller.signal,
           timeoutMs: 30 * 60 * 1000,
+          settings: pi.getSettings(),
         });
         const current = options.getActive();
         if (

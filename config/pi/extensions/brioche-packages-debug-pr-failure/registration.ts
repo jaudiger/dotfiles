@@ -50,11 +50,6 @@ export function registerDebugPrFailure(pi: ExtensionAPI) {
     label: `Investigation for PR ${owner.pr}`,
     launch: {
       cwd: briochePackagesRepository,
-      readRoots: [
-        owner.directory,
-        briocheSourceRepository,
-        briocheRuntimeUtilsRepository,
-      ],
       config: oracleAgent,
       task,
     },
