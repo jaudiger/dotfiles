@@ -229,29 +229,30 @@ class ReviewPicker implements Component {
     const leftWidth = Math.floor(contentWidth / 3);
     const rightWidth = Math.max(1, contentWidth - leftWidth);
     const panelRows = this.visiblePanelRows();
-    const bodyRows = panelRows - 1;
+    const bodyRows = panelRows;
     const detailRows = this.detailPanelRows();
-    const listRows = bodyRows - detailRows - 1;
+    const listRows = bodyRows - detailRows - 2;
     const leftLines = this.selector.render(leftWidth).slice(0, listRows);
     const detailLines = this.renderDetail(leftWidth, detailRows);
-    const rightLines = this.renderDiff(rightWidth, bodyRows);
-    const lines = [
-      truncateToWidth(
-        this.theme.bold(
-          `Pull requests | mode: ${this.modeLabel()} | r review | m merge | s supersede`,
-        ),
-        width,
-      ),
-    ];
+    const rightLines = this.renderDiff(rightWidth);
+    const lines: string[] = [];
 
     for (let index = 0; index < bodyRows; index += 1) {
-      const isListRow = index < listRows;
-      const isDetailSeparator = index === listRows;
-      const rawLeftLine = isListRow
-        ? leftLines[index]
-        : isDetailSeparator
-          ? ""
-          : detailLines[index - listRows - 1];
+      const isListHeader = index === 0;
+      const isListRow = index > 0 && index <= listRows;
+      const isDetailSeparator = index === listRows + 1;
+      const rawLeftLine = isListHeader
+        ? this.theme.bold(
+            truncateToWidth(
+              `Pull requests | ${this.modeLabel()} mode`,
+              leftWidth,
+            ),
+          )
+        : isListRow
+          ? leftLines[index - 1]
+          : isDetailSeparator
+            ? ""
+            : detailLines[index - listRows - 2];
       const leftLine = padToWidth(rawLeftLine ?? "", leftWidth);
       const rightLine = padToWidth(rightLines[index] ?? "", rightWidth);
       const separatorColor =
@@ -275,7 +276,7 @@ class ReviewPicker implements Component {
       truncateToWidth(
         this.theme.fg(
           "dim",
-          `up/down move | tab switch | space toggle | enter execute | esc cancel${this.selectedCandidates.size > 0 ? ` | ${this.selectedCandidates.size} selected` : ""}`,
+          `up/down move | tab switch | space toggle | enter execute | esc cancel | r review | m merge | s supersede${this.selectedCandidates.size > 0 ? ` | ${this.selectedCandidates.size} selected` : ""}`,
         ),
         width,
       ),
@@ -452,7 +453,7 @@ class ReviewPicker implements Component {
     return lines.slice(0, rows);
   }
 
-  private renderDiff(width: number, rows: number): string[] {
+  private renderDiff(width: number): string[] {
     const heading = `${this.theme.bold(`#${this.selected.number} ${this.selected.title}`)}`;
     const lines = [truncateToWidth(heading, width)];
     if (this.loadingUrl === this.selected.url) {
@@ -468,7 +469,7 @@ class ReviewPicker implements Component {
       return lines;
     }
 
-    const diffRows = Math.max(1, rows - 2);
+    const diffRows = this.diffPageSize();
     const maxOffset = Math.max(0, this.diffLines.length - diffRows);
     this.diffOffset = Math.min(this.diffOffset, maxOffset);
     for (const line of this.diffLines.slice(
@@ -487,14 +488,14 @@ class ReviewPicker implements Component {
   }
 
   private scrollDiff(delta: number): void {
-    const diffRows = Math.max(1, this.visiblePanelRows() - 4);
+    const diffRows = this.diffPageSize();
     const maxOffset = Math.max(0, this.diffLines.length - diffRows);
     this.diffOffset = Math.max(0, Math.min(maxOffset, this.diffOffset + delta));
     this.tui.requestRender();
   }
 
   private diffPageSize(): number {
-    return Math.max(1, this.visiblePanelRows() - 4);
+    return Math.max(1, this.visiblePanelRows() - 2);
   }
 
   private visiblePanelRows(): number {
@@ -502,12 +503,12 @@ class ReviewPicker implements Component {
   }
 
   private detailPanelRows(): number {
-    const bodyRows = this.visiblePanelRows() - 1;
-    return Math.max(0, Math.min(bodyRows - 2, Math.floor(bodyRows / 3)));
+    const bodyRows = this.visiblePanelRows();
+    return Math.max(0, Math.min(bodyRows - 3, Math.floor(bodyRows / 3)));
   }
 
   private listPanelRows(): number {
-    return this.visiblePanelRows() - 1 - this.detailPanelRows() - 1;
+    return this.visiblePanelRows() - this.detailPanelRows() - 2;
   }
 }
 
