@@ -8,15 +8,18 @@ export type ReviewCandidate = {
   repository?: string;
 };
 
+export type MergeReadiness =
+  | { state: "ready" }
+  | { state: "blocked"; reason: string }
+  | { state: "pending"; reason: string }
+  | { state: "queued" };
+
 export type ReviewDetails = {
   number: number;
   title: string;
   author?: string;
   repository?: string;
-  isDraft: boolean;
-  status: string;
-  checkSummary: string;
-  reviewDecision: string;
+  readiness: MergeReadiness;
   url: string;
   mergeQueueState?: string;
   mergeQueuePosition?: number;

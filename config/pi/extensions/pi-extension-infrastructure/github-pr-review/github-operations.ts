@@ -8,6 +8,7 @@ import type {
   PullRequestSnapshot,
   ReviewCandidate,
   ReviewDetails,
+  MergeReadiness,
   Json,
   MutationTarget,
   PreparedReview,
@@ -604,34 +605,56 @@ function checkSummary(value: unknown): string {
         "ACTION_REQUIRED",
         "TIMED_OUT",
         "STALE",
+        "STARTUP_FAILURE",
       ].includes(state),
     )
   )
     return "failure";
   if (
-    states.some((state) =>
-      [
-        "PENDING",
-        "EXPECTED",
-        "QUEUED",
-        "IN_PROGRESS",
-        "WAITING",
-        "REQUESTED",
-        "COMPLETED",
-        "",
-      ].includes(state),
+    states.every((state) =>
+      ["SUCCESS", "PASS", "NEUTRAL", "SKIPPED"].includes(state),
     )
   )
-    return "pending";
-  return "success";
+    return "success";
+  return "pending";
 }
 
-function reviewDecision(value: unknown): string {
-  const decision = string(value).toUpperCase();
-  if (decision === "APPROVED") return "approved";
-  if (decision === "CHANGES_REQUESTED") return "changes requested";
-  if (decision === "REVIEW_REQUIRED") return "review required";
-  return "not requested";
+export function mergeReadiness(
+  metadata: Json,
+  queueState?: string,
+): MergeReadiness {
+  if (metadata.isDraft === true) return { state: "blocked", reason: "draft" };
+
+  const mergeable = string(metadata.mergeable).toUpperCase();
+  const mergeState = string(metadata.mergeStateStatus).toUpperCase();
+  const decision = string(metadata.reviewDecision).toUpperCase();
+  const checkStatus = checkSummary(metadata.statusCheckRollup);
+
+  if (
+    mergeable === "CONFLICTING" ||
+    mergeState === "DIRTY" ||
+    mergeState === "CONFLICTING"
+  )
+    return { state: "blocked", reason: "merge conflict" };
+  if (checkStatus === "failure" || mergeState === "UNSTABLE")
+    return { state: "blocked", reason: "failing checks" };
+  if (decision === "CHANGES_REQUESTED")
+    return { state: "blocked", reason: "changes requested" };
+  if (queueState) return { state: "queued" };
+  if (checkStatus === "pending")
+    return { state: "pending", reason: "checks pending" };
+  if (checkStatus === "no checks")
+    return { state: "blocked", reason: "no check results" };
+  if (!mergeable || mergeable === "UNKNOWN" || mergeState === "UNKNOWN")
+    return { state: "pending", reason: "mergeability unknown" };
+  if (mergeable !== "MERGEABLE")
+    return { state: "blocked", reason: "not mergeable" };
+  if (mergeState === "BLOCKED" && decision !== "REVIEW_REQUIRED")
+    return { state: "blocked", reason: "blocked by GitHub" };
+  if (mergeState && mergeState !== "CLEAN" && mergeState !== "BLOCKED")
+    return { state: "pending", reason: "merge state unresolved" };
+
+  return { state: "ready" };
 }
 
 async function fetchQueueDetails(
@@ -733,25 +756,12 @@ export async function fetchReviewDetails(
   } catch {
     queue = {};
   }
-  const mergeState = string(
-    metadata.mergeStateStatus || metadata.mergeable,
-  ).toUpperCase();
-  const status = queue.state
-    ? `in merge queue (${formatDetailLabel(queue.state)})`
-    : mergeState === "CLEAN" || mergeState === "MERGEABLE"
-      ? "ready to merge"
-      : mergeState === "DIRTY" || mergeState === "CONFLICTING"
-        ? "merge conflict"
-        : string(metadata.state).toLowerCase() || "unknown";
   return {
     number: number(metadata.number) ?? candidate.number,
     title: string(metadata.title) || candidate.title,
     author: string(object(metadata.author).login) || candidate.author,
     repository: resolved.repository,
-    isDraft: metadata.isDraft === true,
-    status,
-    checkSummary: checkSummary(metadata.statusCheckRollup),
-    reviewDecision: reviewDecision(metadata.reviewDecision),
+    readiness: mergeReadiness(metadata, queue.state),
     url: string(metadata.url) || candidate.url,
     mergeQueueState: queue.state ? formatDetailLabel(queue.state) : undefined,
     mergeQueuePosition: queue.position,

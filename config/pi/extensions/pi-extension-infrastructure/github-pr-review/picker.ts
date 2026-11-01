@@ -33,6 +33,7 @@ type ReviewPickerOptions = {
 };
 
 type PanelFocus = "list" | "diff";
+type ReadinessDisplay = ReviewDetails["readiness"] | "checking" | "unknown";
 
 function panelBackground(theme: Theme, line: string): string {
   const background = theme.getBgAnsi("selectedBg");
@@ -397,10 +398,10 @@ class ReviewPicker implements Component {
 
   private renderDetail(width: number, rows: number): string[] {
     const repository = this.details?.repository ?? this.selected.repository;
-    const header = repository
-      ? `PR Detail | #${this.selected.number} | ${repository}`
-      : `PR Detail | #${this.selected.number}`;
-    const lines = [this.theme.bold(truncateToWidth(header, width))];
+    const readiness =
+      this.details?.readiness ??
+      (this.loadingDetailsUrl === this.selected.url ? "checking" : "unknown");
+    const lines = [this.renderDetailHeader(width, repository, readiness)];
     if (this.loadingDetailsUrl === this.selected.url) {
       lines.push(this.theme.fg("muted", "Loading details..."));
       return lines;
@@ -417,23 +418,9 @@ class ReviewPicker implements Component {
       return lines;
     }
 
+    lines.push(truncateToWidth(`Title: ${details.title}`, width));
     lines.push(
-      truncateToWidth(
-        `${details.isDraft ? "[draft] " : ""}${details.title}`,
-        width,
-      ),
-    );
-    lines.push(
-      truncateToWidth(
-        `Author: ${details.author || "unknown"} | Status: ${details.status}`,
-        width,
-      ),
-    );
-    lines.push(
-      truncateToWidth(
-        `Checks: ${details.checkSummary} | Review: ${details.reviewDecision}`,
-        width,
-      ),
+      truncateToWidth(`Author: ${details.author || "unknown"}`, width),
     );
     if (this.showQueuePosition && details.mergeQueuePosition !== undefined)
       lines.push(
@@ -459,6 +446,77 @@ class ReviewPicker implements Component {
       else lines.push(truncateToWidth(removedPrefix, width));
     }
     return lines.slice(0, rows);
+  }
+
+  private renderDetailHeader(
+    width: number,
+    repository: string | undefined,
+    readiness: ReadinessDisplay,
+  ): string {
+    const number = `#${this.selected.number}`;
+    const badge = this.readinessBadge(readiness);
+    const fullHeader = repository
+      ? `PR Detail | ${repository} | ${number}`
+      : `PR Detail | ${number}`;
+    const fullLine = `${this.theme.bold(fullHeader)} ${badge}`;
+    if (visibleWidth(fullLine) <= width) return fullLine;
+
+    if (repository) {
+      const prefix = "PR Detail | ";
+      const suffix = ` | ${number}`;
+      const repositoryWidth =
+        width -
+        visibleWidth(prefix) -
+        visibleWidth(suffix) -
+        1 -
+        visibleWidth(badge);
+      if (repositoryWidth > 0) {
+        const shortRepository = truncateToWidth(
+          repository,
+          repositoryWidth,
+          repositoryWidth >= 5 ? "..." : "",
+        );
+        return `${this.theme.bold(`${prefix}${shortRepository}${suffix}`)} ${badge}`;
+      }
+    }
+
+    const compactHeader = `${this.theme.bold(number)} ${badge}`;
+    if (visibleWidth(compactHeader) <= width) return compactHeader;
+
+    const shortBadge = this.readinessBadge(readiness, true);
+    const shortHeader = `${this.theme.bold(number)} ${shortBadge}`;
+    if (visibleWidth(shortHeader) <= width) return shortHeader;
+    return truncateToWidth(shortHeader, width);
+  }
+
+  private readinessBadge(readiness: ReadinessDisplay, compact = false): string {
+    if (readiness === "checking")
+      return this.dimForeground("muted", "[checking]");
+    if (readiness === "unknown")
+      return this.dimForeground("muted", "[unknown]");
+    if (readiness.state === "ready")
+      return this.dimForeground(
+        "success",
+        compact ? "[ready]" : "[merge-ready]",
+      );
+    if (readiness.state === "queued")
+      return this.dimForeground("muted", "[queued]");
+    if (readiness.state === "blocked")
+      return this.dimForeground(
+        "error",
+        compact ? "[blocked]" : `[blocked: ${readiness.reason}]`,
+      );
+    return this.dimForeground(
+      "warning",
+      compact ? "[pending]" : `[pending: ${readiness.reason}]`,
+    );
+  }
+
+  private dimForeground(
+    color: "success" | "muted" | "error" | "warning",
+    text: string,
+  ): string {
+    return `\x1b[2m${this.theme.fg(color, text)}\x1b[22m`;
   }
 
   private renderDiff(width: number): string[] {
