@@ -31,6 +31,7 @@ function number(value: unknown): number | undefined {
 }
 
 type RepositoryResolutionRequest = {
+  purpose: "read" | "review" | "mutation";
   candidate?: ReviewCandidate;
   metadata?: Json;
   repository?: string;
@@ -97,6 +98,7 @@ export type GithubPrReviewProvider = {
     validateMutationRepository?: (review: MutationTarget) => Promise<void>;
     mutationEligibility?: (value: Json) => boolean;
     validateWorkingDirectory?: (cwd: string) => Promise<string>;
+    checkoutWorkingDirectory?: (review: MutationTarget) => Promise<string>;
   };
 };
 
@@ -548,7 +550,11 @@ export async function fetchReviewDiff(
   candidate: ReviewCandidate,
   cwd: string,
 ): Promise<string> {
-  const resolved = await provider.resolveRepository({ candidate, cwd });
+  const resolved = await provider.resolveRepository({
+    purpose: "read",
+    candidate,
+    cwd,
+  });
   const diff = await capture(
     "gh",
     ["pr", "diff", String(candidate.number), "--repo", resolved.repository],
@@ -697,7 +703,11 @@ export async function fetchReviewDetails(
   candidate: ReviewCandidate,
   cwd: string,
 ): Promise<ReviewDetails> {
-  const resolved = await provider.resolveRepository({ candidate, cwd });
+  const resolved = await provider.resolveRepository({
+    purpose: "read",
+    candidate,
+    cwd,
+  });
   const metadata = object(
     await ghJson(
       [
@@ -795,6 +805,7 @@ export async function prepareReview(
           "GitHub pull request had no valid number.",
       );
     const resolved = await provider.resolveRepository({
+      purpose: "review",
       metadata,
       cwd: reviewCwd,
     });
@@ -876,7 +887,11 @@ export async function prepareMutationTarget(
   candidate: ReviewCandidate,
   cwd: string,
 ): Promise<MutationTarget> {
-  const resolved = await provider.resolveRepository({ candidate, cwd });
+  const resolved = await provider.resolveRepository({
+    purpose: "mutation",
+    candidate,
+    cwd,
+  });
   const metadata = object(
     await ghJson(
       [
@@ -1750,9 +1765,16 @@ async function checkoutSingleReview(
   progress: MutationProgress = () => {},
 ): Promise<string> {
   progress(`PR #${review.number}: checking current metadata and worktree`);
-  const initialMetadata = await refreshedMetadata(provider, review);
+  const checkoutCwd =
+    (await provider.policy?.checkoutWorkingDirectory?.(review)) || review.cwd;
+  const checkoutTarget = { ...review, cwd: checkoutCwd };
+  const initialMetadata = await refreshedMetadata(provider, checkoutTarget);
   assertReviewedHead(review, initialMetadata);
-  const status = await successful("git", ["status", "--porcelain"], review.cwd);
+  const status = await successful(
+    "git",
+    ["status", "--porcelain"],
+    checkoutCwd,
+  );
   if (status.trim())
     throw new Error("Checkout requires a clean current worktree.");
   if (
@@ -1763,32 +1785,32 @@ async function checkoutSingleReview(
     ))
   )
     return "Checkout cancelled. No repository mutation was performed.";
-  const metadata = await refreshedMetadata(provider, review);
+  const metadata = await refreshedMetadata(provider, checkoutTarget);
   const currentHead = assertReviewedHead(review, metadata);
   progress(`PR #${review.number}: verifying the worktree is still clean`);
   const finalStatus = await successful(
     "git",
     ["status", "--porcelain"],
-    review.cwd,
+    checkoutCwd,
   );
   if (finalStatus.trim())
     throw new Error("The worktree became dirty; checkout was not performed.");
   progress(`PR #${review.number}: fetching the reviewed head`);
-  const remote = await provider.resolveRemote(review.cwd, review.repository);
+  const remote = await provider.resolveRemote(checkoutCwd, review.repository);
   await successful(
     "git",
     ["fetch", "--no-tags", remote, `pull/${review.number}/head`],
-    review.cwd,
+    checkoutCwd,
   );
   const fetchedHead = (
-    await successful("git", ["rev-parse", "FETCH_HEAD"], review.cwd)
+    await successful("git", ["rev-parse", "FETCH_HEAD"], checkoutCwd)
   ).trim();
   if (fetchedHead !== currentHead)
     throw new Error(
       "The pull request head changed while fetching; checkout was not performed.",
     );
   progress(`PR #${review.number}: checking out the reviewed head`);
-  await successful("git", ["checkout", "--detach", currentHead], review.cwd);
+  await successful("git", ["checkout", "--detach", currentHead], checkoutCwd);
   return provider.messages.checkoutSuccess(review.number, currentHead);
 }
 

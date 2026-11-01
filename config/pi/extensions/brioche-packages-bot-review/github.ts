@@ -285,29 +285,25 @@ function repositoryFromUrl(value: unknown): string | undefined {
 }
 
 const briocheGithubProvider: GithubPrReviewProvider = {
-  search: async () => {
-    const cwd = await ensureRepository();
-    return {
-      cwd,
+  search: async (cwd) => ({
+    cwd,
+    repository,
+    args: [
+      "search",
+      "prs",
+      "--state",
+      "open",
+      "--app",
+      "package-update-bot",
+      "--repo",
       repository,
-      args: [
-        "search",
-        "prs",
-        "--state",
-        "open",
-        "--app",
-        "package-update-bot",
-        "--repo",
-        repository,
-        "--limit",
-        "1000",
-        "--json",
-        "number,title,author,state,isDraft,url",
-      ],
-    };
-  },
+      "--limit",
+      "1000",
+      "--json",
+      "number,title,author,state,isDraft,url",
+    ],
+  }),
   resolveRepository: async (request) => {
-    const cwd = await ensureRepository();
     const requestedRepository =
       request.repository ?? repositoryFromUrl(request.candidate?.url);
     const metadataRepository = repositoryFromUrl(request.metadata?.url);
@@ -316,7 +312,11 @@ const briocheGithubProvider: GithubPrReviewProvider = {
       (metadataRepository && metadataRepository !== repository)
     )
       throw new Error("Brioche pull request had an invalid GitHub repository.");
-    return { repository, cwd };
+    return {
+      repository,
+      cwd:
+        request.purpose === "review" ? await ensureRepository() : request.cwd,
+    };
   },
   resolveRemote: remoteForRepository,
   authorRules: packageUpdateAuthor,
@@ -354,6 +354,7 @@ const briocheGithubProvider: GithubPrReviewProvider = {
   policy: {
     temporaryDirectoryPrefix: "pi-brioche-packages-bot-review-",
     supersedeTemporaryDirectoryPrefix: "pi-supersede-brioche-",
+    checkoutWorkingDirectory: () => ensureRepository(),
     pullRequestViewArgs: (reference, fields) => [
       "pr",
       "view",
@@ -363,10 +364,6 @@ const briocheGithubProvider: GithubPrReviewProvider = {
       "--json",
       fields,
     ],
-    validateWorkingDirectory: async () => ensureRepository(),
-    validateMutationRepository: async () => {
-      await ensureRepository();
-    },
     mutationEligibility: openPackageUpdate,
     validateDiff: (diff, candidate) => {
       if (!isLiveUpdateDiff(diff))
@@ -377,8 +374,10 @@ const briocheGithubProvider: GithubPrReviewProvider = {
   },
 };
 
-export function listCandidates(): Promise<ReviewCandidate[]> {
-  return sharedListCandidates(briocheGithubProvider, process.cwd());
+export function listCandidates(
+  cwd = process.cwd(),
+): Promise<ReviewCandidate[]> {
+  return sharedListCandidates(briocheGithubProvider, cwd);
 }
 
 export function fetchReviewDiff(candidate: ReviewCandidate): Promise<string> {

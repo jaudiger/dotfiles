@@ -225,7 +225,13 @@ const dependabotGithubProvider: GithubPrReviewProvider = {
       throw new Error(
         "Dependabot pull request had no valid GitHub repository.",
       );
-    return { repository, cwd: await repositoryCwd(repository) };
+    return {
+      repository,
+      cwd:
+        request.purpose === "review"
+          ? await repositoryCwd(repository)
+          : request.cwd,
+    };
   },
   resolveRemote: remoteForRepository,
   authorRules: dependabotAuthor,
@@ -263,6 +269,7 @@ const dependabotGithubProvider: GithubPrReviewProvider = {
     temporaryDirectoryPrefix: "pi-dependabot-review-",
     supersedeTemporaryDirectoryPrefix: "pi-supersede-dependabot-",
     mutationEligibility: openDependabot,
+    checkoutWorkingDirectory: (review) => repositoryCwd(review.repository),
   },
 };
 
