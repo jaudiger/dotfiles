@@ -924,7 +924,6 @@ export async function prepareMutationTarget(
     snapshot: snapshotFromMetadata(metadata, resolved.repository),
     cwd: resolved.cwd,
   };
-  await requiredChecks(target);
   return target;
 }
 

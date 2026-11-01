@@ -94,14 +94,6 @@ export type GithubPrReviewControllerProvider = {
       count: number,
       progress: (message: string) => void,
     ) => void;
-    beforePickerRefresh?: (
-      ctx: ExtensionContext,
-      progress: (message: string) => void,
-    ) => void;
-    beforeMutationRefresh?: (
-      ctx: ExtensionContext,
-      progress: (message: string) => void,
-    ) => void;
     afterPickerMutation?: (text: string, ctx: ExtensionContext) => void;
     merge: (
       targets: MutationTarget[],
@@ -153,7 +145,6 @@ type ReviewSessionState =
 
 type ReviewContext = {
   sessionId: string;
-  candidates: ReviewCandidate[];
   reviews: PreparedReview[];
   generation: number;
   state: ReviewSessionState;
@@ -377,12 +368,6 @@ export function registerGithubPrReviewController(
             throw new Error(
               "This provider does not support superseding pull requests.",
             );
-          provider.mutations.beforePickerRefresh?.(ctx, progress);
-          try {
-            await provider.listCandidates(ctx.cwd);
-          } catch {
-            // Refreshing the picker is best effort after a mutation.
-          }
           provider.mutations.afterPickerMutation?.(text, ctx);
           return;
         }
@@ -397,7 +382,6 @@ export function registerGithubPrReviewController(
       ctx.ui.notify(provider.text.preparingEvidence(requests.length), "info");
       const session: ReviewContext = {
         sessionId: ctx.sessionManager.getSessionId(),
-        candidates,
         reviews: [],
         generation: ++reviewGeneration,
         state: "preparing",
@@ -526,15 +510,6 @@ export function registerGithubPrReviewController(
             ? await provider.mutations.merge(targets, ctx, progress)
             : await provider.mutations.checkout(session.reviews, ctx, progress);
         mutationCompleted = true;
-        try {
-          provider.mutations.beforeMutationRefresh?.(ctx, progress);
-          session.candidates = (await provider.listCandidates(ctx.cwd)).filter(
-            provider.candidateEligibility,
-          );
-          session.generation += 1;
-        } catch {
-          session.state = "stale";
-        }
         return { content: [{ type: "text", text }], details: undefined };
       } finally {
         actionToolScope.release();

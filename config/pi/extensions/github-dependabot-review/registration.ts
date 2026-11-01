@@ -96,10 +96,6 @@ export default function registerDependabotReview(pi: ExtensionAPI) {
         progress(
           `Preparing ${action} pull request ${index + 1} of ${count}: PR ${candidate.number}...`,
         ),
-      beforePickerRefresh: (_ctx, progress) =>
-        progress("Refreshing remaining pull requests..."),
-      beforeMutationRefresh: (_ctx, progress) =>
-        progress("Refreshing remaining pull requests..."),
       afterPickerMutation: (text, ctx) => ctx.ui.notify(text, "info"),
       merge: (targets, ctx, progress) => mergeReview(targets, ctx, progress),
       checkout: (reviews, ctx, progress) =>

@@ -218,20 +218,6 @@ async function ghJson(args: string[], cwd: string): Promise<Json | Json[]> {
   }
 }
 
-async function ensureRepository(): Promise<string> {
-  const checkout = await repositoryCwd(repository);
-  const metadata = await ghJson(
-    ["repo", "view", repository, "--json", "nameWithOwner"],
-    checkout,
-  );
-  const nameWithOwner = string(object(metadata).nameWithOwner);
-  if (nameWithOwner !== repository)
-    throw new Error(
-      `The local checkout at ${checkout} does not point to ${repository}.`,
-    );
-  return checkout;
-}
-
 const packageUpdateAuthorLogins = [
   "package-update-bot[bot]",
   "package-update-bot",
@@ -315,7 +301,9 @@ const briocheGithubProvider: GithubPrReviewProvider = {
     return {
       repository,
       cwd:
-        request.purpose === "review" ? await ensureRepository() : request.cwd,
+        request.purpose === "review"
+          ? await repositoryCwd(repository)
+          : request.cwd,
     };
   },
   resolveRemote: remoteForRepository,
@@ -354,7 +342,7 @@ const briocheGithubProvider: GithubPrReviewProvider = {
   policy: {
     temporaryDirectoryPrefix: "pi-brioche-packages-bot-review-",
     supersedeTemporaryDirectoryPrefix: "pi-supersede-brioche-",
-    checkoutWorkingDirectory: () => ensureRepository(),
+    checkoutWorkingDirectory: () => repositoryCwd(repository),
     pullRequestViewArgs: (reference, fields) => [
       "pr",
       "view",
