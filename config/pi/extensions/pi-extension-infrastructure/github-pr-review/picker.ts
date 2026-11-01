@@ -6,8 +6,10 @@ import {
   type KeybindingsManager,
   type TUI,
   truncateToWidth,
+  visibleWidth,
 } from "@earendil-works/pi-tui";
 
+import { formatUrlLink } from "../links.js";
 import type { ReviewCandidate, ReviewDetails } from "./types.js";
 
 type PickerMode = "review" | "merge" | "supersede";
@@ -442,14 +444,20 @@ class ReviewPicker implements Component {
       );
     else if (details.mergeQueueState)
       lines.push(truncateToWidth(`Queue: ${details.mergeQueueState}`, width));
-    lines.push(truncateToWidth(`URL: ${details.url}`, width));
-    if (details.queueRemovalReason || details.queueWorkflowUrl)
-      lines.push(
-        truncateToWidth(
-          `Removed: ${details.queueRemovalReason || "unknown"}${details.queueWorkflowUrl ? ` | Workflow: ${details.queueWorkflowUrl}` : ""}`,
-          width,
-        ),
+    const urlLine = (prefix: string, url: string) =>
+      truncateToWidth(
+        `${prefix}${formatUrlLink(url, width - visibleWidth(prefix))}`,
+        width,
       );
+    lines.push(urlLine("URL: ", details.url));
+    if (details.queueRemovalReason || details.queueWorkflowUrl) {
+      const removedPrefix = `Removed: ${details.queueRemovalReason || "unknown"}`;
+      if (details.queueWorkflowUrl)
+        lines.push(
+          urlLine(`${removedPrefix} | Workflow: `, details.queueWorkflowUrl),
+        );
+      else lines.push(truncateToWidth(removedPrefix, width));
+    }
     return lines.slice(0, rows);
   }
 

@@ -1,6 +1,7 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { Text } from "@earendil-works/pi-tui";
 import { Type } from "typebox";
+import { formatUrlLink } from "../pi-extension-infrastructure/links.js";
 import {
   executeFetchUrl,
   MAX_FIND_TEXT_LENGTH,
@@ -89,7 +90,7 @@ export default function registerWebTools(pi: ExtensionAPI): void {
     renderCall(args, theme) {
       return new Text(
         theme.fg("toolTitle", theme.bold("fetch_url ")) +
-          theme.fg("accent", `[${args.url ?? ""}]`),
+          theme.fg("accent", `[${formatUrlLink(args.url ?? "")}]`),
         0,
         0,
       );

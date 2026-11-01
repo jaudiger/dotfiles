@@ -1,5 +1,6 @@
 import { join } from "node:path";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import { formatUrlLink } from "../pi-extension-infrastructure/links.js";
 import {
   registerGithubPrReviewController,
   type ReviewMessage,
@@ -117,7 +118,7 @@ export default function registerDependabotReview(pi: ExtensionAPI) {
       researchStarted:
         "Read-only research started; waiting for researcher results...",
       startedReview: (urls) =>
-        `Started read-only Dependabot review for ${urls.join(", ")}.`,
+        `Started read-only Dependabot review for ${urls.map((url) => formatUrlLink(url)).join(", ")}.`,
       preparingRequested: "Preparing the requested pull request...",
       preparingSelected: (count, action) =>
         `Preparing ${count} pull request${count === 1 ? "" : "s"} for ${action}...`,
