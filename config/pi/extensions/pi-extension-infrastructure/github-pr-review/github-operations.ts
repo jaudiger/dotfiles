@@ -1412,7 +1412,7 @@ export async function mergeReview(
         ? `${completed.length === 1 ? `Completed: ${completed[0]}` : formatMutationResults(completed, "Completed")}\n`
         : "No earlier pull request was mutated. ";
       throw new Error(
-        `${prior}Stopped at PR ${review.number}. ${error instanceof Error ? error.message : String(error)}`,
+        `${prior}Stopped at PR ${review.snapshot.url}. ${error instanceof Error ? error.message : String(error)}`,
       );
     }
   }
