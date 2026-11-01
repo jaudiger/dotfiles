@@ -1137,7 +1137,7 @@ async function approvalRecorded(
       "api",
       "--paginate",
       "--slurp",
-      `repos/${review.repository}/pulls/${review.number}/reviews`,
+      `repos/${review.repository}/pulls/${review.number}/reviews?per_page=100`,
     ],
     review.cwd,
   );
