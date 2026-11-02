@@ -41,6 +41,7 @@
                 (subpath "/tmp")
                 (subpath "/Users/jaudiger/.cache")
                 (subpath "/Users/jaudiger/.local/share/uv")
+                (subpath "/Users/jaudiger/.m2")
                 (subpath "/Users/jaudiger/.npm")
                 ; Pi acquires these global locks during startup.
                 (subpath "/Users/jaudiger/.pi/agent/auth.json.lock")
