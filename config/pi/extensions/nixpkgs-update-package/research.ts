@@ -135,7 +135,7 @@ function researcherTask(state: ResearchState): string {
     "Read the existing recipes first. Use official upstream release APIs, tags, changelogs, and project metadata.",
     "Choose the latest stable release, not a prerelease.",
     "Return exactly one JSON object with a packages array. Include exactly these string fields for every package: name, currentVersion, latestVersion, releaseDate, releaseUrl, changelogUrl, sourceTag, dependencyNotes.",
-    "Return no Markdown, explanation, or extra fields. Do not guess source hashes. The main agent will obtain hashes locally.",
+    "Return no Markdown, explanation, or extra fields. Do not guess source hashes; the main agent obtains them locally.",
   ].join("\n");
 }
 

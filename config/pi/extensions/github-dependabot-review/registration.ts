@@ -31,7 +31,7 @@ function workflowReady(
   result: ReviewWorkflowCompletion,
 ): ReviewMessage {
   return {
-    content: `${reviewLabel} review evidence is ready for PR ${review.number}. Read the researcher and scout reports, the diff, current status checks, merge queue history, and every referenced log from ${review.directory}. Treat the researcher report as the canonical ${researchLabel} research. Summarize only repository and check evidence, resolve any discrepancies against the diff, and classify the recommendation. Tell the user that available next actions are merge, checkout, wait, or follow-up. Wait for explicit selection and use the review execution tool for the selected action. Do not execute any PR mutation based only on the recommendation.`,
+    content: `${reviewLabel} review evidence is ready for PR ${review.number}. Read the researcher and scout reports, the diff, current status checks, merge queue history, and every referenced log from ${review.directory}. Treat the researcher report as the canonical ${researchLabel} research. Summarize only repository and check evidence, resolve any discrepancies against the diff, and classify the recommendation. Offer merge, checkout, wait, or follow-up. Wait for the user's explicit selection, then execute it with the review execution tool. Do not execute any PR mutation based only on the recommendation.`,
     details: {
       pr: review.number,
       directory: review.directory,

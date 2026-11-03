@@ -59,7 +59,7 @@ export default function (pi: ExtensionAPI) {
       void pi.sendMessage(
         {
           customType: "brioche-packages-discovery",
-          content: `Package discovery completed with ${result.packageCount} candidates. Read ${result.outputPath} for the complete JSON output before responding. Discovery metadata: excluded_count=${excludedCount}, failed=${failed}. The command was run once with --exclude-defaults; do not run it again. Review the candidates, gather complementary information with the researcher subagent when useful, and present the result as a concise markdown table with package, source, candidate recipe type, candidate recipe build dependencies, version, and description. Mention failed sources, their issue messages, or other limitations after the table.`,
+          content: `Package discovery completed with ${result.packageCount} candidates. Read the complete JSON output at ${result.outputPath} before responding. Discovery metadata: excluded_count=${excludedCount}, failed=${failed}. The command was run once with --exclude-defaults; do not run it again. Review candidates, use the researcher subagent for complementary information when useful, and return a concise Markdown table with package, source, candidate recipe type, candidate recipe build dependencies, version, and description. After the table, note failed sources, their issue messages, or other limitations.`,
           details: {
             directory: result.directory,
             outputPath: result.outputPath,

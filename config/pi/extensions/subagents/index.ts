@@ -144,8 +144,8 @@ export default function (pi: ExtensionAPI): void {
     promptSnippet:
       "Run a configured Pi specialist when requested, then continue with its result.",
     promptGuidelines: [
-      "When the user asks for a configured specialist or asks you to delegate, call subagent instead of asking the user to run pi-subagent.",
-      "After receiving a subagent result, evaluate it and continue with any needed work or follow-up calls before answering the user.",
+      "When asked for a configured specialist or delegation, call subagent; do not ask the user to run pi-subagent.",
+      "Evaluate the subagent result and complete any needed work or follow-up calls before answering.",
     ],
     parameters,
     executionMode: "sequential",

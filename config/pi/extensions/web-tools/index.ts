@@ -42,7 +42,7 @@ export default function registerWebTools(pi: ExtensionAPI): void {
     name: "fetch_url",
     label: "Fetch URL",
     description: "Fetch a URL and return relevant content.",
-    promptSnippet: "Use to fetch URL content.",
+    promptSnippet: "Fetch URL content.",
     outputSchema: fetchUrlOutputSchema,
     parameters: Type.Union([
       Type.Object(

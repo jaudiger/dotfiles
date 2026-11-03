@@ -59,7 +59,7 @@ function researcherTask(
   prepared: PreparedSubmission,
   packageRepository: string,
 ): string {
-  return `Read the package project file at ${prepared.projectPath} first. This is read-only research for the Brioche package ${prepared.packageName}. If project.bri contains a repository URL, use that exact URL as upstreamUrl and do not search for another upstream repository. Research only metadata missing from project.bri. Determine the Repology project URL and a concise package description only when they are missing. Return exactly one bare JSON object with exactly these string fields: upstreamUrl, repologyUrl, and description. Return no Markdown, code fences, explanation, or extra fields. Preserve repository URLs exactly as found in project.bri. The repologyUrl must be the HTTPS Repology project page. Keep this research read-only. Package repository: ${packageRepository}.`;
+  return `Read the package project file at ${prepared.projectPath} first. This is read-only research for the Brioche package ${prepared.packageName}. If project.bri contains a repository URL, use it verbatim as upstreamUrl; do not search for another upstream repository. Research only metadata missing from project.bri. Determine the Repology project URL and a concise package description only when they are missing. Return one bare JSON object with exactly these string fields: upstreamUrl, repologyUrl, and description. No Markdown, code fences, or explanation. Preserve repository URLs exactly as found in project.bri. The repologyUrl must be the HTTPS Repology project page. Keep this research read-only. Package repository: ${packageRepository}.`;
 }
 
 function submissionFailure(
