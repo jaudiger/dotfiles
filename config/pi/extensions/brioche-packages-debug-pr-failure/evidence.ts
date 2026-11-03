@@ -3,6 +3,7 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
 import { promisify } from "node:util";
+import { collectRunEvidence } from "./artifacts.js";
 import { asObject, packageFromFiles, text, workflowRunId } from "./parsing.js";
 import type { PreparedContext } from "./types.js";
 
@@ -126,51 +127,8 @@ export async function prepareContext(
       cwd,
     );
     await writeFile(join(directory, "pr.diff"), pullRequestDiff);
-    await run(
-      "gh",
-      [
-        "run",
-        "download",
-        runId,
-        "--repo",
-        "brioche-dev/brioche-packages",
-        "--pattern",
-        "process-events-*",
-        "--dir",
-        directory,
-      ],
-      cwd,
-    );
-
-    const eventFileListing = await run(
-      "find",
-      [directory, "-type", "f", "-name", "events.bin.zst"],
-      cwd,
-    );
-    const eventFiles = eventFileListing
-      .split("\n")
-      .map((path) => path.trim())
-      .filter(Boolean);
-    let failedLog: string;
-    try {
-      failedLog = await run(
-        "gh",
-        [
-          "run",
-          "view",
-          runId,
-          "--repo",
-          "brioche-dev/brioche-packages",
-          "--log-failed",
-        ],
-        cwd,
-      );
-    } catch (error) {
-      // Failed-job logs are optional diagnostics. Preserve the failure and
-      // label the missing evidence instead of treating it as a report.
-      failedLog = `Diagnostic: failed-job evidence unavailable (${error instanceof Error ? error.message : String(error)}).`;
-    }
-    await writeFile(join(directory, "failed-jobs.log"), failedLog);
+    const runEvidence = await collectRunEvidence(runId, cwd, directory, run);
+    const { eventFiles, failedLog } = runEvidence;
     if (eventFiles.length > 0) {
       const limaDirectory = `/tmp/${basename(directory)}`;
       try {
@@ -210,10 +168,13 @@ export async function prepareContext(
     }
     const listing = await run("find", [directory, "-type", "f"], cwd);
     await writeFile(join(directory, "manifest.txt"), listing);
+    const failedLogSummary = runEvidence.failedLogAvailable
+      ? `${Buffer.byteLength(failedLog)} bytes`
+      : "unavailable";
     return {
       directory,
       metadata,
-      summary: `event files=${eventFiles.length}, failed log=${Buffer.byteLength(failedLog)} bytes`,
+      summary: `process-event artifacts=${runEvidence.processEventsAvailable ? "available" : "unavailable"}, event files=${eventFiles.length}, failed-job log=${failedLogSummary}`,
     };
   } catch (error) {
     await rm(directory, { recursive: true, force: true });

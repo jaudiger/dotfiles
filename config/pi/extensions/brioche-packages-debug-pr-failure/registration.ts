@@ -30,7 +30,7 @@ const briocheRuntimeUtilsRepository = join(
   "brioche-runtime-utils",
 );
 
-const investigationInstructions = `Identify the root cause of the supplied Brioche package pull request merge queue failure. Use the supplied temporary evidence and read-only repository context. When the failure may involve Brioche behavior, runtime utilities, or a bundled executable, trace the relevant implementation and configuration in the supplied source context instead of guessing from the package repository alone. Distinguish package changes from upstream Brioche or runtime utility behavior, and cite relevant file paths and line ranges in the report. Do not download artifacts, decode logs, commit, or push changes. Report the pull request, package and version change, failure classification, root cause, relevant evidence, proposed fix, and validation commands. Treat network, registry, runner, resource, and sandbox glitches as transient. Treat assertions, build errors, test failures, and Brioche process failures as code-related. Search the package repository for prior fixes with the same error before proposing a change.`;
+const investigationInstructions = `Identify the root cause of the supplied Brioche package pull request merge queue failure. Use the supplied temporary evidence and read-only repository context. If the failure may involve Brioche behavior, runtime utilities, or a bundled executable, trace its implementation and configuration in the supplied sources; do not infer behavior from the package repository alone. Distinguish package changes from upstream Brioche or runtime utility behavior, and cite relevant file paths and line ranges in the report. Report unavailable process-event artifacts separately from failed-job log findings. If supplied logs are unavailable or inconclusive, state the limitation and return supported partial findings. Do not download additional artifacts, commit, or push changes. Report the pull request, package and version change, failure classification, root cause, relevant evidence, proposed fix, and validation commands. Treat network, registry, runner, resource, and sandbox glitches as transient. Treat assertions, build errors, test failures, and Brioche process failures as code-related. Search the package repository for prior fixes with the same error before proposing a change.`;
 
 type DebugOwner = PendingRun;
 
@@ -101,6 +101,7 @@ export function registerDebugPrFailure(pi: ExtensionAPI) {
         investigationInstructions,
         "",
         `Investigate Brioche package PR ${pr} for package ${packageName}.`,
+        `Prepared evidence: ${context.summary}.`,
         "Inspect these configured read-only roots:",
         context.directory,
         briochePackagesRepository,
