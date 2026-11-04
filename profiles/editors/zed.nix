@@ -126,6 +126,9 @@ in
         format_on_save = "modifications";
         fullscreen_mode = "simple";
         git = {
+          auto_fetch = {
+            enabled = true;
+          };
           inline_blame = {
             min_column = 120;
           };
