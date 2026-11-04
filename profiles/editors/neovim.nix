@@ -103,6 +103,7 @@ _:
 
           diffview = {
             enable = true;
+            package = pkgs.vimPlugins.diffview-plus-nvim;
           };
 
           flash = {
