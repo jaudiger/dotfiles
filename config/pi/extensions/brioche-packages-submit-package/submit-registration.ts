@@ -251,7 +251,7 @@ export function registerSubmitPackage(pi: ExtensionAPI): void {
       );
       let prepared: PreparedSubmission | undefined;
       try {
-        prepared = await prepareSubmission(packageName, ctx.cwd, pi);
+        prepared = await prepareSubmission(packageName, ctx.cwd);
         const owner = {
           prepared,
           repository: ctx.cwd,

@@ -1,8 +1,12 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import { spawn } from "node:child_process";
+import { createWriteStream } from "node:fs";
+import { PassThrough } from "node:stream";
+import { finished } from "node:stream/promises";
 import {
   access,
   mkdtemp,
-  readFile,
+  open,
   realpath,
   rm,
   writeFile,
@@ -10,7 +14,6 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
-  capturePiExec,
   createPiExec,
   isPiExecInterrupted,
   runPiExec,
@@ -24,11 +27,10 @@ function asObject(value: unknown): Json {
 }
 
 const limaMachine = "brioche-packages";
-const maxBuffer = 200 * 1024 * 1024;
+const controlCommandMaxBuffer = 10 * 1024 * 1024;
 
 type CommandResult = {
   exitCode: number;
-  output: string;
 };
 
 type ValidationStep = "check" | "format" | "build" | "test" | "liveUpdate";
@@ -82,30 +84,78 @@ export class SubmissionError extends Error {
   }
 }
 
-async function runCaptured(
-  exec: PiExec,
+async function runValidationCommand(
   args: string[],
   cwd: string,
   logPath: string,
 ): Promise<CommandResult> {
-  const captured = await capturePiExec(exec, "limactl", args, { cwd });
-  const { result, output } = captured;
-  const complete = captured.success;
-  const diagnostic = result.truncated
-    ? "Pi truncated this command output; the log is incomplete."
-    : result.killed
-      ? "Pi terminated this command; the log may be incomplete."
-      : undefined;
-  await writeFile(
-    logPath,
-    diagnostic ? `${output}${output ? "\n\n" : ""}${diagnostic}` : output,
-  );
-  return {
-    exitCode: complete ? 0 : result.code || 1,
-    output: diagnostic
-      ? `${output}${output ? "\n\n" : ""}${diagnostic}`
-      : output,
+  const child = spawn("limactl", args, {
+    cwd,
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+  const log = createWriteStream(logPath);
+  const combined = new PassThrough();
+  let firstError: Error | undefined;
+  let commandStartError: Error | undefined;
+  let remainingSources = 0;
+
+  const stopOnError = (error: Error) => {
+    firstError ??= error;
+    if (child.exitCode === null && child.signalCode === null) child.kill();
+    combined.unpipe(log);
+    combined.resume();
   };
+
+  const outputDone = finished(log);
+  void outputDone.catch(stopOnError);
+  log.on("error", stopOnError);
+  combined.on("error", stopOnError);
+  child.on("error", (error) => {
+    commandStartError ??= error;
+    combined.write(`Could not start validation command: ${error.message}\n`);
+  });
+
+  const sources = [child.stdout, child.stderr].filter(
+    (source): source is NonNullable<typeof source> => source !== null,
+  );
+  remainingSources = sources.length;
+  for (const source of sources) {
+    let ended = false;
+    const finishSource = () => {
+      if (ended) return;
+      ended = true;
+      remainingSources -= 1;
+      if (remainingSources === 0) combined.end();
+    };
+    source.on("error", stopOnError);
+    source.once("end", finishSource);
+    source.once("close", finishSource);
+    source.pipe(combined, { end: false });
+  }
+  combined.pipe(log);
+
+  const closed = new Promise<{
+    code: number | null;
+    signal: NodeJS.Signals | null;
+  }>((resolve) =>
+    child.once("close", (code, signal) => resolve({ code, signal })),
+  );
+  const { code, signal } = await closed;
+  if (remainingSources === 0 && !combined.writableEnded) combined.end();
+  await outputDone;
+
+  if (firstError) {
+    const startError = commandStartError
+      ? ` The command could not start: ${commandStartError.message}`
+      : "";
+    throw new Error(
+      `Could not capture validation output: ${firstError.message}.${startError}`,
+      {
+        cause: firstError,
+      },
+    );
+  }
+  return { exitCode: commandStartError ? 1 : (code ?? (signal ? 1 : 0)) };
 }
 
 function limaBash(script: string, packageName: string): string[] {
@@ -123,8 +173,8 @@ function limaBash(script: string, packageName: string): string[] {
   ];
 }
 
-function validationCommand(command: string, logName: string): string {
-  return `${command} "./packages/$1" 2>&1 | tee "/tmp/$1-${logName}.log"`;
+function validationCommand(command: string): string {
+  return `${command} "./packages/$1"`;
 }
 
 async function writeMetadata(directory: string, metadata: Json): Promise<void> {
@@ -153,24 +203,21 @@ function logMapJson(logs: Record<string, LogFile>): Json {
 }
 
 async function runCheckAndFormat(
-  exec: PiExec,
   packageName: string,
   cwd: string,
   directory: string,
   logs: Record<string, LogFile>,
 ): Promise<ValidationStep | undefined> {
-  const check = await runCaptured(
-    exec,
-    limaBash(validationCommand("brioche check", "check"), packageName),
+  const check = await runValidationCommand(
+    limaBash(validationCommand("brioche check"), packageName),
     cwd,
     logPath(directory, "check"),
   );
   logs.check = logRecord(directory, "check", check);
   if (check.exitCode !== 0) return "check";
 
-  const format = await runCaptured(
-    exec,
-    limaBash(validationCommand("brioche fmt", "format"), packageName),
+  const format = await runValidationCommand(
+    limaBash(validationCommand("brioche fmt"), packageName),
     cwd,
     logPath(directory, "format"),
   );
@@ -180,16 +227,14 @@ async function runCheckAndFormat(
 }
 
 async function runTestAndLiveUpdate(
-  exec: PiExec,
   packageName: string,
   cwd: string,
   directory: string,
   logs: Record<string, LogFile>,
 ): Promise<ValidationStep | undefined> {
-  const test = await runCaptured(
-    exec,
+  const test = await runValidationCommand(
     limaBash(
-      validationCommand("brioche build", "test").replace(
+      validationCommand("brioche build").replace(
         '"./packages/$1"',
         '"./packages/$1^test"',
       ),
@@ -201,10 +246,9 @@ async function runTestAndLiveUpdate(
   logs.test = logRecord(directory, "test", test);
   if (test.exitCode !== 0) return "test";
 
-  const liveUpdate = await runCaptured(
-    exec,
+  const liveUpdate = await runValidationCommand(
     limaBash(
-      validationCommand("brioche run", "liveupdate").replace(
+      validationCommand("brioche run").replace(
         '"./packages/$1"',
         '"./packages/$1^liveUpdate"',
       ),
@@ -220,14 +264,12 @@ async function runTestAndLiveUpdate(
 }
 
 async function runValidation(
-  exec: PiExec,
   packageName: string,
   cwd: string,
   directory: string,
   logs: Record<string, LogFile>,
 ): Promise<ValidationStep | undefined> {
   const checkOrFormatFailure = await runCheckAndFormat(
-    exec,
     packageName,
     cwd,
     directory,
@@ -235,16 +277,15 @@ async function runValidation(
   );
   if (checkOrFormatFailure) return checkOrFormatFailure;
 
-  const build = await runCaptured(
-    exec,
-    limaBash(validationCommand("brioche build", "build"), packageName),
+  const build = await runValidationCommand(
+    limaBash(validationCommand("brioche build"), packageName),
     cwd,
     logPath(directory, "build"),
   );
   logs.build = logRecord(directory, "build", build);
   if (build.exitCode !== 0) return "build";
 
-  return runTestAndLiveUpdate(exec, packageName, cwd, directory, logs);
+  return runTestAndLiveUpdate(packageName, cwd, directory, logs);
 }
 
 function validationSummary(failureStep: ValidationStep | undefined): string {
@@ -256,9 +297,7 @@ function validationSummary(failureStep: ValidationStep | undefined): string {
 export async function prepareSubmission(
   packageName: string,
   cwd: string,
-  pi: ExtensionAPI,
 ): Promise<PreparedSubmission> {
-  const exec = createPiExec(pi, maxBuffer);
   const projectPath = join(cwd, "packages", packageName, "project.bri");
   try {
     await access(projectPath);
@@ -270,13 +309,7 @@ export async function prepareSubmission(
   const logs: Record<string, LogFile> = {};
 
   try {
-    const failureStep = await runValidation(
-      exec,
-      packageName,
-      cwd,
-      directory,
-      logs,
-    );
+    const failureStep = await runValidation(packageName, cwd, directory, logs);
     const success = !failureStep;
     await writeMetadata(directory, {
       package: packageName,
@@ -322,8 +355,23 @@ export async function tailLog(
   logPathValue: string,
   maxChars = 4000,
 ): Promise<string> {
-  const content = await readFile(logPathValue, "utf8");
-  return content.length > maxChars ? content.slice(-maxChars) : content;
+  if (maxChars <= 0) return "";
+  const handle = await open(logPathValue, "r");
+  try {
+    const size = (await handle.stat()).size;
+    const byteLimit = Math.ceil(maxChars) * 4 + 4;
+    const buffer = Buffer.alloc(Math.min(size, byteLimit));
+    await handle.read(
+      buffer,
+      0,
+      buffer.length,
+      Math.max(0, size - buffer.length),
+    );
+    const content = buffer.toString("utf8");
+    return content.length > maxChars ? content.slice(-maxChars) : content;
+  } finally {
+    await handle.close();
+  }
 }
 
 export async function removeSubmissionDirectory(
@@ -769,7 +817,7 @@ export async function submitPreparedPackage(
   signal: AbortSignal,
   pi: ExtensionAPI,
 ): Promise<{ branch: string; pullRequest: string }> {
-  const exec = createPiExec(pi, maxBuffer);
+  const exec = createPiExec(pi, controlCommandMaxBuffer);
   if (!prepared.success)
     throw new Error("Cannot submit a package with a failed preflight.");
   const state: SubmissionState = {
