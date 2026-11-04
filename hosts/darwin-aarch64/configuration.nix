@@ -65,10 +65,10 @@ in
 
       packages = {
         # To look for new apps: 'mas search MY_APP'
-        myCANAL = 694580816;
-        Numbers = 409203825;
-        Pages = 409201541;
-        Keynote = 409183694;
+        "CANAL+" = 694580816;
+        Numbers = 361304891;
+        Pages = 361309726;
+        Keynote = 361285480;
       };
     };
 
