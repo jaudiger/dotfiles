@@ -178,7 +178,7 @@ export function registerSubmitPackage(pi: ExtensionAPI): void {
           parseResearchOutput(completion),
         );
         const submission = await context.mutate((signal) =>
-          submitPreparedPackage(prepared, metadata, repository, signal),
+          submitPreparedPackage(prepared, metadata, repository, signal, pi),
         );
         if (shuttingDown || context.signal.aborted)
           return {
@@ -251,7 +251,7 @@ export function registerSubmitPackage(pi: ExtensionAPI): void {
       );
       let prepared: PreparedSubmission | undefined;
       try {
-        prepared = await prepareSubmission(packageName, ctx.cwd);
+        prepared = await prepareSubmission(packageName, ctx.cwd, pi);
         const owner = {
           prepared,
           repository: ctx.cwd,

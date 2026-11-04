@@ -1,13 +1,16 @@
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { execFile } from "node:child_process";
-import { promisify } from "node:util";
+import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import type { NixpkgsContext } from "./context.js";
 import type { ResearchResult } from "./research.js";
-
-const execFileAsync = promisify(execFile);
-const maxBuffer = 20 * 1024 * 1024;
+import {
+  createPiExec,
+  isPiExecInterrupted,
+  runPiExec,
+  type PiExec,
+} from "../pi-extension-infrastructure/pi-exec.js";
+const maxBuffer = 40 * 1024 * 1024;
 
 export type PublicationResult = {
   success: boolean;
@@ -20,27 +23,23 @@ export type PublicationResult = {
 };
 
 async function command(
+  exec: PiExec,
   name: string,
   args: string[],
   cwd: string,
   signal?: AbortSignal,
 ): Promise<string> {
+  if (signal?.aborted) throw new Error("Nixpkgs publication was cancelled.");
   try {
-    const result = await execFileAsync(name, args, {
+    const result = await runPiExec(exec, name, args, {
       cwd,
-      maxBuffer,
       ...(signal ? { signal } : {}),
     });
-    return String(result.stdout ?? "");
+    if (signal?.aborted) throw new Error("Nixpkgs publication was cancelled.");
+    return result.stdout;
   } catch (error) {
-    const value = error as {
-      stdout?: unknown;
-      stderr?: unknown;
-      message?: unknown;
-    };
-    const output =
-      `${String(value.stdout ?? "")}${String(value.stderr ?? "")}`.trim();
-    throw new Error(output || String(value.message ?? `${name} failed`));
+    if (signal?.aborted) throw new Error("Nixpkgs publication was cancelled.");
+    throw error;
   }
 }
 
@@ -79,10 +78,12 @@ function githubRepository(remote: string): string | undefined {
 }
 
 async function nixpkgsPullRequestTemplate(
+  exec: PiExec,
   repository: string,
   signal?: AbortSignal,
 ): Promise<string> {
   const encoded = await command(
+    exec,
     "gh",
     [
       "api",
@@ -102,15 +103,17 @@ async function nixpkgsPullRequestTemplate(
 }
 
 async function refExists(
+  exec: PiExec,
   name: string,
   args: string[],
   cwd: string,
   signal?: AbortSignal,
 ): Promise<boolean> {
   try {
-    await command(name, args, cwd, signal);
+    await command(exec, name, args, cwd, signal);
     return true;
-  } catch {
+  } catch (error) {
+    if (signal?.aborted || isPiExecInterrupted(error)) throw error;
     return false;
   }
 }
@@ -153,7 +156,15 @@ export async function publishUpdate(
   context: NixpkgsContext,
   research: ResearchResult | undefined,
   signal: AbortSignal | undefined,
+  pi: ExtensionAPI,
 ): Promise<PublicationResult> {
+  const exec = createPiExec(pi, maxBuffer);
+  const run = (
+    name: string,
+    args: string[],
+    cwd: string,
+    commandSignal = signal,
+  ) => command(exec, name, args, cwd, commandSignal);
   const result: PublicationResult = { success: false, commits: [] };
   if (!research) {
     result.error = "Research must complete before publication.";
@@ -163,10 +174,10 @@ export async function publishUpdate(
   let bodyDirectory: string | undefined;
   try {
     const currentBranch = (
-      await command("git", ["branch", "--show-current"], repository, signal)
+      await run("git", ["branch", "--show-current"], repository, signal)
     ).trim();
     const currentHead = (
-      await command("git", ["rev-parse", "HEAD"], repository, signal)
+      await run("git", ["rev-parse", "HEAD"], repository, signal)
     ).trim();
     if (currentHead !== context.head)
       throw new Error(
@@ -179,7 +190,7 @@ export async function publishUpdate(
     if (currentBranch !== "master")
       throw new Error("Nixpkgs publication must start from the master branch.");
 
-    const status = await command(
+    const status = await run(
       "git",
       ["status", "--porcelain=v1", "--untracked-files=all"],
       repository,
@@ -188,7 +199,7 @@ export async function publishUpdate(
     if (status.split("\n").some((line) => line.startsWith("?? ")))
       throw new Error("Untracked files are present in the Nixpkgs repository.");
     const changed = (
-      await command(
+      await run(
         "git",
         ["diff", "--name-only", context.head],
         repository,
@@ -209,17 +220,17 @@ export async function publishUpdate(
       );
 
     const owner = (
-      await command("gh", ["api", "user", "--jq", ".login"], repository, signal)
+      await run("gh", ["api", "user", "--jq", ".login"], repository, signal)
     ).trim();
     if (!owner)
       throw new Error("Could not determine the authenticated GitHub user.");
-    const originFetch = await command(
+    const originFetch = await run(
       "git",
       ["remote", "get-url", "origin"],
       repository,
       signal,
     );
-    const originPush = await command(
+    const originPush = await run(
       "git",
       ["remote", "get-url", "--push", "origin"],
       repository,
@@ -232,16 +243,18 @@ export async function publishUpdate(
       throw new Error(
         "Origin fetch and push URLs must target the user's nixpkgs fork.",
       );
-    const template = await nixpkgsPullRequestTemplate(repository, signal);
+    const template = await nixpkgsPullRequestTemplate(exec, repository, signal);
     const branch = branchName(packages);
     if (
       (await refExists(
+        exec,
         "git",
         ["show-ref", "--verify", `refs/heads/${branch}`],
         repository,
         signal,
       )) ||
       (await refExists(
+        exec,
         "git",
         ["ls-remote", "--exit-code", "--heads", "origin", branch],
         repository,
@@ -249,7 +262,7 @@ export async function publishUpdate(
       ))
     )
       throw new Error(`The update branch already exists: ${branch}.`);
-    await command("git", ["switch", "-c", branch], repository, signal);
+    await run("git", ["switch", "-c", branch], repository, signal);
     result.branch = branch;
 
     for (const path of changed) {
@@ -260,25 +273,20 @@ export async function publishUpdate(
       const subject = metadata
         ? `${packageName}: ${metadata.currentVersion} -> ${metadata.latestVersion}`
         : `${packageName}: update`;
-      await command("git", ["add", "--", path], repository, signal);
-      const commit = await command(
+      await run("git", ["add", "--", path], repository, signal);
+      const commit = await run(
         "git",
         ["commit", "-S", "-s", "-m", subject],
         repository,
         signal,
       );
-      const hash = await command(
-        "git",
-        ["rev-parse", "HEAD"],
-        repository,
-        signal,
-      );
+      const hash = await run("git", ["rev-parse", "HEAD"], repository, signal);
       result.commits.push(`${hash.trim()} ${subject}`);
       if (!commit.trim() && !hash.trim())
         throw new Error("Git did not create a commit.");
     }
 
-    await command(
+    await run(
       "git",
       ["push", "--set-upstream", "origin", branch],
       repository,
@@ -291,7 +299,7 @@ export async function publishUpdate(
       mode: 0o600,
     });
     const pullRequest = (
-      await command(
+      await run(
         "gh",
         [
           "pr",
@@ -315,7 +323,7 @@ export async function publishUpdate(
     ).trim();
     result.pullRequest = pullRequest;
 
-    await command(
+    await run(
       "gh",
       ["pr", "edit", pullRequest, "--add-assignee", owner],
       repository,
@@ -330,7 +338,7 @@ export async function publishUpdate(
       );
     try {
       result.reviewOutput = (
-        await command(
+        await run(
           "nixpkgs-review",
           ["pr", number, "--post-result"],
           repository,
@@ -338,17 +346,18 @@ export async function publishUpdate(
         )
       ).trim();
     } catch (error) {
+      if (signal?.aborted || isPiExecInterrupted(error)) throw error;
       const githubFailure =
         error instanceof Error ? error.message : String(error);
       const system = (
-        await command(
+        await run(
           "nix",
           ["eval", "--raw", "--impure", "--expr", "builtins.currentSystem"],
           repository,
           signal,
         )
       ).trim();
-      const localOutput = await command(
+      const localOutput = await run(
         "nixpkgs-review",
         ["pr", number, "--eval", "local", "--system", system, "--post-result"],
         repository,
@@ -365,7 +374,7 @@ export async function publishUpdate(
       pullRequestBody(packages, research, template, true),
       { mode: 0o600 },
     );
-    await command(
+    await run(
       "gh",
       ["pr", "edit", pullRequest, "--body-file", bodyPath],
       repository,

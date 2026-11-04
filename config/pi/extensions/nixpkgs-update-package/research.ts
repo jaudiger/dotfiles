@@ -1,4 +1,6 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import { FETCHER_MAX_BUFFER } from "../web-tools/fetch-url.js";
+import { createPiExec } from "../pi-extension-infrastructure/pi-exec.js";
 import { Type } from "typebox";
 import { runReadOnlyPiAgent } from "../pi-extension-infrastructure/subagents/agent.js";
 import { researcherAgent } from "../pi-extension-infrastructure/subagents/roles.js";
@@ -147,6 +149,7 @@ export function registerResearchTool(
     setResearch: (result: ResearchResult, owner: ResearchState) => void;
   },
 ): () => Promise<void> {
+  const exec = createPiExec(pi, FETCHER_MAX_BUFFER);
   const activeRuns = new Set<{
     controller: AbortController;
     completed: Promise<void>;
@@ -232,6 +235,7 @@ export function registerResearchTool(
           signal: controller.signal,
           timeoutMs: 30 * 60 * 1000,
           settings: pi.getSettings(),
+          exec,
         });
         const current = options.getActive();
         if (

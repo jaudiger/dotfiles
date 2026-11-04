@@ -90,7 +90,7 @@ export function registerDebugPrFailure(pi: ExtensionAPI) {
     let prepared: PreparedContext | undefined;
     try {
       ctx.ui.notify(`Preparing failure artifacts for PR ${pr}...`, "info");
-      prepared = await prepareContext(pr, briochePackagesRepository);
+      prepared = await prepareContext(pi, pr, briochePackagesRepository);
       if (shuttingDown) {
         await removeDirectory(prepared.directory);
         return;

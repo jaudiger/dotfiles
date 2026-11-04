@@ -4,6 +4,11 @@ import type {
 } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
 import type { ActiveWorkflow } from "./workflow.js";
+import {
+  capturePiExec,
+  createPiExec,
+  piExecFailure,
+} from "../pi-extension-infrastructure/pi-exec.js";
 
 const actions = ["prefetch", "hash-convert", "build", "log"] as const;
 
@@ -83,6 +88,7 @@ export function registerCommandTool(
   repository: string,
   getActive: () => ActiveWorkflow | undefined,
 ): void {
+  const exec = createPiExec(pi, 256 * 1024 * 1024);
   pi.registerTool({
     name: "nixpkgs_update_package_command",
     label: "Nixpkgs update package command",
@@ -122,18 +128,29 @@ export function registerCommandTool(
           isError: true,
         };
       const command = commandFor(params.action, params.value, repository);
-      const result = await pi.exec(command.name, command.args, { signal });
-      const output = `${result.stdout}${result.stderr}`.trim();
+      const captured = await capturePiExec(exec, command.name, command.args, {
+        signal,
+      });
+      const { result } = captured;
+      const output = captured.output.trim();
+      const text = [
+        output || `Exit code: ${result.code}`,
+        result.truncated || result.killed
+          ? piExecFailure(command.name, result)
+          : undefined,
+      ]
+        .filter(Boolean)
+        .join("\n\n");
       return {
-        content: [
-          { type: "text", text: output || `Exit code: ${result.code}` },
-        ],
+        content: [{ type: "text", text }],
         details: {
           action: params.action,
           value: params.value,
           code: result.code,
+          killed: result.killed,
+          truncated: result.truncated,
         },
-        isError: result.code !== 0,
+        isError: !captured.success,
       };
     },
   });

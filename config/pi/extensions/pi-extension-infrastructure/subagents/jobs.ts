@@ -7,6 +7,8 @@ import {
   runReadOnlyPiAgent,
   type PiAgentConfig,
 } from "./agent.js";
+import { createPiExec } from "../pi-exec.js";
+import { FETCHER_MAX_BUFFER } from "../../web-tools/fetch-url.js";
 
 export type AgentJobContext = {
   readonly signal: AbortSignal;
@@ -91,6 +93,7 @@ export function createAgentJobs(
   )
     throw new Error("maxConcurrentJobs must be a positive integer.");
 
+  const exec = createPiExec(pi, FETCHER_MAX_BUFFER);
   const active = new Set<ActiveJob>();
   let shuttingDown = false;
   let shutdownPromise: Promise<void> | undefined;
@@ -159,6 +162,7 @@ export function createAgentJobs(
         signal: record.controller.signal,
         timeoutMs: record.job.launch.timeoutMs,
         settings: pi.getSettings(),
+        exec,
       });
       if (
         record.controller.signal.aborted ||

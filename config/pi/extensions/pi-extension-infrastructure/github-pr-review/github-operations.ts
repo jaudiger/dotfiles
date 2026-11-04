@@ -1,9 +1,8 @@
-import { execFile } from "node:child_process";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { promisify } from "node:util";
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
+import { capturePiExec, type PiExec } from "../pi-exec.js";
 import type {
   PullRequestSnapshot,
   ReviewCandidate,
@@ -13,10 +12,6 @@ import type {
   MutationTarget,
   PreparedReview,
 } from "./types.js";
-const execFileAsync = promisify(execFile);
-
-type CommandResult = { output: string; exitCode: number };
-
 function object(value: unknown): Json {
   return value && typeof value === "object" ? (value as Json) : {};
 }
@@ -49,12 +44,15 @@ type QueueRepository = {
   name: string;
 };
 
+export const GITHUB_EXEC_MAX_BUFFER = 80 * 1024 * 1024;
+
 /**
  * Provider policy and wording used by the provider-neutral GitHub operations.
  * Repository resolution intentionally remains a hook: providers may use
  * different URL parsing and checkout safety rules.
  */
 export type GithubPrReviewProvider = {
+  exec: PiExec;
   search: (cwd: string) => Promise<{
     args: string[];
     cwd: string;
@@ -161,43 +159,11 @@ function mutationEligible(
 }
 const networkRetryDelays = [1000, 2000];
 const mergeStateRetryDelays = [1000, 2000, 4000, 8000];
-const maxBuffer = 40 * 1024 * 1024;
 type MutationProgress = (message: string) => void;
 
 function formatMutationResults(results: string[], heading: string): string {
   if (results.length === 1) return results[0]!;
   return `${heading}:\n${results.map((result) => `- ${result}`).join("\n")}`;
-}
-
-function commandResult(value: unknown): CommandResult {
-  const result = object(value);
-  const rawCode = result.code;
-  const exitCode =
-    typeof rawCode === "number"
-      ? rawCode
-      : typeof rawCode === "string" && /^\d+$/.test(rawCode)
-        ? Number(rawCode)
-        : 1;
-  return {
-    output: `${string(result.stdout)}${string(result.stderr)}`,
-    exitCode,
-  };
-}
-
-async function capture(
-  command: string,
-  args: string[],
-  cwd: string,
-): Promise<CommandResult> {
-  try {
-    const result = await execFileAsync(command, args, { cwd, maxBuffer });
-    return {
-      output: `${string(result.stdout)}${string(result.stderr)}`,
-      exitCode: 0,
-    };
-  } catch (error) {
-    return commandResult(error);
-  }
 }
 
 type FailedCheckLogTarget = {
@@ -257,6 +223,7 @@ function failedCheckLogFileName(target: FailedCheckLogTarget): string {
 }
 
 async function fetchFailedCheckLogs(
+  exec: PiExec,
   checks: Json[],
   repository: string,
   cwd: string,
@@ -277,9 +244,10 @@ async function fetchFailedCheckLogs(
           "--log-failed",
         ]
       : ["run", "view", target.runId!, "--repo", repository, "--log-failed"];
-    const result = await capture("gh", args, cwd);
+    const result = await capturePiExec(exec, "gh", args, { cwd });
     if (result.exitCode !== 0 || !result.output.trim()) {
       const logError =
+        result.error?.message ||
         result.output.trim() ||
         `gh run view exited with code ${result.exitCode}.`;
       for (const index of target.checkIndexes)
@@ -364,7 +332,7 @@ async function fetchMergeQueueHistory(
         `number=${pullRequestNumber}`,
       ];
       if (before) args.push("-f", `before=${before}`);
-      const result = object(await ghJson(args, cwd));
+      const result = object(await ghJson(provider.exec, args, cwd));
       const pullRequest = object(object(result.data).repository).pullRequest;
       const timeline = object(pullRequest).timelineItems;
       const nodes = Array.isArray(object(timeline).nodes)
@@ -388,10 +356,11 @@ async function fetchMergeQueueHistory(
                 seenRuns.add(id);
                 const logDirectory = join(directory, "merge-queue-logs");
                 const logPath = join(logDirectory, `${id}.log`);
-                const logResult = await capture(
+                const logResult = await capturePiExec(
+                  provider.exec,
                   "gh",
                   ["run", "view", id, "--repo", repository, "--log-failed"],
-                  cwd,
+                  { cwd },
                 );
                 if (logResult.exitCode === 0 && logResult.output.trim()) {
                   await mkdir(logDirectory, { recursive: true, mode: 0o700 });
@@ -401,6 +370,7 @@ async function fetchMergeQueueHistory(
                   enrichedRun.log = logPath;
                 } else {
                   enrichedRun.logError =
+                    logResult.error?.message ||
                     logResult.output.trim() ||
                     `gh run view exited with code ${logResult.exitCode}.`;
                 }
@@ -442,6 +412,7 @@ async function fetchMergeQueueHistory(
 }
 
 async function successful(
+  exec: PiExec,
   command: string,
   args: string[],
   cwd: string,
@@ -449,8 +420,9 @@ async function successful(
   description = `${command} ${args.join(" ")}`,
 ): Promise<string> {
   for (let attempt = 0; ; attempt += 1) {
-    const result = await capture(command, args, cwd);
+    const result = await capturePiExec(exec, command, args, { cwd });
     if (result.exitCode === 0) return result.output;
+    if (result.error?.killed || result.error?.truncated) throw result.error;
     const detail = result.output.trim().slice(-2000);
     const failure = new Error(
       `${command} ${args.join(" ")} failed with exit code ${result.exitCode}${detail ? `: ${detail}` : "."}`,
@@ -506,8 +478,12 @@ function shouldRetryGhCall(args: string[], error: unknown): boolean {
   return kind === "safe" || (kind === "ambiguous" && readOnlyGhCall(args));
 }
 
-async function ghJson(args: string[], cwd: string): Promise<Json | Json[]> {
-  const output = await successful("gh", args, cwd);
+async function ghJson(
+  exec: PiExec,
+  args: string[],
+  cwd: string,
+): Promise<Json | Json[]> {
+  const output = await successful(exec, "gh", args, cwd);
   try {
     const parsed = JSON.parse(output) as unknown;
     if (Array.isArray(parsed)) return parsed as Json[];
@@ -526,7 +502,7 @@ export async function listCandidates(
   cwd: string,
 ): Promise<ReviewCandidate[]> {
   const search = await provider.search(cwd);
-  const listed = await ghJson(search.args, search.cwd);
+  const listed = await ghJson(provider.exec, search.args, search.cwd);
   const candidates = Array.isArray(listed) ? listed : [];
   return candidates.flatMap((item) => {
     if (!eligible(provider, item)) return [];
@@ -556,10 +532,11 @@ export async function fetchReviewDiff(
     candidate,
     cwd,
   });
-  const diff = await capture(
+  const diff = await capturePiExec(
+    provider.exec,
     "gh",
     ["pr", "diff", String(candidate.number), "--repo", resolved.repository],
-    resolved.cwd,
+    { cwd: resolved.cwd },
   );
   if (diff.exitCode !== 0 || !diff.output) {
     const detail = diff.output.trim().slice(-2000);
@@ -687,6 +664,7 @@ async function fetchQueueDetails(
   }`;
   const result = object(
     await ghJson(
+      provider.exec,
       [
         "api",
         "graphql",
@@ -733,6 +711,7 @@ export async function fetchReviewDetails(
   });
   const metadata = object(
     await ghJson(
+      provider.exec,
       [
         "pr",
         "view",
@@ -787,6 +766,7 @@ export async function prepareReview(
     if (requested) {
       metadata = object(
         await ghJson(
+          provider.exec,
           pullRequestViewArgs(provider, requested, pullRequestFields),
           reviewCwd,
         ),
@@ -796,6 +776,7 @@ export async function prepareReview(
       if (candidate)
         metadata = object(
           await ghJson(
+            provider.exec,
             pullRequestViewArgs(provider, candidate.url, pullRequestFields),
             reviewCwd,
           ),
@@ -827,7 +808,8 @@ export async function prepareReview(
     };
     if (!candidate.url) throw new Error(providerMessages.invalidUrl);
     const diff = await fetchReviewDiff(provider, candidate, resolved.cwd);
-    const checksJson = await capture(
+    const checksJson = await capturePiExec(
+      provider.exec,
       "gh",
       [
         "pr",
@@ -838,16 +820,18 @@ export async function prepareReview(
         "--json",
         "bucket,completedAt,event,link,name,startedAt,state,workflow",
       ],
-      resolved.cwd,
+      { cwd: resolved.cwd },
     );
     if (checksJson.exitCode !== 0) {
-      const detail = checksJson.output.trim().slice(-2000);
+      const detail =
+        checksJson.error?.message || checksJson.output.trim().slice(-2000);
       throw new Error(
         providerMessages.statusChecksFailure?.(pr, detail) ||
           `Could not retrieve status checks for PR ${pr}${detail ? `: ${detail}` : "."}`,
       );
     }
     const checks = await fetchFailedCheckLogs(
+      provider.exec,
       checkRecords(checksJson.output),
       resolved.repository,
       resolved.cwd,
@@ -904,6 +888,7 @@ export async function prepareMutationTarget(
   });
   const metadata = object(
     await ghJson(
+      provider.exec,
       [
         "pr",
         "view",
@@ -979,6 +964,7 @@ async function refreshedMetadata(
   for (let attempt = 0; ; attempt += 1) {
     await provider.policy?.validateMutationRepository?.(review);
     const parsed = await ghJson(
+      provider.exec,
       [
         "pr",
         "view",
@@ -1048,6 +1034,7 @@ export async function refreshReviewState(
   review: MutationTarget,
 ): Promise<PullRequestSnapshot> {
   const parsed = await ghJson(
+    provider.exec,
     [
       "pr",
       "view",
@@ -1085,8 +1072,12 @@ function assertReviewedHead(
   return actual;
 }
 
-async function requiredChecks(review: MutationTarget): Promise<string> {
+async function requiredChecks(
+  exec: PiExec,
+  review: MutationTarget,
+): Promise<string> {
   return successful(
+    exec,
     "gh",
     [
       "pr",
@@ -1101,18 +1092,20 @@ async function requiredChecks(review: MutationTarget): Promise<string> {
   );
 }
 
-async function authenticatedUser(cwd: string): Promise<string> {
-  const account = object(await ghJson(["api", "user"], cwd));
+async function authenticatedUser(exec: PiExec, cwd: string): Promise<string> {
+  const account = object(await ghJson(exec, ["api", "user"], cwd));
   const login = string(account.login);
   if (!login) throw new Error("GitHub returned no authenticated user.");
   return login;
 }
 
 async function assignReview(
+  exec: PiExec,
   review: MutationTarget,
   login: string,
 ): Promise<void> {
   await successful(
+    exec,
     "gh",
     [
       "pr",
@@ -1128,11 +1121,13 @@ async function assignReview(
 }
 
 async function approvalRecorded(
+  exec: PiExec,
   review: MutationTarget,
   login: string,
   expectedHead: string,
 ): Promise<boolean> {
   const parsed = await ghJson(
+    exec,
     [
       "api",
       "--paginate",
@@ -1176,8 +1171,12 @@ async function approvalRecorded(
   );
 }
 
-async function commentAndApprove(review: MutationTarget): Promise<void> {
+async function commentAndApprove(
+  exec: PiExec,
+  review: MutationTarget,
+): Promise<void> {
   await successful(
+    exec,
     "gh",
     [
       "pr",
@@ -1192,6 +1191,7 @@ async function commentAndApprove(review: MutationTarget): Promise<void> {
   );
   try {
     await successful(
+      exec,
       "gh",
       [
         "pr",
@@ -1260,7 +1260,7 @@ async function mergePreparedReview(
   progress(`PR #${review.number}: refreshing metadata and required checks`);
   const [metadata, checks] = await Promise.all([
     refreshedMetadata(provider, review, true, progress),
-    requiredChecks(review),
+    requiredChecks(provider.exec, review),
   ]);
   assertReviewedHead(review, metadata, expectedHead);
   if (!statusSuccessful(checks))
@@ -1269,7 +1269,7 @@ async function mergePreparedReview(
 
   progress(`PR #${review.number}: assigning reviewer`);
   try {
-    await assignReview(review, login);
+    await assignReview(provider.exec, review, login);
   } catch (error) {
     throw new Error(
       `The authenticated user could not be assigned: ${error instanceof Error ? error.message : String(error)}`,
@@ -1283,11 +1283,16 @@ async function mergePreparedReview(
     approved = state.reviewDecision === "APPROVED";
     if (!approved) {
       progress(`PR #${review.number}: checking existing approval`);
-      approved = await approvalRecorded(review, login, expectedHead);
+      approved = await approvalRecorded(
+        provider.exec,
+        review,
+        login,
+        expectedHead,
+      );
     }
     if (!approved) {
       progress(`PR #${review.number}: requesting approval`);
-      await commentAndApprove(review);
+      await commentAndApprove(provider.exec, review);
       approved = true;
       state = await refreshReview(provider, review, true, progress);
       assertReviewedHead(review, state, expectedHead);
@@ -1296,7 +1301,7 @@ async function mergePreparedReview(
     mergeHead = assertReviewedHead(review, state, expectedHead);
     if (
       state.reviewDecision !== "APPROVED" &&
-      !(await approvalRecorded(review, login, expectedHead))
+      !(await approvalRecorded(provider.exec, review, login, expectedHead))
     )
       throw new Error(
         "GitHub did not report the pull request as approved for its current head.",
@@ -1327,6 +1332,7 @@ async function mergePreparedReview(
   ];
   try {
     await successful(
+      provider.exec,
       "gh",
       mergeArgs,
       review.cwd,
@@ -1346,6 +1352,7 @@ async function mergePreparedReview(
       );
     try {
       await successful(
+        provider.exec,
         "gh",
         mergeArgs.filter((argument) => argument !== "--delete-branch"),
         review.cwd,
@@ -1401,7 +1408,7 @@ export async function mergeReview(
   progress(
     `Resolving the authenticated reviewer for ${reviews.length} pull requests`,
   );
-  const login = await authenticatedUser(reviews[0]!.cwd);
+  const login = await authenticatedUser(provider.exec, reviews[0]!.cwd);
   const completed: string[] = [];
   for (let index = 0; index < reviews.length; index += 1) {
     const review = reviews[index]!;
@@ -1458,6 +1465,7 @@ async function supersedeSource(
   );
   try {
     await successful(
+      provider.exec,
       "gh",
       [
         "pr",
@@ -1481,6 +1489,7 @@ async function supersedeSource(
         "The source PR was not closed because its comment failed.",
       );
     await successful(
+      provider.exec,
       "gh",
       ["pr", "close", String(review.number), "--repo", review.repository],
       cwd,
@@ -1498,6 +1507,7 @@ async function supersedeSource(
     const readEndpoint = `repos/${source.sourceRepository}/git/ref/heads/${source.branch}`;
     const deleteEndpoint = `repos/${source.sourceRepository}/git/refs/heads/${source.branch}`;
     const response = await successful(
+      provider.exec,
       "gh",
       ["api", readEndpoint, "--jq", ".object.sha"],
       cwd,
@@ -1509,7 +1519,12 @@ async function supersedeSource(
       throw new Error(
         "The source branch head changed; the source branch was not deleted.",
       );
-    await successful("gh", ["api", "--method", "DELETE", deleteEndpoint], cwd);
+    await successful(
+      provider.exec,
+      "gh",
+      ["api", "--method", "DELETE", deleteEndpoint],
+      cwd,
+    );
   } catch (error) {
     failures.push(
       `PR ${review.number} source branch cleanup failed: ${errorMessage(error)}`,
@@ -1545,7 +1560,7 @@ export async function supersedeReview(
     );
     const metadata = await refreshedMetadata(provider, review);
     const head = assertReviewedHead(review, metadata);
-    if (!statusSuccessful(await requiredChecks(review)))
+    if (!statusSuccessful(await requiredChecks(provider.exec, review)))
       throw new Error(
         `Required source checks are not all successful for PR ${review.number}; no mutation was performed.`,
       );
@@ -1591,7 +1606,7 @@ export async function supersedeReview(
       throw new Error(
         "A selected pull request head or base branch changed while waiting for confirmation; no mutation was performed.",
       );
-    if (!statusSuccessful(await requiredChecks(source.review)))
+    if (!statusSuccessful(await requiredChecks(provider.exec, source.review)))
       throw new Error(
         "Required source checks changed while waiting for confirmation; no mutation was performed.",
       );
@@ -1610,11 +1625,13 @@ export async function supersedeReview(
   const checkout = join(workspace, "repository");
   try {
     await successful(
+      provider.exec,
       "gh",
       ["repo", "clone", repository, checkout],
       reviews[0]!.cwd,
     );
     await successful(
+      provider.exec,
       "git",
       [
         "fetch",
@@ -1625,18 +1642,25 @@ export async function supersedeReview(
       checkout,
     );
     await successful(
+      provider.exec,
       "git",
       ["checkout", "--detach", `refs/remotes/origin/${base}`],
       checkout,
     );
     const branch = `supersede/prs-${Date.now()}`;
-    await successful("git", ["switch", "--create", branch], checkout);
+    await successful(
+      provider.exec,
+      "git",
+      ["switch", "--create", branch],
+      checkout,
+    );
 
     const applied = new Set<string>();
     for (const source of selected) {
       progress(`PR #${source.review.number}: fetching and applying commits...`);
       const ref = `refs/remotes/origin/pi-pr-${source.review.number}`;
       await successful(
+        provider.exec,
         "git",
         [
           "fetch",
@@ -1647,7 +1671,7 @@ export async function supersedeReview(
         checkout,
       );
       const fetchedHead = (
-        await successful("git", ["rev-parse", ref], checkout)
+        await successful(provider.exec, "git", ["rev-parse", ref], checkout)
       ).trim();
       if (fetchedHead !== source.head)
         throw new Error(
@@ -1655,6 +1679,7 @@ export async function supersedeReview(
         );
       const mergeCommits = (
         await successful(
+          provider.exec,
           "git",
           ["rev-list", "--merges", `refs/remotes/origin/${base}..${ref}`],
           checkout,
@@ -1666,6 +1691,7 @@ export async function supersedeReview(
         );
       const commits = (
         await successful(
+          provider.exec,
           "git",
           [
             "rev-list",
@@ -1681,7 +1707,12 @@ export async function supersedeReview(
         .filter(Boolean);
       for (const commit of commits) {
         if (applied.has(commit)) continue;
-        await successful("git", ["cherry-pick", "--no-edit", commit], checkout);
+        await successful(
+          provider.exec,
+          "git",
+          ["cherry-pick", "--no-edit", commit],
+          checkout,
+        );
         applied.add(commit);
       }
     }
@@ -1693,12 +1724,14 @@ export async function supersedeReview(
 
     progress("Pushing the combined branch...");
     await successful(
+      provider.exec,
       "git",
       ["push", "--set-upstream", "origin", branch],
       checkout,
     );
     progress("Creating the superseding pull request...");
     const creationOutput = await successful(
+      provider.exec,
       "gh",
       [
         "pr",
@@ -1728,6 +1761,7 @@ export async function supersedeReview(
     progress("Commenting on the superseding pull request...");
     try {
       await successful(
+        provider.exec,
         "gh",
         [
           "pr",
@@ -1780,6 +1814,7 @@ async function checkoutSingleReview(
   const initialMetadata = await refreshedMetadata(provider, checkoutTarget);
   assertReviewedHead(review, initialMetadata);
   const status = await successful(
+    provider.exec,
     "git",
     ["status", "--porcelain"],
     checkoutCwd,
@@ -1798,6 +1833,7 @@ async function checkoutSingleReview(
   const currentHead = assertReviewedHead(review, metadata);
   progress(`PR #${review.number}: verifying the worktree is still clean`);
   const finalStatus = await successful(
+    provider.exec,
     "git",
     ["status", "--porcelain"],
     checkoutCwd,
@@ -1807,19 +1843,30 @@ async function checkoutSingleReview(
   progress(`PR #${review.number}: fetching the reviewed head`);
   const remote = await provider.resolveRemote(checkoutCwd, review.repository);
   await successful(
+    provider.exec,
     "git",
     ["fetch", "--no-tags", remote, `pull/${review.number}/head`],
     checkoutCwd,
   );
   const fetchedHead = (
-    await successful("git", ["rev-parse", "FETCH_HEAD"], checkoutCwd)
+    await successful(
+      provider.exec,
+      "git",
+      ["rev-parse", "FETCH_HEAD"],
+      checkoutCwd,
+    )
   ).trim();
   if (fetchedHead !== currentHead)
     throw new Error(
       "The pull request head changed while fetching; checkout was not performed.",
     );
   progress(`PR #${review.number}: checking out the reviewed head`);
-  await successful("git", ["checkout", "--detach", currentHead], checkoutCwd);
+  await successful(
+    provider.exec,
+    "git",
+    ["checkout", "--detach", currentHead],
+    checkoutCwd,
+  );
   return provider.messages.checkoutSuccess(review.number, currentHead);
 }
 

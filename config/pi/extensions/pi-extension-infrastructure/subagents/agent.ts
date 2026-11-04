@@ -17,6 +17,7 @@ import {
   MAX_FIND_TEXT_QUERIES,
   type FetchUrlParams,
 } from "../../web-tools/fetch-url.js";
+import type { PiExec } from "../pi-exec.js";
 
 export type PiAgentConfig = {
   model: string;
@@ -33,6 +34,7 @@ export type ReadOnlyPiAgentOptions = {
   signal: AbortSignal;
   timeoutMs?: number;
   settings: PiAgentSettings;
+  exec: PiExec;
 };
 
 export type PiAgentSettings = ReturnType<SettingsManager["getSettings"]>;
@@ -93,7 +95,10 @@ const fetchUrlParameters = Type.Object(
   { additionalProperties: false },
 );
 
-function createFetchUrlTool(): ToolDefinition<typeof fetchUrlParameters> {
+function createFetchUrlTool(
+  exec: PiExec,
+  cwd: string,
+): ToolDefinition<typeof fetchUrlParameters> {
   return {
     name: "fetch_url",
     label: "Fetch URL",
@@ -103,6 +108,8 @@ function createFetchUrlTool(): ToolDefinition<typeof fetchUrlParameters> {
       const result = await executeFetchUrl(
         params as FetchUrlParams,
         signal ?? new AbortController().signal,
+        exec,
+        cwd,
       );
       return {
         content: result.content,
@@ -184,6 +191,7 @@ export async function runReadOnlyPiAgent({
   signal,
   timeoutMs,
   settings,
+  exec,
 }: ReadOnlyPiAgentOptions): Promise<string> {
   const releaseCapacity = reservePiAgentRun();
   let session: AgentSession | undefined;
@@ -232,7 +240,7 @@ export async function runReadOnlyPiAgent({
         "ls",
         ...(includeFetchUrl ? ["fetch_url"] : []),
       ],
-      customTools: includeFetchUrl ? [createFetchUrlTool()] : [],
+      customTools: includeFetchUrl ? [createFetchUrlTool(exec, cwd)] : [],
       resourceLoader: createResourceLoader(config.systemPrompt),
       sessionManager: SessionManager.inMemory(cwd),
       settingsManager: SettingsManager.inMemory({

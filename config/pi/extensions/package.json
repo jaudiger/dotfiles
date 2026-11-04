@@ -10,11 +10,11 @@
       "./github-dependabot-review/index.ts",
       "./notifications/index.ts",
       "./nixpkgs-update-package/index.ts",
+      "./pi-extension-infrastructure/index.ts",
       "./project-trust/index.ts",
       "./web-tools/index.ts",
       "./protected-paths/index.ts",
-      "./sandbox-bash/index.ts",
-      "./subagents/index.ts"
+      "./sandbox-bash/index.ts"
     ]
   }
 }

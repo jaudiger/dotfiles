@@ -1,5 +1,7 @@
 import { join } from "node:path";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import { createPiExec } from "../pi-extension-infrastructure/pi-exec.js";
+import { GITHUB_EXEC_MAX_BUFFER } from "../pi-extension-infrastructure/github-pr-review/github-operations.js";
 import { formatUrlLink } from "../pi-extension-infrastructure/links.js";
 import {
   registerGithubPrReviewController,
@@ -45,6 +47,7 @@ function workflowReady(
 }
 
 export default function registerBriochePackagesBotReview(pi: ExtensionAPI) {
+  const exec = createPiExec(pi, GITHUB_EXEC_MAX_BUFFER);
   registerGithubPrReviewController(pi, {
     identity: {
       customType: "brioche-packages-bot-review",
@@ -67,21 +70,21 @@ export default function registerBriochePackagesBotReview(pi: ExtensionAPI) {
     },
     // listCandidates delegates filtering to the Brioche GitHub operations provider.
     candidateEligibility: () => true,
-    listCandidates: (cwd) => listCandidates(cwd),
-    loadDiff: (candidate: ReviewCandidate) => fetchReviewDiff(candidate),
+    listCandidates: (cwd) => listCandidates(exec, cwd),
+    loadDiff: (candidate: ReviewCandidate) => fetchReviewDiff(exec, candidate),
     loadDetails: (
       candidate: ReviewCandidate,
       _cwd: string,
-    ): Promise<ReviewDetails> => fetchReviewDetails(candidate),
+    ): Promise<ReviewDetails> => fetchReviewDetails(exec, candidate),
     showQueuePosition: true,
     prepareReview: (
       cwd: string,
       sessionId: string,
       requestedPullRequest?: string,
-    ) => prepareReview(cwd, sessionId, requestedPullRequest),
+    ) => prepareReview(exec, cwd, sessionId, requestedPullRequest),
     workflow: briocheWorkflowProvider,
     prepareMutationTarget: (candidate, cwd) =>
-      prepareMutationTarget(candidate, cwd),
+      prepareMutationTarget(exec, candidate, cwd),
     mutations: {
       // Shared GitHub operations perform the provider-specific mutation checks.
       before: async () => undefined,
@@ -96,11 +99,12 @@ export default function registerBriochePackagesBotReview(pi: ExtensionAPI) {
           `Preparing ${action} pull request ${index + 1} of ${count}: PR ${candidate.number}...`,
         ),
       afterPickerMutation: (text, ctx) => ctx.ui.notify(text, "info"),
-      merge: (targets, ctx, progress) => mergeReview(targets, ctx, progress),
+      merge: (targets, ctx, progress) =>
+        mergeReview(exec, targets, ctx, progress),
       checkout: (reviews, ctx, progress) =>
-        checkoutReview(reviews, ctx, progress),
+        checkoutReview(exec, reviews, ctx, progress),
       supersede: (targets, ctx, progress) =>
-        supersedeReview(targets, ctx, progress),
+        supersedeReview(exec, targets, ctx, progress),
     },
     text: {
       loadingCandidates: "Loading Brioche package update pull requests...",

@@ -216,6 +216,7 @@ export default function (pi: ExtensionAPI) {
           update.context,
           update.research,
           signal,
+          pi,
         );
         report(pi, publicationMessage(result), {
           repository,

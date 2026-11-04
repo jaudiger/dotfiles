@@ -1,8 +1,6 @@
-import { execFile } from "node:child_process";
 import { realpath } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import { promisify } from "node:util";
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 import {
   checkoutReview as sharedCheckoutReview,
@@ -22,34 +20,29 @@ import type {
   ReviewDetails,
 } from "../pi-extension-infrastructure/github-pr-review/types.js";
 import { object, string } from "../pi-extension-infrastructure/parsing.js";
+import {
+  runPiExec,
+  type PiExec,
+} from "../pi-extension-infrastructure/pi-exec.js";
 
-const execFileAsync = promisify(execFile);
-const maxBuffer = 40 * 1024 * 1024;
 type MutationProgress = (message: string) => void;
 
 async function successful(
+  exec: PiExec,
   command: string,
   args: string[],
   cwd: string,
 ): Promise<string> {
-  try {
-    const result = await execFileAsync(command, args, { cwd, maxBuffer });
-    return `${string(result.stdout)}${string(result.stderr)}`;
-  } catch (error) {
-    const result = object(error);
-    const code =
-      typeof result.code === "number" || typeof result.code === "string"
-        ? result.code
-        : "unknown";
-    const output = `${string(result.stdout)}${string(result.stderr)}`.trim();
-    throw new Error(
-      `${command} ${args.join(" ")} failed with exit code ${code}${output ? `: ${output}` : "."}`,
-    );
-  }
+  const result = await runPiExec(exec, command, args, { cwd });
+  return `${result.stdout}${result.stderr}`;
 }
 
-async function ghJson(args: string[], cwd: string): Promise<Json | Json[]> {
-  const output = await successful("gh", args, cwd);
+async function ghJson(
+  exec: PiExec,
+  args: string[],
+  cwd: string,
+): Promise<Json | Json[]> {
+  const output = await successful(exec, "gh", args, cwd);
   try {
     const parsed = JSON.parse(output) as unknown;
     return Array.isArray(parsed) ? parsed.map(object) : object(parsed);
@@ -81,7 +74,10 @@ function repositoryPath(repository: string): string {
   return join(homedir(), "Development", "git-repositories", owner, name);
 }
 
-async function repositoryCwd(repository: string): Promise<string> {
+async function repositoryCwd(
+  exec: PiExec,
+  repository: string,
+): Promise<string> {
   const expectedPath = repositoryPath(repository);
   let expectedRoot: string;
   let actualRoot: string;
@@ -89,7 +85,12 @@ async function repositoryCwd(repository: string): Promise<string> {
     expectedRoot = await realpath(expectedPath);
     actualRoot = await realpath(
       (
-        await successful("git", ["rev-parse", "--show-toplevel"], expectedPath)
+        await successful(
+          exec,
+          "git",
+          ["rev-parse", "--show-toplevel"],
+          expectedPath,
+        )
       ).trim(),
     );
   } catch (error) {
@@ -101,9 +102,10 @@ async function repositoryCwd(repository: string): Promise<string> {
     throw new Error(
       `Local checkout for ${repository} resolved to ${actualRoot}, not ${expectedPath}.`,
     );
-  const remotes = await successful("git", ["remote"], actualRoot);
+  const remotes = await successful(exec, "git", ["remote"], actualRoot);
   for (const remote of remotes.split(/\s+/).filter(Boolean)) {
     const urls = await successful(
+      exec,
       "git",
       ["remote", "get-url", "--all", remote],
       actualRoot,
@@ -125,14 +127,16 @@ async function repositoryCwd(repository: string): Promise<string> {
 }
 
 async function remoteForRepository(
+  exec: PiExec,
   cwd: string,
   expectedRepository: string,
 ): Promise<string> {
-  const remotes = (await successful("git", ["remote"], cwd))
+  const remotes = (await successful(exec, "git", ["remote"], cwd))
     .split(/\s+/)
     .filter(Boolean);
   for (const remote of remotes) {
     const urls = await successful(
+      exec,
       "git",
       ["remote", "get-url", "--all", remote],
       cwd,
@@ -149,11 +153,15 @@ async function remoteForRepository(
   );
 }
 
-async function dependabotSearchScope(cwd: string): Promise<string[]> {
-  const account = object(await ghJson(["api", "user"], cwd));
+async function dependabotSearchScope(
+  exec: PiExec,
+  cwd: string,
+): Promise<string[]> {
+  const account = object(await ghJson(exec, ["api", "user"], cwd));
   const login = string(account.login);
   if (!login) throw new Error("GitHub returned no authenticated user.");
   const organizationOutput = await successful(
+    exec,
     "gh",
     ["api", "user/orgs?per_page=100", "--paginate", "--jq", ".[].login"],
     cwd,
@@ -189,107 +197,120 @@ function openDependabot(value: Json): boolean {
   );
 }
 
-const dependabotGithubProvider: GithubPrReviewProvider = {
-  search: async (cwd) => ({
-    cwd,
-    args: [
-      "search",
-      "prs",
-      "--state",
-      "open",
-      "--app",
-      "dependabot",
-      "--limit",
-      "1000",
-      "--json",
-      "number,title,author,state,isDraft,url",
-      "--",
-      ...(await dependabotSearchScope(cwd)),
-    ],
-  }),
-  repositoryFromUrl,
-  resolveRepository: async (request) => {
-    const candidateUrl = request.candidate?.url;
-    const metadataUrl = request.metadata?.url;
-    const candidateRepository =
-      request.repository ?? repositoryFromUrl(candidateUrl);
-    const metadataRepository = repositoryFromUrl(metadataUrl);
-    if (request.metadata && !metadataRepository)
-      throw new Error("Dependabot pull request had no valid GitHub URL.");
-    if (!candidateRepository && candidateUrl)
-      throw new Error(
-        "Dependabot pull request had no valid GitHub repository.",
-      );
-    const repository = candidateRepository || metadataRepository;
-    if (!repository)
-      throw new Error(
-        "Dependabot pull request had no valid GitHub repository.",
-      );
-    return {
-      repository,
-      cwd:
-        request.purpose === "review"
-          ? await repositoryCwd(repository)
-          : request.cwd,
-    };
-  },
-  resolveRemote: remoteForRepository,
-  authorRules: dependabotAuthor,
-  candidateEligibility: (value) => string(value.state).toUpperCase() === "OPEN",
-  queueBehavior: {
-    repository: (value) => {
-      const [owner, name] = value.split("/");
-      return owner && name ? { owner, name } : undefined;
+function dependabotGithubProvider(exec: PiExec): GithubPrReviewProvider {
+  return {
+    exec,
+    search: async (cwd) => ({
+      cwd,
+      args: [
+        "search",
+        "prs",
+        "--state",
+        "open",
+        "--app",
+        "dependabot",
+        "--limit",
+        "1000",
+        "--json",
+        "number,title,author,state,isDraft,url",
+        "--",
+        ...(await dependabotSearchScope(exec, cwd)),
+      ],
+    }),
+    repositoryFromUrl,
+    resolveRepository: async (request) => {
+      const candidateUrl = request.candidate?.url;
+      const metadataUrl = request.metadata?.url;
+      const candidateRepository =
+        request.repository ?? repositoryFromUrl(candidateUrl);
+      const metadataRepository = repositoryFromUrl(metadataUrl);
+      if (request.metadata && !metadataRepository)
+        throw new Error("Dependabot pull request had no valid GitHub URL.");
+      if (!candidateRepository && candidateUrl)
+        throw new Error(
+          "Dependabot pull request had no valid GitHub repository.",
+        );
+      const repository = candidateRepository || metadataRepository;
+      if (!repository)
+        throw new Error(
+          "Dependabot pull request had no valid GitHub repository.",
+        );
+      return {
+        repository,
+        cwd:
+          request.purpose === "review"
+            ? await repositoryCwd(exec, repository)
+            : request.cwd,
+      };
     },
-  },
-  labels: {
-    subject: "Dependabot",
-    subjectPlural: "Dependabot",
-  },
-  messages: {
-    invalidUrl: "Dependabot pull request had no valid GitHub URL.",
-    invalidRepository:
-      "Dependabot pull request had no valid GitHub repository.",
-    noCandidate:
-      "No open Dependabot pull request was found across the searched repositories.",
-    notEligible: (pullRequest) =>
-      `PR ${pullRequest} is not an open Dependabot pull request.`,
-    noLongerEligible:
-      "The pull request is no longer open and Dependabot-authored.",
-    invalidNumber: "Dependabot pull request had no valid number.",
-    statusChecksFailure: (pullRequest, detail) =>
-      `Could not retrieve status checks for Dependabot PR ${pullRequest}${detail ? `: ${detail}` : "."}`,
-    diffFailure: (pullRequest, detail) =>
-      `Could not retrieve the diff for Dependabot PR ${pullRequest} (${detail}).`,
-    checkoutConfirmation: "Checkout Dependabot pull request?",
-    checkoutSuccess: (pullRequest, head) =>
-      `Checked out reviewed Dependabot PR ${pullRequest} at ${head}.`,
-  },
-  policy: {
-    temporaryDirectoryPrefix: "pi-dependabot-review-",
-    supersedeTemporaryDirectoryPrefix: "pi-supersede-dependabot-",
-    mutationEligibility: openDependabot,
-    checkoutWorkingDirectory: (review) => repositoryCwd(review.repository),
-  },
-};
-
-export function listCandidates(cwd: string): Promise<ReviewCandidate[]> {
-  return sharedListCandidates(dependabotGithubProvider, cwd);
+    resolveRemote: (cwd, expectedRepository) =>
+      remoteForRepository(exec, cwd, expectedRepository),
+    authorRules: dependabotAuthor,
+    candidateEligibility: (value) =>
+      string(value.state).toUpperCase() === "OPEN",
+    queueBehavior: {
+      repository: (value) => {
+        const [owner, name] = value.split("/");
+        return owner && name ? { owner, name } : undefined;
+      },
+    },
+    labels: {
+      subject: "Dependabot",
+      subjectPlural: "Dependabot",
+    },
+    messages: {
+      invalidUrl: "Dependabot pull request had no valid GitHub URL.",
+      invalidRepository:
+        "Dependabot pull request had no valid GitHub repository.",
+      noCandidate:
+        "No open Dependabot pull request was found across the searched repositories.",
+      notEligible: (pullRequest) =>
+        `PR ${pullRequest} is not an open Dependabot pull request.`,
+      noLongerEligible:
+        "The pull request is no longer open and Dependabot-authored.",
+      invalidNumber: "Dependabot pull request had no valid number.",
+      statusChecksFailure: (pullRequest, detail) =>
+        `Could not retrieve status checks for Dependabot PR ${pullRequest}${detail ? `: ${detail}` : "."}`,
+      diffFailure: (pullRequest, detail) =>
+        `Could not retrieve the diff for Dependabot PR ${pullRequest} (${detail}).`,
+      checkoutConfirmation: "Checkout Dependabot pull request?",
+      checkoutSuccess: (pullRequest, head) =>
+        `Checked out reviewed Dependabot PR ${pullRequest} at ${head}.`,
+    },
+    policy: {
+      temporaryDirectoryPrefix: "pi-dependabot-review-",
+      supersedeTemporaryDirectoryPrefix: "pi-supersede-dependabot-",
+      mutationEligibility: openDependabot,
+      checkoutWorkingDirectory: (review) =>
+        repositoryCwd(exec, review.repository),
+    },
+  };
 }
 
-export function fetchReviewDiff(candidate: ReviewCandidate): Promise<string> {
+export function listCandidates(
+  exec: PiExec,
+  cwd: string,
+): Promise<ReviewCandidate[]> {
+  return sharedListCandidates(dependabotGithubProvider(exec), cwd);
+}
+
+export function fetchReviewDiff(
+  exec: PiExec,
+  candidate: ReviewCandidate,
+): Promise<string> {
   if (!candidate.repository && !repositoryFromUrl(candidate.url))
     return Promise.reject(
       new Error("Dependabot pull request had no valid GitHub URL."),
     );
   return sharedFetchReviewDiff(
-    dependabotGithubProvider,
+    dependabotGithubProvider(exec),
     candidate,
     process.cwd(),
   );
 }
 
 export function fetchReviewDetails(
+  exec: PiExec,
   candidate: ReviewCandidate,
 ): Promise<ReviewDetails> {
   if (!candidate.repository && !repositoryFromUrl(candidate.url))
@@ -297,48 +318,64 @@ export function fetchReviewDetails(
       new Error("Dependabot pull request had no valid GitHub repository."),
     );
   return sharedFetchReviewDetails(
-    dependabotGithubProvider,
+    dependabotGithubProvider(exec),
     candidate,
     process.cwd(),
   );
 }
 
 export function prepareReview(
+  exec: PiExec,
   cwd: string,
   sessionId: string,
   requestedPullRequest?: string,
 ) {
   return sharedPrepareReview(
-    dependabotGithubProvider,
+    dependabotGithubProvider(exec),
     cwd,
     sessionId,
     requestedPullRequest,
   );
 }
 
-export function prepareMutationTarget(candidate: ReviewCandidate, cwd: string) {
+export function prepareMutationTarget(
+  exec: PiExec,
+  candidate: ReviewCandidate,
+  cwd: string,
+) {
   if (!candidate.repository && !repositoryFromUrl(candidate.url))
     return Promise.reject(
       new Error("Dependabot pull request had no valid GitHub repository."),
     );
-  return sharedPrepareMutationTarget(dependabotGithubProvider, candidate, cwd);
+  return sharedPrepareMutationTarget(
+    dependabotGithubProvider(exec),
+    candidate,
+    cwd,
+  );
 }
 
 export function mergeReview(
+  exec: PiExec,
   reviews: MutationTarget[],
   ctx: ExtensionContext,
   progress: MutationProgress = () => {},
 ) {
-  return sharedMergeReview(dependabotGithubProvider, reviews, ctx, progress);
+  return sharedMergeReview(
+    dependabotGithubProvider(exec),
+    reviews,
+    ctx,
+    progress,
+  );
 }
 
 export function supersedeReview(
+  exec: PiExec,
   reviews: MutationTarget[],
   ctx: ExtensionContext,
   progress: MutationProgress = () => {},
 ) {
   return sharedSupersedeReview(
-    dependabotGithubProvider,
+    dependabotGithubProvider(exec),
     reviews,
     ctx,
     progress,
@@ -346,9 +383,15 @@ export function supersedeReview(
 }
 
 export function checkoutReview(
+  exec: PiExec,
   reviews: MutationTarget[],
   ctx: ExtensionContext,
   progress: MutationProgress = () => {},
 ) {
-  return sharedCheckoutReview(dependabotGithubProvider, reviews, ctx, progress);
+  return sharedCheckoutReview(
+    dependabotGithubProvider(exec),
+    reviews,
+    ctx,
+    progress,
+  );
 }

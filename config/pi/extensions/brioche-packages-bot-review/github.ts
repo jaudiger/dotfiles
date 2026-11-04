@@ -1,8 +1,6 @@
-import { execFile } from "node:child_process";
 import { realpath } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import { promisify } from "node:util";
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 import {
   checkoutReview as sharedCheckoutReview,
@@ -22,48 +20,18 @@ import type {
   ReviewDetails,
 } from "../pi-extension-infrastructure/github-pr-review/types.js";
 import { object, string } from "../pi-extension-infrastructure/parsing.js";
+import {
+  capturePiExec,
+  type PiExec,
+} from "../pi-extension-infrastructure/pi-exec.js";
 
-const execFileAsync = promisify(execFile);
-const maxBuffer = 40 * 1024 * 1024;
 const repository = "brioche-dev/brioche-packages";
 const networkRetryDelays = [1000, 2000];
 
-type CommandResult = { output: string; exitCode: number };
 type MutationProgress = (message: string) => void;
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
-}
-
-function commandResult(value: unknown): CommandResult {
-  const result = object(value);
-  const rawCode = result.code;
-  const exitCode =
-    typeof rawCode === "number"
-      ? rawCode
-      : typeof rawCode === "string" && /^\d+$/.test(rawCode)
-        ? Number(rawCode)
-        : 1;
-  return {
-    output: `${string(result.stdout)}${string(result.stderr)}`,
-    exitCode,
-  };
-}
-
-async function capture(
-  command: string,
-  args: string[],
-  cwd: string,
-): Promise<CommandResult> {
-  try {
-    const result = await execFileAsync(command, args, { cwd, maxBuffer });
-    return {
-      output: `${string(result.stdout)}${string(result.stderr)}`,
-      exitCode: 0,
-    };
-  } catch (error) {
-    return commandResult(error);
-  }
 }
 
 function networkFailureKind(error: unknown): "safe" | "ambiguous" | undefined {
@@ -101,13 +69,15 @@ function readOnlyGhCall(args: string[]): boolean {
 }
 
 async function successful(
+  exec: PiExec,
   command: string,
   args: string[],
   cwd: string,
 ): Promise<string> {
   for (let attempt = 0; ; attempt += 1) {
-    const result = await capture(command, args, cwd);
-    if (result.exitCode === 0) return result.output;
+    const result = await capturePiExec(exec, command, args, { cwd });
+    if (result.success) return result.output;
+    if (result.error?.killed || result.error?.truncated) throw result.error;
     const detail = result.output.trim().slice(-2000);
     const failure = new Error(
       `${command} ${args.join(" ")} failed with exit code ${result.exitCode}${detail ? `: ${detail}` : "."}`,
@@ -140,7 +110,10 @@ function repositoryPath(repositoryName: string): string {
   return join(homedir(), "Development", "git-repositories", owner, name);
 }
 
-async function repositoryCwd(repositoryName: string): Promise<string> {
+async function repositoryCwd(
+  exec: PiExec,
+  repositoryName: string,
+): Promise<string> {
   const expectedPath = repositoryPath(repositoryName);
   let expectedRoot: string;
   let actualRoot: string;
@@ -148,7 +121,12 @@ async function repositoryCwd(repositoryName: string): Promise<string> {
     expectedRoot = await realpath(expectedPath);
     actualRoot = await realpath(
       (
-        await successful("git", ["rev-parse", "--show-toplevel"], expectedPath)
+        await successful(
+          exec,
+          "git",
+          ["rev-parse", "--show-toplevel"],
+          expectedPath,
+        )
       ).trim(),
     );
   } catch (error) {
@@ -160,9 +138,10 @@ async function repositoryCwd(repositoryName: string): Promise<string> {
     throw new Error(
       `Local checkout for ${repositoryName} resolved to ${actualRoot}, not ${expectedPath}.`,
     );
-  const remotes = await successful("git", ["remote"], actualRoot);
+  const remotes = await successful(exec, "git", ["remote"], actualRoot);
   for (const remote of remotes.split(/\s+/).filter(Boolean)) {
     const urls = await successful(
+      exec,
       "git",
       ["remote", "get-url", "--all", remote],
       actualRoot,
@@ -184,14 +163,16 @@ async function repositoryCwd(repositoryName: string): Promise<string> {
 }
 
 async function remoteForRepository(
+  exec: PiExec,
   cwd: string,
   expectedRepository: string,
 ): Promise<string> {
-  const remotes = (await successful("git", ["remote"], cwd))
+  const remotes = (await successful(exec, "git", ["remote"], cwd))
     .split(/\s+/)
     .filter(Boolean);
   for (const remote of remotes) {
     const urls = await successful(
+      exec,
       "git",
       ["remote", "get-url", "--all", remote],
       cwd,
@@ -206,16 +187,6 @@ async function remoteForRepository(
   throw new Error(
     `No Git remote for ${expectedRepository} is configured in the current checkout.`,
   );
-}
-
-async function ghJson(args: string[], cwd: string): Promise<Json | Json[]> {
-  const output = await successful("gh", args, cwd);
-  try {
-    const parsed = JSON.parse(output) as unknown;
-    return Array.isArray(parsed) ? (parsed as Json[]) : object(parsed);
-  } catch {
-    throw new Error(`gh ${args.join(" ")} returned invalid JSON.`);
-  }
 }
 
 const packageUpdateAuthorLogins = [
@@ -270,155 +241,193 @@ function repositoryFromUrl(value: unknown): string | undefined {
   return match?.[1];
 }
 
-const briocheGithubProvider: GithubPrReviewProvider = {
-  search: async (cwd) => ({
-    cwd,
-    repository,
-    args: [
-      "search",
-      "prs",
-      "--state",
-      "open",
-      "--app",
-      "package-update-bot",
-      "--repo",
+function briocheGithubProvider(exec: PiExec): GithubPrReviewProvider {
+  return {
+    exec,
+    search: async (cwd) => ({
+      cwd,
       repository,
-      "--limit",
-      "1000",
-      "--json",
-      "number,title,author,state,isDraft,url",
-    ],
-  }),
-  resolveRepository: async (request) => {
-    const requestedRepository =
-      request.repository ?? repositoryFromUrl(request.candidate?.url);
-    const metadataRepository = repositoryFromUrl(request.metadata?.url);
-    if (
-      (requestedRepository && requestedRepository !== repository) ||
-      (metadataRepository && metadataRepository !== repository)
-    )
-      throw new Error("Brioche pull request had an invalid GitHub repository.");
-    return {
-      repository,
-      cwd:
-        request.purpose === "review"
-          ? await repositoryCwd(repository)
-          : request.cwd,
-    };
-  },
-  resolveRemote: remoteForRepository,
-  authorRules: packageUpdateAuthor,
-  candidateEligibility: liveUpdatePullRequest,
-  queueBehavior: {
-    repository: (value) =>
-      value === repository
-        ? { owner: "brioche-dev", name: "brioche-packages" }
-        : undefined,
-  },
-  labels: {
-    subject: "Brioche package update",
-    subjectPlural: "Brioche package update",
-  },
-  messages: {
-    invalidUrl: "Brioche pull request had no valid GitHub URL.",
-    invalidRepository: "Brioche pull request had an invalid GitHub repository.",
-    noCandidate:
-      "No open Brioche package update pull request was found in the current repository.",
-    notEligible: (pullRequest) =>
-      `PR ${pullRequest} is not an open Brioche package live update pull request.`,
-    noLongerEligible:
-      "The pull request is no longer open and Brioche package update-authored.",
-    invalidNumber: "Brioche package update pull request had no valid number.",
-    statusChecksFailure: (pullRequest, detail) =>
-      `Could not retrieve status checks for Brioche package update PR ${pullRequest}${detail ? `: ${detail}` : "."}`,
-    diffFailure: (pullRequest, detail) =>
-      `Could not retrieve the diff for Brioche package update PR ${pullRequest} (${detail}).`,
-    invalidDiff: (pullRequest) =>
-      `PR ${pullRequest} is not a single Brioche package live update of project.bri and/or brioche.lock.`,
-    checkoutConfirmation: "Checkout Brioche package update pull request?",
-    checkoutSuccess: (pullRequest, head) =>
-      `Checked out reviewed Brioche package update PR ${pullRequest} at ${head}.`,
-  },
-  policy: {
-    temporaryDirectoryPrefix: "pi-brioche-packages-bot-review-",
-    supersedeTemporaryDirectoryPrefix: "pi-supersede-brioche-",
-    checkoutWorkingDirectory: () => repositoryCwd(repository),
-    pullRequestViewArgs: (reference, fields) => [
-      "pr",
-      "view",
-      reference,
-      "--repo",
-      repository,
-      "--json",
-      fields,
-    ],
-    mutationEligibility: openPackageUpdate,
-    validateDiff: (diff, candidate) => {
-      if (!isLiveUpdateDiff(diff))
+      args: [
+        "search",
+        "prs",
+        "--state",
+        "open",
+        "--app",
+        "package-update-bot",
+        "--repo",
+        repository,
+        "--limit",
+        "1000",
+        "--json",
+        "number,title,author,state,isDraft,url",
+      ],
+    }),
+    resolveRepository: async (request) => {
+      const requestedRepository =
+        request.repository ?? repositoryFromUrl(request.candidate?.url);
+      const metadataRepository = repositoryFromUrl(request.metadata?.url);
+      if (
+        (requestedRepository && requestedRepository !== repository) ||
+        (metadataRepository && metadataRepository !== repository)
+      )
         throw new Error(
-          `PR ${candidate.number} is not a single Brioche package live update of project.bri and/or brioche.lock.`,
+          "Brioche pull request had an invalid GitHub repository.",
         );
+      return {
+        repository,
+        cwd:
+          request.purpose === "review"
+            ? await repositoryCwd(exec, repository)
+            : request.cwd,
+      };
     },
-  },
-};
-
-export function listCandidates(
-  cwd = process.cwd(),
-): Promise<ReviewCandidate[]> {
-  return sharedListCandidates(briocheGithubProvider, cwd);
+    resolveRemote: (cwd, expectedRepository) =>
+      remoteForRepository(exec, cwd, expectedRepository),
+    authorRules: packageUpdateAuthor,
+    candidateEligibility: liveUpdatePullRequest,
+    queueBehavior: {
+      repository: (value) =>
+        value === repository
+          ? { owner: "brioche-dev", name: "brioche-packages" }
+          : undefined,
+    },
+    labels: {
+      subject: "Brioche package update",
+      subjectPlural: "Brioche package update",
+    },
+    messages: {
+      invalidUrl: "Brioche pull request had no valid GitHub URL.",
+      invalidRepository:
+        "Brioche pull request had an invalid GitHub repository.",
+      noCandidate:
+        "No open Brioche package update pull request was found in the current repository.",
+      notEligible: (pullRequest) =>
+        `PR ${pullRequest} is not an open Brioche package live update pull request.`,
+      noLongerEligible:
+        "The pull request is no longer open and Brioche package update-authored.",
+      invalidNumber: "Brioche package update pull request had no valid number.",
+      statusChecksFailure: (pullRequest, detail) =>
+        `Could not retrieve status checks for Brioche package update PR ${pullRequest}${detail ? `: ${detail}` : "."}`,
+      diffFailure: (pullRequest, detail) =>
+        `Could not retrieve the diff for Brioche package update PR ${pullRequest} (${detail}).`,
+      invalidDiff: (pullRequest) =>
+        `PR ${pullRequest} is not a single Brioche package live update of project.bri and/or brioche.lock.`,
+      checkoutConfirmation: "Checkout Brioche package update pull request?",
+      checkoutSuccess: (pullRequest, head) =>
+        `Checked out reviewed Brioche package update PR ${pullRequest} at ${head}.`,
+    },
+    policy: {
+      temporaryDirectoryPrefix: "pi-brioche-packages-bot-review-",
+      supersedeTemporaryDirectoryPrefix: "pi-supersede-brioche-",
+      checkoutWorkingDirectory: () => repositoryCwd(exec, repository),
+      pullRequestViewArgs: (reference, fields) => [
+        "pr",
+        "view",
+        reference,
+        "--repo",
+        repository,
+        "--json",
+        fields,
+      ],
+      mutationEligibility: openPackageUpdate,
+      validateDiff: (diff, candidate) => {
+        if (!isLiveUpdateDiff(diff))
+          throw new Error(
+            `PR ${candidate.number} is not a single Brioche package live update of project.bri and/or brioche.lock.`,
+          );
+      },
+    },
+  };
 }
 
-export function fetchReviewDiff(candidate: ReviewCandidate): Promise<string> {
-  return sharedFetchReviewDiff(briocheGithubProvider, candidate, process.cwd());
+export function listCandidates(
+  exec: PiExec,
+  cwd = process.cwd(),
+): Promise<ReviewCandidate[]> {
+  return sharedListCandidates(briocheGithubProvider(exec), cwd);
+}
+
+export function fetchReviewDiff(
+  exec: PiExec,
+  candidate: ReviewCandidate,
+): Promise<string> {
+  return sharedFetchReviewDiff(
+    briocheGithubProvider(exec),
+    candidate,
+    process.cwd(),
+  );
 }
 
 export function fetchReviewDetails(
+  exec: PiExec,
   candidate: ReviewCandidate,
 ): Promise<ReviewDetails> {
   return sharedFetchReviewDetails(
-    briocheGithubProvider,
+    briocheGithubProvider(exec),
     candidate,
     process.cwd(),
   );
 }
 
 export function prepareReview(
+  exec: PiExec,
   cwd: string,
   sessionId: string,
   requestedPullRequest?: string,
 ) {
   return sharedPrepareReview(
-    briocheGithubProvider,
+    briocheGithubProvider(exec),
     cwd,
     sessionId,
     requestedPullRequest,
   );
 }
 
-export function prepareMutationTarget(candidate: ReviewCandidate, cwd: string) {
-  return sharedPrepareMutationTarget(briocheGithubProvider, candidate, cwd);
+export function prepareMutationTarget(
+  exec: PiExec,
+  candidate: ReviewCandidate,
+  cwd: string,
+) {
+  return sharedPrepareMutationTarget(
+    briocheGithubProvider(exec),
+    candidate,
+    cwd,
+  );
 }
 
 export function mergeReview(
+  exec: PiExec,
   reviews: MutationTarget[],
   ctx: ExtensionContext,
   progress: MutationProgress = () => {},
 ) {
-  return sharedMergeReview(briocheGithubProvider, reviews, ctx, progress);
+  return sharedMergeReview(briocheGithubProvider(exec), reviews, ctx, progress);
 }
 
 export function supersedeReview(
+  exec: PiExec,
   reviews: MutationTarget[],
   ctx: ExtensionContext,
   progress: MutationProgress = () => {},
 ) {
-  return sharedSupersedeReview(briocheGithubProvider, reviews, ctx, progress);
+  return sharedSupersedeReview(
+    briocheGithubProvider(exec),
+    reviews,
+    ctx,
+    progress,
+  );
 }
 
 export function checkoutReview(
+  exec: PiExec,
   reviews: MutationTarget[],
   ctx: ExtensionContext,
   progress: MutationProgress = () => {},
 ) {
-  return sharedCheckoutReview(briocheGithubProvider, reviews, ctx, progress);
+  return sharedCheckoutReview(
+    briocheGithubProvider(exec),
+    reviews,
+    ctx,
+    progress,
+  );
 }

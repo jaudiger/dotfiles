@@ -2,6 +2,12 @@ import * as crypto from "node:crypto";
 import { join } from "node:path";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import type { NixpkgsContext } from "./context.js";
+import {
+  capturePiExec,
+  createPiExec,
+  requirePiExecComplete,
+  type PiExec,
+} from "../pi-extension-infrastructure/pi-exec.js";
 
 export type VerificationStep = {
   name: string;
@@ -16,23 +22,21 @@ export type VerificationResult = {
 };
 
 async function command(
-  pi: ExtensionAPI,
+  exec: PiExec,
   name: string,
   args: string[],
 ): Promise<{ success: boolean; output: string }> {
-  const result = await pi.exec(name, args);
-  return {
-    success: result.code === 0,
-    output: `${result.stdout}${result.stderr}`.trim(),
-  };
+  const captured = await capturePiExec(exec, name, args);
+  requirePiExecComplete(name, captured.result);
+  return { success: captured.success, output: captured.output.trim() };
 }
 
 async function changedFiles(
   repository: string,
   head: string,
-  pi: ExtensionAPI,
+  exec: PiExec,
 ): Promise<string[]> {
-  const result = await command(pi, "git", [
+  const result = await command(exec, "git", [
     "-C",
     repository,
     "diff",
@@ -49,14 +53,15 @@ export async function verifyUpdate(
   context: NixpkgsContext,
   pi: ExtensionAPI,
 ): Promise<VerificationResult> {
-  const diffResult = await command(pi, "git", [
+  const exec = createPiExec(pi, 256 * 1024 * 1024);
+  const diffResult = await command(exec, "git", [
     "-C",
     repository,
     "diff",
     "--binary",
     context.head,
   ]);
-  const statusResult = await command(pi, "git", [
+  const statusResult = await command(exec, "git", [
     "-C",
     repository,
     "status",
@@ -66,18 +71,18 @@ export async function verifyUpdate(
   const fingerprint = changedState.trim()
     ? crypto.createHash("sha256").update(changedState).digest("hex")
     : "";
-  const files = await changedFiles(repository, context.head, pi);
+  const files = await changedFiles(repository, context.head, exec);
   const nixFiles = files
     .filter((file) => file.endsWith(".nix"))
     .map((file) => join(repository, file));
   const steps: VerificationStep[] = [];
 
   const format = nixFiles.length
-    ? await command(pi, "nixfmt", ["--check", ...nixFiles])
+    ? await command(exec, "nixfmt", ["--check", ...nixFiles])
     : { success: true, output: "No changed Nix files." };
   steps.push({ name: "nixfmt", ...format });
 
-  const diffCheck = await command(pi, "git", [
+  const diffCheck = await command(exec, "git", [
     "-C",
     repository,
     "diff",
@@ -87,7 +92,7 @@ export async function verifyUpdate(
   steps.push({ name: "git diff check", ...diffCheck });
 
   for (const packageName of packages) {
-    const build = await command(pi, "nix", [
+    const build = await command(exec, "nix", [
       "build",
       "--impure",
       "--no-link",

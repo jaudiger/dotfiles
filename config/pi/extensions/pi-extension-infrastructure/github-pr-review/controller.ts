@@ -7,6 +7,8 @@ import {
 import { Type } from "typebox";
 import { pickReview } from "./picker.js";
 import { createToolScope } from "../tool-scope.js";
+import { createPiExec } from "../pi-exec.js";
+import { FETCHER_MAX_BUFFER } from "../../web-tools/fetch-url.js";
 import {
   runReviewWorkflow,
   type ReviewWorkflowCompletion,
@@ -273,6 +275,7 @@ export function registerGithubPrReviewController(
       ctx,
       controller.signal,
       pi.getSettings(),
+      createPiExec(pi, FETCHER_MAX_BUFFER),
     )
       .then((result) => {
         if (controller.signal.aborted || !isCurrentOwner(owner)) return;

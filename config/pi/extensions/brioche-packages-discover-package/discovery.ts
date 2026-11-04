@@ -1,10 +1,14 @@
-import { spawn } from "node:child_process";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import {
+  requirePiExecSuccess,
+  type PiExec,
+} from "../pi-extension-infrastructure/pi-exec.js";
 
 const sources = new Set(["homebrew", "nixpkgs", "arch", "all"]);
 const defaultLimit = 20;
+const diagnosticLimit = 2000;
 
 export type DiscoveryOptions = {
   source: string;
@@ -52,46 +56,30 @@ function isObject(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
-async function runCommand(
-  command: string,
-  args: string[],
-  cwd: string,
-): Promise<{ stdout: string; stderr: string; code: number }> {
-  return new Promise((resolve, reject) => {
-    const child = spawn(command, args, {
-      cwd,
-      shell: false,
-      stdio: ["ignore", "pipe", "pipe"],
-    });
-    const stdout: Buffer[] = [];
-    const stderr: Buffer[] = [];
-
-    child.stdout.on("data", (chunk: Buffer) => stdout.push(chunk));
-    child.stderr.on("data", (chunk: Buffer) => {
-      stderr.push(chunk);
-      process.stderr.write(chunk);
-    });
-    child.once("error", reject);
-    child.once("close", (code) =>
-      resolve({
-        stdout: Buffer.concat(stdout).toString("utf8"),
-        stderr: Buffer.concat(stderr).toString("utf8"),
-        code: code ?? 1,
-      }),
-    );
-  });
+function capturedOutput(stdout: string, stderr: string): string {
+  const detail = [
+    stdout.trim() ? `stdout: ${stdout.trim()}` : "",
+    stderr.trim() ? `stderr: ${stderr.trim()}` : "",
+  ]
+    .filter(Boolean)
+    .join("\n");
+  return detail.slice(-diagnosticLimit);
 }
 
 export async function runDiscovery(
   cwd: string,
   options: DiscoveryOptions,
+  exec: PiExec,
+  signal?: AbortSignal,
 ): Promise<DiscoveryResult> {
+  if (signal?.aborted) throw new Error("Discovery command was canceled.");
   const directory = await mkdtemp(join(tmpdir(), "brioche-packages-discover-"));
   const outputPath = join(directory, "packages.json");
   const stderrPath = join(directory, "stderr.log");
 
   try {
-    const result = await runCommand(
+    if (signal?.aborted) throw new Error("Discovery command was canceled.");
+    const result = await exec(
       "brioche-wrapper",
       [
         "packages",
@@ -102,29 +90,30 @@ export async function runDiscovery(
         String(options.limit),
         "--exclude-defaults",
       ],
-      cwd,
+      { cwd, signal },
     );
-    await writeFile(outputPath, result.stdout, { mode: 0o600 });
-    await writeFile(stderrPath, result.stderr, { mode: 0o600 });
-
-    if (result.code !== 0) {
-      throw new Error(
-        `Discovery command failed with exit code ${result.code}. Full stderr: ${stderrPath}`,
-      );
-    }
+    if (signal?.aborted) throw new Error("Discovery command was canceled.");
+    requirePiExecSuccess("Discovery command", result);
 
     let document: unknown;
     try {
       document = JSON.parse(result.stdout) as unknown;
     } catch {
-      throw new Error(`Discovery command returned invalid JSON: ${outputPath}`);
+      const detail = capturedOutput(result.stdout, result.stderr);
+      throw new Error(
+        `Discovery command returned invalid JSON.${detail ? ` Captured output: ${detail}` : ""}`,
+      );
     }
 
     if (!isObject(document) || !Array.isArray(document.packages)) {
+      const detail = capturedOutput(result.stdout, result.stderr);
       throw new Error(
-        `Discovery output has an unexpected shape: ${outputPath}`,
+        `Discovery output has an unexpected shape.${detail ? ` Captured output: ${detail}` : ""}`,
       );
     }
+
+    await writeFile(outputPath, result.stdout, { mode: 0o600 });
+    await writeFile(stderrPath, result.stderr, { mode: 0o600 });
 
     const metadata = isObject(document.metadata) ? document.metadata : {};
     return {

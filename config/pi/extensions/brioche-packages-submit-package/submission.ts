@@ -1,4 +1,4 @@
-import { execFile } from "node:child_process";
+import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import {
   access,
   mkdtemp,
@@ -9,16 +9,22 @@ import {
 } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { promisify } from "node:util";
+import {
+  capturePiExec,
+  createPiExec,
+  isPiExecInterrupted,
+  runPiExec,
+  type PiExec,
+} from "../pi-extension-infrastructure/pi-exec.js";
+
 type Json = Record<string, unknown>;
 
 function asObject(value: unknown): Json {
   return value && typeof value === "object" ? (value as Json) : {};
 }
 
-const execFileAsync = promisify(execFile);
 const limaMachine = "brioche-packages";
-const maxBuffer = 100 * 1024 * 1024;
+const maxBuffer = 200 * 1024 * 1024;
 
 type CommandResult = {
   exitCode: number;
@@ -76,33 +82,30 @@ export class SubmissionError extends Error {
   }
 }
 
-function commandOutput(value: unknown): string {
-  return typeof value === "string" ? value : "";
-}
-
-function commandExitCode(value: unknown): number {
-  return typeof value === "number" ? value : 1;
-}
-
 async function runCaptured(
+  exec: PiExec,
   args: string[],
   cwd: string,
   logPath: string,
 ): Promise<CommandResult> {
-  try {
-    const result = await execFileAsync("limactl", args, {
-      cwd,
-      maxBuffer,
-    });
-    const output = `${commandOutput(result.stdout)}${commandOutput(result.stderr)}`;
-    await writeFile(logPath, output);
-    return { exitCode: 0, output };
-  } catch (error) {
-    const result = asObject(error);
-    const output = `${commandOutput(result.stdout)}${commandOutput(result.stderr)}`;
-    await writeFile(logPath, output);
-    return { exitCode: commandExitCode(result.code), output };
-  }
+  const captured = await capturePiExec(exec, "limactl", args, { cwd });
+  const { result, output } = captured;
+  const complete = captured.success;
+  const diagnostic = result.truncated
+    ? "Pi truncated this command output; the log is incomplete."
+    : result.killed
+      ? "Pi terminated this command; the log may be incomplete."
+      : undefined;
+  await writeFile(
+    logPath,
+    diagnostic ? `${output}${output ? "\n\n" : ""}${diagnostic}` : output,
+  );
+  return {
+    exitCode: complete ? 0 : result.code || 1,
+    output: diagnostic
+      ? `${output}${output ? "\n\n" : ""}${diagnostic}`
+      : output,
+  };
 }
 
 function limaBash(script: string, packageName: string): string[] {
@@ -150,12 +153,14 @@ function logMapJson(logs: Record<string, LogFile>): Json {
 }
 
 async function runCheckAndFormat(
+  exec: PiExec,
   packageName: string,
   cwd: string,
   directory: string,
   logs: Record<string, LogFile>,
 ): Promise<ValidationStep | undefined> {
   const check = await runCaptured(
+    exec,
     limaBash(validationCommand("brioche check", "check"), packageName),
     cwd,
     logPath(directory, "check"),
@@ -164,6 +169,7 @@ async function runCheckAndFormat(
   if (check.exitCode !== 0) return "check";
 
   const format = await runCaptured(
+    exec,
     limaBash(validationCommand("brioche fmt", "format"), packageName),
     cwd,
     logPath(directory, "format"),
@@ -174,12 +180,14 @@ async function runCheckAndFormat(
 }
 
 async function runTestAndLiveUpdate(
+  exec: PiExec,
   packageName: string,
   cwd: string,
   directory: string,
   logs: Record<string, LogFile>,
 ): Promise<ValidationStep | undefined> {
   const test = await runCaptured(
+    exec,
     limaBash(
       validationCommand("brioche build", "test").replace(
         '"./packages/$1"',
@@ -194,6 +202,7 @@ async function runTestAndLiveUpdate(
   if (test.exitCode !== 0) return "test";
 
   const liveUpdate = await runCaptured(
+    exec,
     limaBash(
       validationCommand("brioche run", "liveupdate").replace(
         '"./packages/$1"',
@@ -211,12 +220,14 @@ async function runTestAndLiveUpdate(
 }
 
 async function runValidation(
+  exec: PiExec,
   packageName: string,
   cwd: string,
   directory: string,
   logs: Record<string, LogFile>,
 ): Promise<ValidationStep | undefined> {
   const checkOrFormatFailure = await runCheckAndFormat(
+    exec,
     packageName,
     cwd,
     directory,
@@ -225,6 +236,7 @@ async function runValidation(
   if (checkOrFormatFailure) return checkOrFormatFailure;
 
   const build = await runCaptured(
+    exec,
     limaBash(validationCommand("brioche build", "build"), packageName),
     cwd,
     logPath(directory, "build"),
@@ -232,7 +244,7 @@ async function runValidation(
   logs.build = logRecord(directory, "build", build);
   if (build.exitCode !== 0) return "build";
 
-  return runTestAndLiveUpdate(packageName, cwd, directory, logs);
+  return runTestAndLiveUpdate(exec, packageName, cwd, directory, logs);
 }
 
 function validationSummary(failureStep: ValidationStep | undefined): string {
@@ -244,7 +256,9 @@ function validationSummary(failureStep: ValidationStep | undefined): string {
 export async function prepareSubmission(
   packageName: string,
   cwd: string,
+  pi: ExtensionAPI,
 ): Promise<PreparedSubmission> {
+  const exec = createPiExec(pi, maxBuffer);
   const projectPath = join(cwd, "packages", packageName, "project.bri");
   try {
     await access(projectPath);
@@ -256,7 +270,13 @@ export async function prepareSubmission(
   const logs: Record<string, LogFile> = {};
 
   try {
-    const failureStep = await runValidation(packageName, cwd, directory, logs);
+    const failureStep = await runValidation(
+      exec,
+      packageName,
+      cwd,
+      directory,
+      logs,
+    );
     const success = !failureStep;
     await writeMetadata(directory, {
       package: packageName,
@@ -324,30 +344,21 @@ export function failureOutput(prepared: PreparedSubmission): Promise<string> {
   return tailLog(log.path);
 }
 
-function commandError(command: string, error: unknown): Error {
-  const result = asObject(error);
-  const output =
-    `${commandOutput(result.stdout)}${commandOutput(result.stderr)}`.trim();
-  const detail = output ? `: ${output.slice(-2000)}` : "";
-  return new Error(`${command} failed${detail}`);
-}
-
 async function runCommand(
+  exec: PiExec,
   command: string,
   args: string[],
   cwd: string,
-  signal?: AbortSignal,
+  signal: AbortSignal,
 ): Promise<string> {
-  if (signal?.aborted) throw new Error("Package submission was cancelled.");
+  if (signal.aborted) throw new Error("Package submission was cancelled.");
   try {
-    const result = await execFileAsync(command, args, {
-      cwd,
-      maxBuffer,
-      signal,
-    });
-    return commandOutput(result.stdout);
+    const result = await runPiExec(exec, command, args, { cwd, signal });
+    if (signal.aborted) throw new Error("Package submission was cancelled.");
+    return result.stdout;
   } catch (error) {
-    throw commandError(`${command} ${args.join(" ")}`, error);
+    if (signal.aborted) throw new Error("Package submission was cancelled.");
+    throw error;
   }
 }
 
@@ -485,12 +496,13 @@ function githubRepository(remote: string): string | undefined {
 }
 
 async function verifyRepository(
+  exec: PiExec,
   cwd: string,
   packagePath: string,
   signal: AbortSignal,
 ): Promise<{ base: string; repository: string; branch: string }> {
   const command = (name: string, args: string[]) =>
-    runCommand(name, args, cwd, signal);
+    runCommand(exec, name, args, cwd, signal);
   const repositoryRoot = await realpath(
     (await command("git", ["rev-parse", "--show-toplevel"])).trim(),
   );
@@ -540,48 +552,55 @@ function branchName(packageName: string): string {
 }
 
 async function gitRef(
+  exec: PiExec,
   cwd: string,
   ref: string,
   signal: AbortSignal,
 ): Promise<string | undefined> {
   try {
     return (
-      await runCommand("git", ["rev-parse", "--verify", ref], cwd, signal)
+      await runCommand(exec, "git", ["rev-parse", "--verify", ref], cwd, signal)
     ).trim();
-  } catch {
+  } catch (error) {
+    if (isPiExecInterrupted(error)) throw error;
     return undefined;
   }
 }
 
 async function packageChanges(
+  exec: PiExec,
   cwd: string,
   packagePath: string,
   signal: AbortSignal,
 ): Promise<boolean> {
   try {
     await runCommand(
+      exec,
       "git",
       ["diff", "--quiet", "main", "--", packagePath],
       cwd,
       signal,
     );
     return false;
-  } catch {
+  } catch (error) {
+    if (isPiExecInterrupted(error)) throw error;
     return true;
   }
 }
 
 async function startFromMain(
+  exec: PiExec,
   cwd: string,
   packagePath: string,
   originalBranch: string,
   signal: AbortSignal,
 ): Promise<void> {
   const command = (name: string, args: string[]) =>
-    runCommand(name, args, cwd, signal);
+    runCommand(exec, name, args, cwd, signal);
   await command("git", ["fetch", "origin", "main"]);
   try {
     await runCommand(
+      exec,
       "git",
       [
         "merge-base",
@@ -592,11 +611,13 @@ async function startFromMain(
       cwd,
       signal,
     );
-  } catch {
+  } catch (error) {
+    if (isPiExecInterrupted(error)) throw error;
     throw new Error("Local main is not at or behind origin/main.");
   }
 
   const status = await runCommand(
+    exec,
     "git",
     ["status", "--porcelain=v1", "--null", "--untracked-files=all"],
     cwd,
@@ -605,7 +626,7 @@ async function startFromMain(
   const hasPackageChanges = statusPaths(status).some(
     (path) => path === packagePath || path.startsWith(`${packagePath}/`),
   );
-  const stashBefore = await gitRef(cwd, "refs/stash", signal);
+  const stashBefore = await gitRef(exec, cwd, "refs/stash", signal);
   await command("git", [
     "stash",
     "push",
@@ -615,14 +636,14 @@ async function startFromMain(
     "--",
     packagePath,
   ]);
-  const stashAfter = await gitRef(cwd, "refs/stash", signal);
+  const stashAfter = await gitRef(exec, cwd, "refs/stash", signal);
   const stashed = stashBefore !== stashAfter;
   if (hasPackageChanges && !stashed)
     throw new Error("Could not safely stash uncommitted package changes.");
   if (
     originalBranch !== "main" &&
     !hasPackageChanges &&
-    (await packageChanges(cwd, packagePath, signal))
+    (await packageChanges(exec, cwd, packagePath, signal))
   )
     throw new Error(
       "Current branch has committed package changes; start submission from main.",
@@ -641,7 +662,8 @@ async function startFromMain(
   if (stashed) {
     try {
       await command("git", ["stash", "pop", "--index"]);
-    } catch {
+    } catch (error) {
+      if (isPiExecInterrupted(error)) throw error;
       throw new Error(
         "Could not restore the package changes after updating main. The changes remain in git stash, and the repository is on main.",
       );
@@ -650,18 +672,20 @@ async function startFromMain(
 }
 
 async function ensureBranchAvailable(
+  exec: PiExec,
   branch: string,
   cwd: string,
   signal: AbortSignal,
 ): Promise<void> {
   const command = (name: string, args: string[]) =>
-    runCommand(name, args, cwd, signal);
+    runCommand(exec, name, args, cwd, signal);
   try {
     await command("git", ["show-ref", "--verify", `refs/heads/${branch}`]);
     throw new Error(`Package branch already exists: ${branch}`);
   } catch (error) {
     if (error instanceof Error && error.message.startsWith("Package branch"))
       throw error;
+    if (isPiExecInterrupted(error)) throw error;
   }
   try {
     await command("git", [
@@ -678,6 +702,7 @@ async function ensureBranchAvailable(
       error.message.startsWith("Remote package branch")
     )
       throw error;
+    if (isPiExecInterrupted(error)) throw error;
   }
 }
 
@@ -742,7 +767,9 @@ export async function submitPreparedPackage(
   metadata: ResearchMetadata,
   cwd: string,
   signal: AbortSignal,
+  pi: ExtensionAPI,
 ): Promise<{ branch: string; pullRequest: string }> {
+  const exec = createPiExec(pi, maxBuffer);
   if (!prepared.success)
     throw new Error("Cannot submit a package with a failed preflight.");
   const state: SubmissionState = {
@@ -754,20 +781,21 @@ export async function submitPreparedPackage(
   };
   try {
     const packagePath = `packages/${prepared.packageName}`;
-    const repository = await verifyRepository(cwd, packagePath, signal);
+    const repository = await verifyRepository(exec, cwd, packagePath, signal);
     const branch = branchName(prepared.packageName);
     // From this point onward cancellation may race a Git mutation. The
     // resulting evidence must remain available even if no acknowledgement is
     // received for the command that was in flight.
     state.mutationStarted = true;
-    await startFromMain(cwd, packagePath, repository.branch, signal);
-    await ensureBranchAvailable(branch, cwd, signal);
-    await runCommand("git", ["switch", "-c", branch], cwd, signal);
+    await startFromMain(exec, cwd, packagePath, repository.branch, signal);
+    await ensureBranchAvailable(exec, branch, cwd, signal);
+    await runCommand(exec, "git", ["switch", "-c", branch], cwd, signal);
     state.branch = branch;
     state.branchCreated = true;
-    await runCommand("git", ["add", "--", packagePath], cwd, signal);
+    await runCommand(exec, "git", ["add", "--", packagePath], cwd, signal);
     const staged = (
       await runCommand(
+        exec,
         "git",
         [
           "diff",
@@ -788,6 +816,7 @@ export async function submitPreparedPackage(
         "Package staging contained paths outside the package directory or no package paths.",
       );
     await runCommand(
+      exec,
       "git",
       ["commit", "-m", `feat(${prepared.packageName}): add package`],
       cwd,
@@ -795,6 +824,7 @@ export async function submitPreparedPackage(
     );
     state.commitCreated = true;
     await runCommand(
+      exec,
       "git",
       ["push", "--set-upstream", "origin", branch],
       cwd,
@@ -835,6 +865,7 @@ export async function submitPreparedPackage(
     await writeFile(bodyPath, body, { mode: 0o600 });
     const output = (
       await runCommand(
+        exec,
         "gh",
         [
           "pr",

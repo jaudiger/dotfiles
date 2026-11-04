@@ -1,4 +1,5 @@
-import { spawn } from "node:child_process";
+import type { PiExec } from "../pi-extension-infrastructure/pi-exec.js";
+import { requirePiExecComplete } from "../pi-extension-infrastructure/pi-exec.js";
 import { fileURLToPath } from "node:url";
 
 const FETCHER_PATH = fileURLToPath(new URL("./fetch-url.py", import.meta.url));
@@ -7,6 +8,7 @@ const MAX_OUTPUT_CHARS = 8192;
 const MAX_CACHED_TEXT_BYTES = 16 * 1024 * 1024;
 const MAX_CACHED_TEXT_ENTRIES = 256;
 const MAX_STDERR_BYTES = 8192;
+export const FETCHER_MAX_BUFFER = 4 * 1024 * 1024;
 export const MAX_MATCHES = 128;
 export const MAX_FIND_TEXT_LENGTH = 1024;
 export const MAX_FIND_TEXT_QUERIES = 16;
@@ -42,40 +44,26 @@ interface CachedText {
 const extractedTextCache = new Map<string, CachedText>();
 let cachedTextBytes = 0;
 
-function runFetcher(url: string, signal: AbortSignal): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const child = spawn(PYTHON_PATH, [FETCHER_PATH, url], {
-      shell: false,
-      signal,
-      stdio: ["ignore", "pipe", "pipe"],
-    });
-    const stdout: Buffer[] = [];
-    const stderr: Buffer[] = [];
-    let stderrBytes = 0;
-
-    // The Python fetcher owns the stdout size limit.
-    child.stdout.on("data", (chunk: Buffer) => stdout.push(chunk));
-    child.stderr.on("data", (chunk: Buffer) => {
-      const remaining = MAX_STDERR_BYTES - stderrBytes;
-      if (remaining <= 0) return;
-      const captured = chunk.subarray(0, remaining);
-      stderr.push(captured);
-      stderrBytes += captured.length;
-    });
-    child.once("error", reject);
-    child.once("close", (code) => {
-      if (code !== 0) {
-        const message = Buffer.concat(stderr).toString("utf8").trim();
-        reject(
-          new Error(
-            message || `URL fetch failed with exit code ${code ?? "unknown"}`,
-          ),
-        );
-        return;
-      }
-      resolve(Buffer.concat(stdout).toString("utf8"));
-    });
+async function runFetcher(
+  url: string,
+  signal: AbortSignal,
+  exec: PiExec,
+  cwd: string,
+): Promise<string> {
+  const result = await exec(PYTHON_PATH, [FETCHER_PATH, url], {
+    cwd,
+    signal,
   });
+  if (signal.aborted) throw new Error("URL fetch was cancelled.");
+  requirePiExecComplete("URL fetcher", result);
+  if (result.code !== 0) {
+    const stderr = Buffer.from(result.stderr)
+      .subarray(0, MAX_STDERR_BYTES)
+      .toString("utf8")
+      .trim();
+    throw new Error(stderr || `URL fetch failed with exit code ${result.code}`);
+  }
+  return result.stdout;
 }
 
 function getCachedText(url: string): string | undefined {
@@ -112,11 +100,16 @@ function cacheExtractedText(url: string, text: string): void {
   cachedTextBytes += size;
 }
 
-async function getExtractedText(url: string, signal: AbortSignal) {
+async function getExtractedText(
+  url: string,
+  signal: AbortSignal,
+  exec: PiExec,
+  cwd: string,
+) {
   const cached = getCachedText(url);
   if (cached !== undefined) return cached;
 
-  const text = await runFetcher(url, signal);
+  const text = await runFetcher(url, signal, exec, cwd);
   const cachedDuringFetch = getCachedText(url);
   if (cachedDuringFetch !== undefined) return cachedDuringFetch;
   cacheExtractedText(url, text);
@@ -439,9 +432,11 @@ function validateParams(params: FetchUrlParams): void {
 export async function executeFetchUrl(
   params: FetchUrlParams,
   signal: AbortSignal,
+  exec: PiExec,
+  cwd: string,
 ) {
   validateParams(params);
-  const text = await getExtractedText(params.url, signal);
+  const text = await getExtractedText(params.url, signal, exec, cwd);
   const pageSize = asCharacters(text).length;
 
   if (params.findText !== undefined) {

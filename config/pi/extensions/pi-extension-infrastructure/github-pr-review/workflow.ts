@@ -1,6 +1,7 @@
 import { resolve } from "node:path";
 import { writeFile } from "node:fs/promises";
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
+import type { PiExec } from "../pi-exec.js";
 import {
   runReadOnlyPiAgent,
   type PiAgentConfig,
@@ -53,6 +54,7 @@ export async function runReviewWorkflow(
   context: ExtensionContext,
   signal: AbortSignal,
   settings: PiAgentSettings,
+  exec: PiExec,
 ): Promise<ReviewWorkflowCompletion> {
   const artifacts = reviewWorkflowArtifacts(review);
   const agents = provider.agents ?? defaultAgents;
@@ -83,6 +85,7 @@ export async function runReviewWorkflow(
     includeFetchUrl: true,
     signal,
     settings,
+    exec,
   });
   await writeFile(artifacts.researcherReport, `${researcherReport}\n`, {
     encoding: "utf8",
@@ -106,6 +109,7 @@ export async function runReviewWorkflow(
     includeFetchUrl: false,
     signal,
     settings,
+    exec,
   });
   await writeFile(artifacts.scoutReport, `${scoutReport}\n`, {
     encoding: "utf8",

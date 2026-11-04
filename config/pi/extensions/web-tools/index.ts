@@ -2,11 +2,13 @@ import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { Text } from "@earendil-works/pi-tui";
 import { Type } from "typebox";
 import { formatUrlLink } from "../pi-extension-infrastructure/links.js";
+import { createPiExec } from "../pi-extension-infrastructure/pi-exec.js";
 import {
   executeFetchUrl,
   MAX_FIND_TEXT_LENGTH,
   MAX_FIND_TEXT_QUERIES,
   MAX_MATCHES,
+  FETCHER_MAX_BUFFER,
 } from "./fetch-url";
 
 const rangeSchema = Type.Object(
@@ -38,6 +40,7 @@ const fetchUrlOutputSchema = Type.Object(
 );
 
 export default function registerWebTools(pi: ExtensionAPI): void {
+  const exec = createPiExec(pi, FETCHER_MAX_BUFFER);
   pi.registerTool({
     name: "fetch_url",
     label: "Fetch URL",
@@ -84,8 +87,13 @@ export default function registerWebTools(pi: ExtensionAPI): void {
         { additionalProperties: false },
       ),
     ]),
-    async execute(_toolCallId, params, signal) {
-      return executeFetchUrl(params, signal);
+    async execute(_toolCallId, params, signal, _onUpdate, ctx) {
+      return executeFetchUrl(
+        params,
+        signal ?? new AbortController().signal,
+        exec,
+        ctx.cwd,
+      );
     },
     renderCall(args, theme) {
       return new Text(

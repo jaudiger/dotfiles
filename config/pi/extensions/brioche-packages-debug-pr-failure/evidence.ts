@@ -1,13 +1,17 @@
-import { execFile } from "node:child_process";
+import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
-import { promisify } from "node:util";
 import { collectRunEvidence } from "./artifacts.js";
 import { asObject, packageFromFiles, text, workflowRunId } from "./parsing.js";
 import type { PreparedContext } from "./types.js";
+import {
+  createPiExec,
+  runPiExec,
+  type PiExec,
+} from "../pi-extension-infrastructure/pi-exec.js";
 
-const execFileAsync = promisify(execFile);
+const maxBuffer = 40 * 1024 * 1024;
 
 const graphqlQuery = `query DebugPR($owner: String!, $repo: String!, $number: Int!) {
   repository(owner: $owner, name: $repo) {
@@ -25,15 +29,12 @@ const graphqlQuery = `query DebugPR($owner: String!, $repo: String!, $number: In
 }`;
 
 async function run(
+  exec: PiExec,
   command: string,
   args: string[],
   cwd: string,
 ): Promise<string> {
-  const result = await execFileAsync(command, args, {
-    cwd,
-    maxBuffer: 20 * 1024 * 1024,
-  });
-  return result.stdout;
+  return (await runPiExec(exec, command, args, { cwd })).stdout;
 }
 
 export async function removeDirectory(directory: string): Promise<boolean> {
@@ -45,8 +46,12 @@ export async function removeDirectory(directory: string): Promise<boolean> {
   }
 }
 
-async function ghJson(args: string[], cwd: string): Promise<unknown> {
-  const output = await run("gh", args, cwd);
+async function ghJson(
+  exec: PiExec,
+  args: string[],
+  cwd: string,
+): Promise<unknown> {
+  const output = await run(exec, "gh", args, cwd);
   try {
     return JSON.parse(output) as unknown;
   } catch {
@@ -57,11 +62,13 @@ async function ghJson(args: string[], cwd: string): Promise<unknown> {
 }
 
 async function removeLimaDirectory(
+  exec: PiExec,
   directory: string,
   cwd: string,
 ): Promise<void> {
   try {
     await run(
+      exec,
       "limactl",
       ["shell", "brioche-packages", "--", "rm", "-rf", "--", directory],
       cwd,
@@ -70,12 +77,15 @@ async function removeLimaDirectory(
 }
 
 export async function prepareContext(
+  pi: ExtensionAPI,
   pr: string,
   cwd: string,
 ): Promise<PreparedContext> {
+  const exec = createPiExec(pi, maxBuffer);
   const directory = await mkdtemp(join(tmpdir(), "brioche-debug-pr-failure-"));
   try {
     const queryResult = await ghJson(
+      exec,
       [
         "api",
         "graphql",
@@ -122,17 +132,24 @@ export async function prepareContext(
     // The diff is required evidence; unlike optional job logs, a failed
     // command must abort preparation rather than produce a misleading run.
     const pullRequestDiff = await run(
+      exec,
       "gh",
       ["pr", "diff", pr, "--repo", "brioche-dev/brioche-packages"],
       cwd,
     );
     await writeFile(join(directory, "pr.diff"), pullRequestDiff);
-    const runEvidence = await collectRunEvidence(runId, cwd, directory, run);
+    const runEvidence = await collectRunEvidence(
+      runId,
+      cwd,
+      directory,
+      (command, args, commandCwd) => run(exec, command, args, commandCwd),
+    );
     const { eventFiles, failedLog } = runEvidence;
     if (eventFiles.length > 0) {
       const limaDirectory = `/tmp/${basename(directory)}`;
       try {
         await run(
+          exec,
           "limactl",
           ["shell", "brioche-packages", "--", "mkdir", "-p", limaDirectory],
           cwd,
@@ -143,11 +160,13 @@ export async function prepareContext(
             `${String(index).padStart(4, "0")}-events.bin.zst`,
           );
           await run(
+            exec,
             "limactl",
             ["copy", eventFile, `brioche-packages:${limaEventFile}`],
             cwd,
           );
           const output = await run(
+            exec,
             "limactl",
             [
               "shell",
@@ -163,10 +182,10 @@ export async function prepareContext(
           await writeFile(`${eventFile}.log`, output);
         }
       } finally {
-        await removeLimaDirectory(limaDirectory, cwd);
+        await removeLimaDirectory(exec, limaDirectory, cwd);
       }
     }
-    const listing = await run("find", [directory, "-type", "f"], cwd);
+    const listing = await run(exec, "find", [directory, "-type", "f"], cwd);
     await writeFile(join(directory, "manifest.txt"), listing);
     const failedLogSummary = runEvidence.failedLogAvailable
       ? `${Buffer.byteLength(failedLog)} bytes`
