@@ -133,8 +133,13 @@ _:
                   map('n', '<leader>gB', function() gs.blame_line({ full = true }) end, { desc = 'Blame line (full)' })
                   map('n', '<leader>gp', gs.preview_hunk, { desc = 'Preview hunk' })
                   map('n', '<leader>gR', gs.reset_hunk, { desc = 'Reset hunk' })
-                  map('n', '<leader>gS', gs.stage_hunk, { desc = 'Stage hunk' })
-                  map('n', '<leader>gU', gs.undo_stage_hunk, { desc = 'Undo stage hunk' })
+                  map('n', '<leader>gS', gs.stage_hunk, { desc = 'Stage/unstage hunk' })
+                  map('v', '<leader>gR', function()
+                    gs.reset_hunk({ vim.fn.line('.'), vim.fn.line('v') })
+                  end, { desc = 'Reset selected lines' })
+                  map('v', '<leader>gS', function()
+                    gs.stage_hunk({ vim.fn.line('.'), vim.fn.line('v') })
+                  end, { desc = 'Stage selected lines' })
                 end
               '';
             };
