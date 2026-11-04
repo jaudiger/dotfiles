@@ -71,11 +71,12 @@ export default function registerBriochePackagesBotReview(pi: ExtensionAPI) {
     // listCandidates delegates filtering to the Brioche GitHub operations provider.
     candidateEligibility: () => true,
     listCandidates: (cwd) => listCandidates(exec, cwd),
-    loadDiff: (candidate: ReviewCandidate) => fetchReviewDiff(exec, candidate),
+    loadDiff: (candidate: ReviewCandidate, cwd: string) =>
+      fetchReviewDiff(exec, candidate, cwd),
     loadDetails: (
       candidate: ReviewCandidate,
-      _cwd: string,
-    ): Promise<ReviewDetails> => fetchReviewDetails(exec, candidate),
+      cwd: string,
+    ): Promise<ReviewDetails> => fetchReviewDetails(exec, candidate, cwd),
     showQueuePosition: true,
     prepareReview: (
       cwd: string,

@@ -350,23 +350,17 @@ export function listCandidates(
 export function fetchReviewDiff(
   exec: PiExec,
   candidate: ReviewCandidate,
+  cwd: string,
 ): Promise<string> {
-  return sharedFetchReviewDiff(
-    briocheGithubProvider(exec),
-    candidate,
-    process.cwd(),
-  );
+  return sharedFetchReviewDiff(briocheGithubProvider(exec), candidate, cwd);
 }
 
 export function fetchReviewDetails(
   exec: PiExec,
   candidate: ReviewCandidate,
+  cwd: string,
 ): Promise<ReviewDetails> {
-  return sharedFetchReviewDetails(
-    briocheGithubProvider(exec),
-    candidate,
-    process.cwd(),
-  );
+  return sharedFetchReviewDetails(briocheGithubProvider(exec), candidate, cwd);
 }
 
 export function prepareReview(

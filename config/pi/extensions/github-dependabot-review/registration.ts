@@ -72,11 +72,11 @@ export default function registerDependabotReview(pi: ExtensionAPI) {
     candidateEligibility: () => true,
     listCandidates: (cwd) => listCandidates(exec, cwd),
     showRepositoryDescription: true,
-    loadDiff: (candidate, _cwd) => fetchReviewDiff(exec, candidate),
+    loadDiff: (candidate, cwd) => fetchReviewDiff(exec, candidate, cwd),
     loadDetails: (
       candidate: ReviewCandidate,
-      _cwd: string,
-    ): Promise<ReviewDetails> => fetchReviewDetails(exec, candidate),
+      cwd: string,
+    ): Promise<ReviewDetails> => fetchReviewDetails(exec, candidate, cwd),
     showQueuePosition: false,
     prepareReview: (
       cwd: string,

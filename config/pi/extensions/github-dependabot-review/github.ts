@@ -297,21 +297,19 @@ export function listCandidates(
 export function fetchReviewDiff(
   exec: PiExec,
   candidate: ReviewCandidate,
+  cwd: string,
 ): Promise<string> {
   if (!candidate.repository && !repositoryFromUrl(candidate.url))
     return Promise.reject(
       new Error("Dependabot pull request had no valid GitHub URL."),
     );
-  return sharedFetchReviewDiff(
-    dependabotGithubProvider(exec),
-    candidate,
-    process.cwd(),
-  );
+  return sharedFetchReviewDiff(dependabotGithubProvider(exec), candidate, cwd);
 }
 
 export function fetchReviewDetails(
   exec: PiExec,
   candidate: ReviewCandidate,
+  cwd: string,
 ): Promise<ReviewDetails> {
   if (!candidate.repository && !repositoryFromUrl(candidate.url))
     return Promise.reject(
@@ -320,7 +318,7 @@ export function fetchReviewDetails(
   return sharedFetchReviewDetails(
     dependabotGithubProvider(exec),
     candidate,
-    process.cwd(),
+    cwd,
   );
 }
 
