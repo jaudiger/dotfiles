@@ -101,7 +101,8 @@ class ReviewPicker implements Component {
   private readonly showRepositoryDescription: boolean;
   private readonly done: (selection: PickerSelection | null) => void;
   private readonly candidatesByUrl: Map<string, ReviewCandidate>;
-  private readonly selector: SelectList;
+  private selector: SelectList;
+  private selectorVisibleRows: number;
   private readonly diffCache = new Map<string, string>();
   private readonly detailsCache = new Map<string, ReviewDetails>();
   private readonly selectedCandidates = new Set<string>();
@@ -133,38 +134,8 @@ class ReviewPicker implements Component {
       this.candidates.map((candidate) => [candidate.url, candidate]),
     );
 
-    const items = this.candidates.map((candidate) => ({
-      value: candidate.url,
-      label: `#${candidate.number} ${candidate.title}`,
-      description: this.showRepositoryDescription
-        ? candidate.repository
-        : undefined,
-    }));
-    this.selector = new SelectList(
-      items,
-      this.listPanelRows(),
-      {
-        selectedPrefix: (text) => this.theme.fg("accent", text),
-        selectedText: (text) => this.theme.fg("accent", text),
-        description: (text) => this.theme.fg("muted", text),
-        scrollInfo: (text) => this.theme.fg("dim", text),
-        noMatch: (text) => this.theme.fg("warning", text),
-      },
-      {
-        truncatePrimary: ({ text, item, maxWidth }) =>
-          truncateToWidth(
-            `${this.selectedCandidates.has(item.value) ? "[x]" : "[ ]"} ${text}`,
-            maxWidth,
-            "",
-          ),
-      },
-    );
-    this.selector.onSelectionChange = (item) => {
-      const candidate = this.candidatesByUrl.get(item.value);
-      if (candidate) this.selectCandidate(candidate);
-    };
-    this.selector.onSelect = () => this.finishSelection();
-    this.selector.onCancel = () => this.done(null);
+    this.selectorVisibleRows = this.selectorViewportRows(this.listPanelRows());
+    this.selector = this.createSelector(this.selectorVisibleRows);
     void this.loadDiff(this.selected);
     void this.loadDetails(this.selected);
   }
@@ -235,6 +206,7 @@ class ReviewPicker implements Component {
     const bodyRows = panelRows;
     const detailRows = this.detailPanelRows();
     const listRows = bodyRows - detailRows - 2;
+    this.syncSelectorViewport(listRows);
     const leftLines = this.selector.render(leftWidth).slice(0, listRows);
     const detailLines = this.renderDetail(leftWidth, detailRows);
     const rightLines = this.renderDiff(rightWidth);
@@ -285,6 +257,60 @@ class ReviewPicker implements Component {
       ),
     );
     return lines;
+  }
+
+  private createSelector(maxVisible: number): SelectList {
+    const items = this.candidates.map((candidate) => ({
+      value: candidate.url,
+      label: `#${candidate.number} ${candidate.title}`,
+      description: this.showRepositoryDescription
+        ? candidate.repository
+        : undefined,
+    }));
+    const selector = new SelectList(
+      items,
+      maxVisible,
+      {
+        selectedPrefix: (text) => this.theme.fg("accent", text),
+        selectedText: (text) => this.theme.fg("accent", text),
+        description: (text) => this.theme.fg("muted", text),
+        scrollInfo: (text) => this.theme.fg("dim", text),
+        noMatch: (text) => this.theme.fg("warning", text),
+      },
+      {
+        truncatePrimary: ({ text, item, maxWidth }) =>
+          truncateToWidth(
+            `${this.selectedCandidates.has(item.value) ? "[x]" : "[ ]"} ${text}`,
+            maxWidth,
+            "",
+          ),
+      },
+    );
+    selector.onSelectionChange = (item) => {
+      const candidate = this.candidatesByUrl.get(item.value);
+      if (candidate) this.selectCandidate(candidate);
+    };
+    selector.onSelect = () => this.finishSelection();
+    selector.onCancel = () => this.done(null);
+    return selector;
+  }
+
+  private selectorViewportRows(listRows: number): number {
+    const indicatorRows = this.candidates.length > listRows ? 1 : 0;
+    return Math.max(1, listRows - indicatorRows);
+  }
+
+  private syncSelectorViewport(listRows: number): void {
+    const visibleRows = this.selectorViewportRows(listRows);
+    if (visibleRows === this.selectorVisibleRows) return;
+
+    this.selectorVisibleRows = visibleRows;
+    this.selector = this.createSelector(visibleRows);
+    this.selector.setSelectedIndex(
+      this.candidates.findIndex(
+        (candidate) => candidate.url === this.selected.url,
+      ),
+    );
   }
 
   private finishSelection(): void {
