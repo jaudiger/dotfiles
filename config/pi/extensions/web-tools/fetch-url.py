@@ -2,6 +2,7 @@
 import asyncio
 import re
 import sys
+from io import BytesIO
 from typing import Any
 from urllib.parse import urlsplit
 
@@ -9,6 +10,8 @@ import trafilatura
 from playwright.async_api import Error as PlaywrightError
 from playwright.async_api import TimeoutError as PlaywrightTimeoutError
 from playwright.async_api import async_playwright
+from pypdf import PdfReader
+from pypdf.errors import PyPdfError
 
 NAVIGATION_TIMEOUT_MS = 30_000
 CONTENT_READY_TIMEOUT_MS = 5_000
@@ -17,6 +20,7 @@ MIN_CANDIDATE_CHARS = 32
 MAX_FETCHED_TEXT_BYTES = 2 * 1024 * 1024
 MAX_DOCUMENT_BYTES = 8 * 1024 * 1024
 HTML_CONTENT_TYPES = {"text/html", "application/xhtml+xml"}
+PDF_CONTENT_TYPES = {"application/pdf"}
 TEXT_CONTENT_TYPES = {
     "application/ecmascript",
     "application/javascript",
@@ -58,6 +62,11 @@ def ensure_response_size(response: Any, maximum: int) -> None:
         raise ValueError(f"response exceeds the {maximum}-byte limit")
 
 
+def ensure_successful_response(response: Any, url: str) -> None:
+    if response.status >= 400:
+        raise ValueError(f"HTTP request failed with status {response.status} for {url}")
+
+
 def ensure_text_size(text: str, maximum: int = MAX_FETCHED_TEXT_BYTES) -> str:
     if len(text.encode("utf-8")) > maximum:
         raise ValueError(f"fetched content exceeds the {maximum}-byte limit")
@@ -72,6 +81,10 @@ def is_html_content(content_type: str) -> bool:
     return media_type(content_type) in HTML_CONTENT_TYPES
 
 
+def is_pdf_content(content_type: str) -> bool:
+    return media_type(content_type) in PDF_CONTENT_TYPES
+
+
 def is_text_content(content_type: str) -> bool:
     content_type = media_type(content_type)
     return (
@@ -79,6 +92,17 @@ def is_text_content(content_type: str) -> bool:
         or content_type in TEXT_CONTENT_TYPES
         or content_type.endswith(("+json", "+xml"))
     )
+
+
+def is_pdf_response(response: Any) -> bool:
+    content_type = response.headers.get("content-type", "")
+    if is_pdf_content(content_type):
+        return True
+    if is_html_content(content_type) or is_text_content(content_type):
+        return False
+    if urlsplit(response.url).path.lower().endswith(".pdf"):
+        return True
+    return ".pdf" in response.headers.get("content-disposition", "").lower()
 
 
 def ensure_supported_content_type(content_type: str) -> None:
@@ -107,6 +131,45 @@ def decode_response_body(body: bytes, content_type: str) -> str:
     except (LookupError, UnicodeDecodeError):
         text = body.decode("utf-8", errors="replace").strip()
     return ensure_text_size(text)
+
+
+def extract_pdf(body: bytes) -> str:
+    if len(body) > MAX_DOCUMENT_BYTES:
+        raise ValueError(f"PDF exceeds the {MAX_DOCUMENT_BYTES}-byte limit")
+    if b"%PDF-" not in body[:1024]:
+        raise ValueError("response does not contain a valid PDF document")
+
+    try:
+        reader = PdfReader(BytesIO(body), strict=False)
+        if reader.is_encrypted:
+            raise ValueError("encrypted PDFs are not supported")
+        pages: list[str] = []
+        text_size = 0
+        for page_number, page in enumerate(reader.pages, start=1):
+            page_text = (page.extract_text() or "").strip()
+            if not page_text:
+                continue
+            section = f"[Page {page_number}]\n{page_text}"
+            section_size = len(section.encode("utf-8"))
+            separator_size = 2 if pages else 0
+            if text_size + separator_size + section_size > MAX_FETCHED_TEXT_BYTES:
+                raise ValueError(
+                    f"PDF text exceeds the {MAX_FETCHED_TEXT_BYTES}-byte limit"
+                )
+            pages.append(section)
+            text_size += separator_size + section_size
+    except PyPdfError as error:
+        raise ValueError(f"could not read PDF: {error}") from error
+
+    extracted = "\n\n".join(pages)
+    if not extracted:
+        raise ValueError("PDF contains no extractable text")
+    return extracted
+
+
+async def extract_pdf_response(response: Any) -> str:
+    ensure_response_size(response, MAX_DOCUMENT_BYTES)
+    return extract_pdf(await response.body())
 
 
 def extract_html(html: str) -> str | None:
@@ -208,23 +271,25 @@ async def fetch_url(url: str) -> str:
                     wait_until="commit",
                 )
             except PlaywrightError:
-                if (
-                    navigation_response is not None
-                    and navigation_response.status == 204
-                ):
-                    validate_url(page.url)
-                    return ""
+                if navigation_response is not None:
+                    validate_url(navigation_response.url)
+                    ensure_successful_response(navigation_response, url)
+                    if navigation_response.status == 204:
+                        return ""
+                    if is_pdf_response(navigation_response):
+                        return await extract_pdf_response(navigation_response)
                 raise
             if response is None:
                 response = navigation_response
             validate_url(page.url)
-            if response and response.status >= 400:
-                raise ValueError(
-                    f"HTTP request failed with status {response.status} for {url}"
-                )
+            if response:
+                ensure_successful_response(response, url)
             if response and response.status == 204:
                 return ""
             content_type = response.headers.get("content-type", "") if response else ""
+            if response and is_pdf_response(response):
+                validate_url(response.url)
+                return await extract_pdf_response(response)
             if response:
                 ensure_response_size(response, MAX_DOCUMENT_BYTES)
 
@@ -267,10 +332,7 @@ async def fetch_url(url: str) -> str:
 
 def error_message(error: PlaywrightError | ValueError) -> str:
     if isinstance(error, PlaywrightError) and "Download is starting" in str(error):
-        return (
-            "unsupported format: the URL starts a file download, "
-            "but downloaded files are not supported"
-        )
+        return "unsupported format: the URL starts a non-PDF file download"
     message = str(error).strip()
     return message or type(error).__name__
 

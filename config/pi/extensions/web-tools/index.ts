@@ -3,21 +3,9 @@ import { Text } from "@earendil-works/pi-tui";
 import { Type } from "typebox";
 import { formatUrlLink } from "../pi-extension-infrastructure/links.js";
 import { createPiExec } from "../pi-extension-infrastructure/pi-exec.js";
-import {
-  executeFetchUrl,
-  MAX_FIND_TEXT_LENGTH,
-  MAX_FIND_TEXT_QUERIES,
-  MAX_MATCHES,
-  FETCHER_MAX_BUFFER,
-} from "./fetch-url";
+import { fetchUrlParameters, fetchUrlRangeSchema } from "./fetch-url-schema.js";
+import { executeFetchUrl, MAX_MATCHES, FETCHER_MAX_BUFFER } from "./fetch-url";
 
-const rangeSchema = Type.Object(
-  {
-    start: Type.Integer({ minimum: 0 }),
-    end: Type.Integer({ minimum: 0 }),
-  },
-  { additionalProperties: false },
-);
 const matchSchema = Type.Object(
   {
     query: Type.String(),
@@ -33,8 +21,8 @@ const fetchUrlOutputSchema = Type.Object(
     pageSize: Type.Integer({ minimum: 0 }),
     matches: Type.Array(matchSchema, { maxItems: MAX_MATCHES }),
     matchesTruncated: Type.Boolean(),
-    ranges: Type.Array(rangeSchema, { maxItems: MAX_MATCHES }),
-    requestedRange: Type.Optional(rangeSchema),
+    ranges: Type.Array(fetchUrlRangeSchema, { maxItems: MAX_MATCHES }),
+    requestedRange: Type.Optional(fetchUrlRangeSchema),
   },
   { additionalProperties: false },
 );
@@ -47,46 +35,7 @@ export default function registerWebTools(pi: ExtensionAPI): void {
     description: "Fetch a URL and return relevant content.",
     promptSnippet: "Fetch URL content.",
     outputSchema: fetchUrlOutputSchema,
-    parameters: Type.Union([
-      Type.Object(
-        {
-          url: Type.String(),
-        },
-        { additionalProperties: false },
-      ),
-      Type.Object(
-        {
-          url: Type.String(),
-          findText: Type.Union([
-            Type.String({ maxLength: MAX_FIND_TEXT_LENGTH }),
-            Type.Array(Type.String({ maxLength: MAX_FIND_TEXT_LENGTH }), {
-              maxItems: MAX_FIND_TEXT_QUERIES,
-            }),
-          ]),
-          findMode: Type.Optional(
-            Type.Union([
-              Type.Literal("exact"),
-              Type.Literal("case-insensitive"),
-              Type.Literal("fuzzy"),
-            ]),
-          ),
-        },
-        { additionalProperties: false },
-      ),
-      Type.Object(
-        {
-          url: Type.String(),
-          range: Type.Object(
-            {
-              start: Type.Integer({ minimum: 0 }),
-              end: Type.Integer({ minimum: 0 }),
-            },
-            { additionalProperties: false },
-          ),
-        },
-        { additionalProperties: false },
-      ),
-    ]),
+    parameters: fetchUrlParameters,
     async execute(_toolCallId, params, signal, _onUpdate, ctx) {
       return executeFetchUrl(
         params,

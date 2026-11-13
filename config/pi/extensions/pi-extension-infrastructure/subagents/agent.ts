@@ -10,13 +10,11 @@ import {
   type ResourceLoader,
   type ToolDefinition,
 } from "@earendil-works/pi-coding-agent";
-import { Type } from "typebox";
 import {
   executeFetchUrl,
-  MAX_FIND_TEXT_LENGTH,
-  MAX_FIND_TEXT_QUERIES,
   type FetchUrlParams,
 } from "../../web-tools/fetch-url.js";
+import { fetchUrlParameters } from "../../web-tools/fetch-url-schema.js";
 import type { PiExec } from "../pi-exec.js";
 
 export type PiAgentConfig = {
@@ -64,37 +62,6 @@ function reservePiAgentRun(): () => void {
   return () => activePiAgentRuns.delete(token);
 }
 
-const fetchUrlParameters = Type.Object(
-  {
-    url: Type.String(),
-    findText: Type.Optional(
-      Type.Union([
-        Type.String({ maxLength: MAX_FIND_TEXT_LENGTH }),
-        Type.Array(Type.String({ maxLength: MAX_FIND_TEXT_LENGTH }), {
-          maxItems: MAX_FIND_TEXT_QUERIES,
-        }),
-      ]),
-    ),
-    findMode: Type.Optional(
-      Type.Union([
-        Type.Literal("exact"),
-        Type.Literal("case-insensitive"),
-        Type.Literal("fuzzy"),
-      ]),
-    ),
-    range: Type.Optional(
-      Type.Object(
-        {
-          start: Type.Integer({ minimum: 0 }),
-          end: Type.Integer({ minimum: 0 }),
-        },
-        { additionalProperties: false },
-      ),
-    ),
-  },
-  { additionalProperties: false },
-);
-
 function createFetchUrlTool(
   exec: PiExec,
   cwd: string,
@@ -102,7 +69,7 @@ function createFetchUrlTool(
   return {
     name: "fetch_url",
     label: "Fetch URL",
-    description: "Fetch and inspect a URL.",
+    description: "Fetch a URL and return relevant content.",
     parameters: fetchUrlParameters,
     async execute(_id, params, signal) {
       const result = await executeFetchUrl(
