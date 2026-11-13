@@ -52,6 +52,7 @@ export function registerDebugPrFailure(pi: ExtensionAPI) {
       cwd: briochePackagesRepository,
       config: oracleAgent,
       task,
+      includeFetchUrl: true,
     },
     evidence: {
       path: owner.directory,
