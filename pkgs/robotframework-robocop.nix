@@ -12,14 +12,13 @@
   tomli-w,
   pathspec,
   platformdirs,
-  pytz,
   msgpack,
   typing-extensions,
 }:
 
 buildPythonPackage rec {
   pname = "robotframework-robocop";
-  version = "8.2.7";
+  version = "9.4.0";
   pyproject = true;
 
   disabled = pythonOlder "3.10";
@@ -28,7 +27,7 @@ buildPythonPackage rec {
     owner = "MarketSquare";
     repo = "robotframework-robocop";
     rev = "v${version}";
-    hash = "sha256-PNg5eqQrY0WLcP6fr0gmsZ30a8Izb0PSZM2wonf3j5M=";
+    hash = "sha256-bs/TH5/k1CxGBCNk2UdcrFbiFdw8TI5KYfjrn//bD0k=";
   };
 
   nativeBuildInputs = [
@@ -45,7 +44,6 @@ buildPythonPackage rec {
     tomli-w
     pathspec
     platformdirs
-    pytz
     msgpack
     typing-extensions
   ];
