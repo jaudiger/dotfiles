@@ -2,27 +2,27 @@
   lib,
   stdenv,
   fetchFromGitHub,
-  zig_master,
+  zig,
 }:
 
 stdenv.mkDerivation (finalAttrs: {
   pname = "ziggy";
-  version = "0.2.0";
+  version = "0.3.0";
 
   src = fetchFromGitHub {
     owner = "kristoff-it";
     repo = "ziggy";
     rev = "v${finalAttrs.version}";
-    hash = "sha256-luLYcGQ/2yi5SZbv1l7Be9LcizqiZdJY1i6TuxqFLdg=";
+    hash = "sha256-cRUb4kSZnvvj3N0VyGQr65H2DCllqnb/sSgwJkx1YIA=";
   };
 
-  zigDeps = zig_master.fetchDeps {
+  zigDeps = zig.fetchDeps {
     inherit (finalAttrs) src pname version;
     fetchAll = true;
-    hash = "sha256-rndrm8eIMiUOyT8jkOqpS6rr7X7OWji1YBUPZUcwXY0=";
+    hash = "sha256-FnfCiRxizoU1T78DWlVSOcKHTw24IWL6WpLKCgtwkRY=";
   };
 
-  nativeBuildInputs = [ zig_master ];
+  nativeBuildInputs = [ zig ];
 
   preConfigure = ''
     export ZIG_GLOBAL_CACHE_DIR="$TMPDIR/zig-global-cache"
