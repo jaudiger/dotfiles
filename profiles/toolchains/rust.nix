@@ -143,7 +143,7 @@ let
         enable = "never";
       };
       implicitDrops = {
-        enable = true;
+        enable = "always";
       };
       lifetimeElisionHints = {
         enable = "skip_trivial";
