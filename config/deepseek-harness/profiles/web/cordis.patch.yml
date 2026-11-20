@@ -7,7 +7,10 @@
 - id: ui-settings-account
   disabled: true
 
-- id: account-controller
+- id: ui-account-notifications
+  disabled: true
+
+- id: ui-agent-team
   disabled: true
 
 - id: deepseek-account

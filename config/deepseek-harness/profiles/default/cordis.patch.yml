@@ -1,2 +1,8 @@
 - id: plugin-package-inventory-deepseek
   disabled: true
+
+- id: agent-team
+  disabled: true
+
+- id: tool-agent-team
+  disabled: true

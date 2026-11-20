@@ -23,3 +23,9 @@
     provider: fork
     toolName: subagent_fork
     maxDepth: 1
+
+- id: agent-team
+  disabled: true
+
+- id: tool-agent-team
+  disabled: true
