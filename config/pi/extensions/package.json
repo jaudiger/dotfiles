@@ -13,8 +13,7 @@
       "./pi-extension-infrastructure/index.ts",
       "./project-trust/index.ts",
       "./web-tools/index.ts",
-      "./protected-paths/index.ts",
-      "./sandbox-bash/index.ts"
+      "./protected-paths/index.ts"
     ]
   }
 }
