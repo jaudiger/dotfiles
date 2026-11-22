@@ -197,7 +197,7 @@ class ReviewPicker implements Component {
     this.selector.invalidate();
   }
 
-  render(width: number): string[] {
+  render(width: number): readonly string[] {
     const separatorWidth = 1;
     const contentWidth = Math.max(2, width - separatorWidth);
     const leftWidth = Math.floor(contentWidth / 3);

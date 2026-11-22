@@ -64,7 +64,7 @@ let
   subagentAgents = {
     oracle = {
       workspaceAccess = "read-only";
-      model = "openai-codex/gpt-6.1-sol";
+      model = "openai-codex/gpt-6.2-sol";
       thinking = "high";
       tools = [
         "bash"
@@ -75,7 +75,7 @@ let
     };
     researcher = {
       workspaceAccess = "read-only";
-      model = "openai-codex/gpt-6.1-sol";
+      model = "openai-codex/gpt-6.2-sol";
       thinking = "low";
       tools = [
         "bash"
@@ -86,7 +86,7 @@ let
     };
     reviewer = {
       workspaceAccess = "read-only";
-      model = "openai-codex/gpt-6.1-sol";
+      model = "openai-codex/gpt-6.2-sol";
       thinking = "high";
       tools = [
         "bash"
