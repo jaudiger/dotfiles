@@ -30,7 +30,7 @@ in
     };
 
     templates.aws_credentials = {
-      path = "${host.homeDirectory}/.aws/credentials";
+      path = "${host.homeDirectory}/.config/aws/credentials";
       owner = host.username;
       mode = "0600";
       content = ''
