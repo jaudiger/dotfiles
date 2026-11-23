@@ -34,7 +34,7 @@ async function successful(
   cwd: string,
 ): Promise<string> {
   const result = await runPiExec(exec, command, args, { cwd });
-  return `${result.stdout}${result.stderr}`;
+  return result.stdout;
 }
 
 async function ghJson(

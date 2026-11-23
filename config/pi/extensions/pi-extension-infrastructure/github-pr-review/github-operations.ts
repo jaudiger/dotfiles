@@ -421,7 +421,7 @@ async function successful(
 ): Promise<string> {
   for (let attempt = 0; ; attempt += 1) {
     const result = await capturePiExec(exec, command, args, { cwd });
-    if (result.exitCode === 0) return result.output;
+    if (result.exitCode === 0) return result.result.stdout;
     if (result.error?.killed || result.error?.truncated) throw result.error;
     const detail = result.output.trim().slice(-2000);
     const failure = new Error(
