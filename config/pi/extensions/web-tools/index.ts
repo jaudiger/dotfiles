@@ -1,7 +1,10 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { Text } from "@earendil-works/pi-tui";
 import { Type } from "typebox";
-import { formatUrlLink } from "../pi-extension-infrastructure/links.js";
+import {
+  formatLabeledUrlLink,
+  formatUrlLink,
+} from "../pi-extension-infrastructure/links.js";
 import { createPiExec } from "../pi-extension-infrastructure/pi-exec.js";
 import { fetchUrlParameters, fetchUrlRangeSchema } from "./fetch-url-schema.js";
 import { executeFetchUrl, MAX_MATCHES, FETCHER_MAX_BUFFER } from "./fetch-url";
@@ -57,6 +60,76 @@ export default function registerWebTools(pi: ExtensionAPI): void {
         0,
       );
     },
+    renderResult(result, { expanded }, theme) {
+      const fallback = (result as { content?: unknown }).content;
+      const fallbackText = Array.isArray(fallback)
+        ? fallback
+            .filter(
+              (item): item is { type: "text"; text: string } =>
+                typeof item === "object" &&
+                item !== null &&
+                (item as { type?: unknown }).type === "text" &&
+                typeof (item as { text?: unknown }).text === "string",
+            )
+            .map((item) => item.text)
+            .join("\n")
+        : "";
+      const details = (result.details ?? {}) as {
+        provider?: unknown;
+        results?: unknown;
+      };
+      const results = details.results;
+      if (
+        (details.provider !== "DuckDuckGo" &&
+          details.provider !== "Startpage") ||
+        !Array.isArray(results) ||
+        !results.every(
+          (item) =>
+            typeof item === "object" &&
+            item !== null &&
+            typeof (item as { title?: unknown }).title === "string" &&
+            typeof (item as { url?: unknown }).url === "string" &&
+            ((item as { snippet?: unknown }).snippet === undefined ||
+              typeof (item as { snippet?: unknown }).snippet === "string"),
+        )
+      ) {
+        return new Text(fallbackText, 0, 0);
+      }
+      const clean = (value: string) =>
+        value
+          .replace(/[\u0000-\u001f\u007f-\u009f]/g, " ")
+          .replace(/\s+/g, " ")
+          .trim();
+      const count = results.length;
+      const header = theme.fg(
+        "success",
+        `${clean(details.provider)}: ${count} ${count === 1 ? "result" : "results"}`,
+      );
+      if (!count) return new Text(header, 0, 0);
+      const visible = expanded ? results : results.slice(0, 3);
+      const list = visible
+        .map((item, index) => {
+          const title = clean((item as { title: string }).title);
+          const url = (item as { url: string }).url;
+          const snippet = (item as { snippet?: string }).snippet;
+          const link = formatLabeledUrlLink(url, title, 36);
+          const fullSnippet = snippet ? clean(snippet) : "";
+          const shortSnippet =
+            fullSnippet.length > 180
+              ? `${fullSnippet.slice(0, 177)}...`
+              : fullSnippet;
+          const fullUrl = url.replace(/[\u0000-\u001f\u007f-\u009f]/g, "");
+          return expanded
+            ? `${index + 1}. ${link}\n   ${fullUrl}${fullSnippet ? `\n   ${fullSnippet}` : ""}`
+            : `${index + 1}. ${link}${shortSnippet ? `: ${shortSnippet}` : ""}`;
+        })
+        .join("\n");
+      const more =
+        !expanded && count > visible.length
+          ? `\n... ${count - visible.length} more results`
+          : "";
+      return new Text(`${header}\n${list}${more}`, 0, 0);
+    },
   });
   pi.registerTool({
     name: "fetch_url",
@@ -74,9 +147,44 @@ export default function registerWebTools(pi: ExtensionAPI): void {
       );
     },
     renderCall(args, theme) {
+      const values = (args && typeof args === "object" ? args : {}) as {
+        url?: unknown;
+        range?: { start?: unknown; end?: unknown };
+        findText?: unknown;
+        findMode?: unknown;
+      };
+      const url = typeof values.url === "string" ? values.url : "";
+      const mode = values.findMode;
+      const activeMode =
+        mode === "case-insensitive" || mode === "fuzzy" ? `, ${mode}` : "";
+      const cleanArgument = (value: string) =>
+        value
+          .replace(/[\u0000-\u001f\u007f-\u009f]/g, " ")
+          .replace(/\s+/g, " ")
+          .trim();
+      const activity =
+        values.range &&
+        Number.isInteger(values.range.start) &&
+        Number.isInteger(values.range.end) &&
+        (values.range.start as number) >= 0 &&
+        (values.range.end as number) >= 0
+          ? ` range [${values.range.start},${values.range.end})`
+          : values.findText !== undefined
+            ? ` find ${
+                Array.isArray(values.findText)
+                  ? values.findText
+                      .filter((term) => typeof term === "string")
+                      .map(cleanArgument)
+                      .join(", ")
+                  : typeof values.findText === "string"
+                    ? cleanArgument(values.findText)
+                    : ""
+              }${activeMode}`
+            : "";
       return new Text(
         theme.fg("toolTitle", theme.bold("fetch_url ")) +
-          theme.fg("accent", `[${formatUrlLink(args.url ?? "")}]`),
+          theme.fg("accent", formatUrlLink(url)) +
+          (activity ? theme.fg("muted", activity) : ""),
         0,
         0,
       );

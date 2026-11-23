@@ -66,17 +66,17 @@ export async function executeWebSearch(
   });
   const provider = (parsed as { provider: (typeof PROVIDERS)[number] })
     .provider;
-  const text =
-    `${provider}: ${query} (${results.length} resultats)\n` +
-    results
-      .map(
-        (item, index) =>
-          `${index + 1}. [${item.title}](${item.url})${item.snippet ? `\n   ${item.snippet}` : ""}`,
-      )
-      .join("\n\n");
+  const text = results.length
+    ? results
+        .map(
+          (item, index) =>
+            `${index + 1}. ${item.title}\n   ${item.url}${item.snippet ? `\n   ${item.snippet}` : ""}`,
+        )
+        .join("\n\n")
+    : "No results found.";
   return {
     content: [{ type: "text" as const, text }],
-    details: {},
+    details: { provider, results },
     structuredContent: { results },
     isError: false,
   };

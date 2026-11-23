@@ -54,3 +54,21 @@ export function formatUrlLink(url: string, maxWidth?: number): string {
   if (!label) return "";
   return hyperlink(label, parsedUrl.href);
 }
+
+export function formatLabeledUrlLink(
+  url: string,
+  label: string,
+  maxWidth = DEFAULT_URL_LABEL_WIDTH,
+): string {
+  const parsedUrl = parseHttpUrl(url);
+  const safeLabel = label.replace(TERMINAL_CONTROLS, "");
+
+  if (!parsedUrl || !getCapabilities().hyperlinks) {
+    const visibleUrl = parsedUrl
+      ? compactUrlLabel(parsedUrl, Math.max(0, Math.floor(maxWidth)))
+      : url.replace(TERMINAL_CONTROLS, "");
+    return visibleUrl ? `${safeLabel} (${visibleUrl})` : safeLabel;
+  }
+
+  return hyperlink(safeLabel, parsedUrl.href);
+}
