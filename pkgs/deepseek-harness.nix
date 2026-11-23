@@ -11,8 +11,8 @@
 
 let
   runtimeNode = fetchzip {
-    url = "https://nodejs.org/dist/v24.20.0/node-v24.20.0-darwin-arm64.tar.gz";
-    hash = "sha256-F9UVZf9MU+xzeIyWekw3+nntYSfbj5phU2cQMNjBcus=";
+    url = "https://nodejs.org/dist/v24.22.3/node-v24.22.3-darwin-arm64.tar.gz";
+    hash = "sha256-5nPTfn01RR8vMB1EroPm1qzA3ybTc/NvpZyEctGl9Mo=";
     stripRoot = true;
   };
 
@@ -24,11 +24,11 @@ let
 in
 stdenvNoCC.mkDerivation (finalAttrs: {
   pname = "deepseek-harness";
-  version = "0.2.2-rc.5";
+  version = "0.2.3-alpha.2";
 
   src = fetchurl {
     url = "https://registry.npmjs.org/@deepseek-ai/dsh/-/dsh-${finalAttrs.version}.tgz";
-    hash = "sha256-Z9paPEWPRs0njg7satDjpE6Z/RMIfG8RobNiJokApSw=";
+    hash = "sha256-mQB5Ogd/+myXlPc0nHxpEgzWok3sQWODenJWFn5h0lA=";
   };
 
   sourceRoot = "package";
@@ -45,7 +45,7 @@ stdenvNoCC.mkDerivation (finalAttrs: {
       ;
     pnpm = pnpm_11;
     fetcherVersion = 4;
-    hash = "sha256-B3SJXaFcyEpQsr/4+SHH4ABAw5XjgeNX2Ve3+Cu3EHg=";
+    hash = "sha256-MRKoS4LOZ5O3iL/YHdzxnMVgobhAa/Fkec2/H4xg1ys=";
     prePatch = pnpmSourceFiles;
   };
 
