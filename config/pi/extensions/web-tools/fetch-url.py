@@ -133,206 +133,266 @@ def decode_response_body(body: bytes, content_type: str) -> str:
     return ensure_text_size(text)
 
 
-def extract_pdf(body: bytes) -> str:
-    if len(body) > MAX_DOCUMENT_BYTES:
-        raise ValueError(f"PDF exceeds the {MAX_DOCUMENT_BYTES}-byte limit")
-    if b"%PDF-" not in body[:1024]:
-        raise ValueError("response does not contain a valid PDF document")
+class _PDFExtractor:
+    @staticmethod
+    def is_pdf_file(path: str) -> bool:
+        with open(path, "rb") as pdf_file:
+            return b"%PDF-" in pdf_file.read(1024)
 
-    try:
-        reader = PdfReader(BytesIO(body), strict=False)
-        if reader.is_encrypted:
-            raise ValueError("encrypted PDFs are not supported")
-        pages: list[str] = []
-        text_size = 0
-        for page_number, page in enumerate(reader.pages, start=1):
-            page_text = (page.extract_text() or "").strip()
-            if not page_text:
-                continue
-            section = f"[Page {page_number}]\n{page_text}"
-            section_size = len(section.encode("utf-8"))
-            separator_size = 2 if pages else 0
-            if text_size + separator_size + section_size > MAX_FETCHED_TEXT_BYTES:
-                raise ValueError(
-                    f"PDF text exceeds the {MAX_FETCHED_TEXT_BYTES}-byte limit"
-                )
-            pages.append(section)
-            text_size += separator_size + section_size
-    except PyPdfError as error:
-        raise ValueError(f"could not read PDF: {error}") from error
+    @classmethod
+    def extract_bytes(cls, body: bytes) -> str:
+        return cls.extract_stream(BytesIO(body))
 
-    extracted = "\n\n".join(pages)
-    if not extracted:
-        raise ValueError("PDF contains no extractable text")
-    return extracted
+    @classmethod
+    def extract_file(cls, path: str) -> str:
+        with open(path, "rb") as pdf_file:
+            return cls.extract_stream(pdf_file)
 
+    @staticmethod
+    def extract_stream(stream: Any) -> str:
+        if b"%PDF-" not in stream.read(1024):
+            raise ValueError("response does not contain a valid PDF document")
+        stream.seek(0)
 
-async def extract_pdf_response(response: Any) -> str:
-    ensure_response_size(response, MAX_DOCUMENT_BYTES)
-    return extract_pdf(await response.body())
+        try:
+            reader = PdfReader(stream, strict=False)
+            if reader.is_encrypted:
+                raise ValueError("encrypted PDFs are not supported")
+            pages: list[str] = []
+            text_size = 0
+            for page_number, page in enumerate(reader.pages, start=1):
+                page_text = (page.extract_text() or "").strip()
+                if not page_text:
+                    continue
+                section = f"[Page {page_number}]\n{page_text}"
+                section_size = len(section.encode("utf-8"))
+                separator_size = 2 if pages else 0
+                if text_size + separator_size + section_size > MAX_FETCHED_TEXT_BYTES:
+                    raise ValueError(
+                        f"PDF text exceeds the {MAX_FETCHED_TEXT_BYTES}-byte limit"
+                    )
+                pages.append(section)
+                text_size += separator_size + section_size
+        except PyPdfError as error:
+            raise ValueError(f"could not read PDF: {error}") from error
 
-
-def extract_html(html: str) -> str | None:
-    extracted = trafilatura.extract(
-        html,
-        output_format="markdown",
-        fast=False,
-        favor_precision=False,
-        favor_recall=False,
-        include_comments=False,
-        include_tables=True,
-        include_images=False,
-        include_formatting=True,
-        include_links=True,
-        deduplicate=True,
-        with_metadata=False,
-        target_language=None,
-    )
-    if extracted is None:
-        return None
-    extracted = extracted.strip()
-    return extracted or None
+        extracted = "\n\n".join(pages)
+        if not extracted:
+            raise ValueError("PDF contains no extractable text")
+        return extracted
 
 
-def candidate_score(candidate: dict[str, Any]) -> tuple[float, int]:
-    text = candidate["text"]
-    link_length = candidate["link_length"]
-    link_ratio = min(link_length / len(text), 0.8) if text else 1.0
-    return (len(text) * (1 - link_ratio), len(text))
-
-
-def select_semantic_candidate(candidates: list[dict[str, Any]]) -> str | None:
-    usable = [
-        candidate
-        for candidate in candidates
-        if len(candidate["text"]) >= MIN_CANDIDATE_CHARS
-    ]
-    if not usable:
-        return None
-    return max(usable, key=candidate_score)["text"]
-
-
-async def wait_for_content(page: Any) -> None:
-    try:
-        await page.wait_for_function(
-            """selector => {
-                const roots = Array.from(document.querySelectorAll(selector));
-                return roots.length === 0 || roots.some(root => {
-                    return (root.innerText || '').trim().length > 0;
-                });
-            }""",
-            arg=CONTENT_ROOTS_SELECTOR,
-            timeout=CONTENT_READY_TIMEOUT_MS,
+class _HTMLExtractor:
+    @staticmethod
+    def extract_article(html: str) -> str | None:
+        extracted = trafilatura.extract(
+            html,
+            output_format="markdown",
+            fast=False,
+            favor_precision=False,
+            favor_recall=False,
+            include_comments=False,
+            include_tables=True,
+            include_images=False,
+            include_formatting=True,
+            include_links=True,
+            deduplicate=True,
+            with_metadata=False,
+            target_language=None,
         )
-    except PlaywrightTimeoutError:
-        pass
-    await page.wait_for_timeout(SETTLE_DELAY_MS)
+        if extracted is None:
+            return None
+        extracted = extracted.strip()
+        return extracted or None
+
+    @staticmethod
+    def candidate_score(candidate: dict[str, Any]) -> tuple[float, int]:
+        text = candidate["text"]
+        link_length = candidate["link_length"]
+        link_ratio = min(link_length / len(text), 0.8) if text else 1.0
+        return (len(text) * (1 - link_ratio), len(text))
+
+    @classmethod
+    def select_semantic_candidate(cls, candidates: list[dict[str, Any]]) -> str | None:
+        usable = [
+            candidate
+            for candidate in candidates
+            if len(candidate["text"]) >= MIN_CANDIDATE_CHARS
+        ]
+        if not usable:
+            return None
+        return max(usable, key=cls.candidate_score)["text"]
+
+    @staticmethod
+    async def wait_for_content(page: Any) -> None:
+        try:
+            await page.wait_for_function(
+                """selector => {
+                    const roots = Array.from(document.querySelectorAll(selector));
+                    return roots.length === 0 || roots.some(root => {
+                        return (root.innerText || '').trim().length > 0;
+                    });
+                }""",
+                arg=CONTENT_ROOTS_SELECTOR,
+                timeout=CONTENT_READY_TIMEOUT_MS,
+            )
+        except PlaywrightTimeoutError:
+            pass
+        await page.wait_for_timeout(SETTLE_DELAY_MS)
+
+    @staticmethod
+    async def semantic_candidates(page: Any) -> list[dict[str, Any]]:
+        return await page.locator(CONTENT_ROOTS_SELECTOR).evaluate_all(
+            """elements => elements.map(element => {
+                const text = (element.innerText || '').trim();
+                const linkLength = Array.from(element.querySelectorAll('a'))
+                    .reduce((length, link) => length + (link.innerText || '').length, 0);
+                return { text, link_length: linkLength };
+            })"""
+        )
+
+    @classmethod
+    async def extract_rendered_page(cls, page: Any, content_type: str) -> str:
+        await cls.wait_for_content(page)
+        html = await page.content()
+        if (
+            len(html) > MAX_DOCUMENT_BYTES
+            or len(html.encode("utf-8")) > MAX_DOCUMENT_BYTES
+        ):
+            raise ValueError(f"document exceeds the {MAX_DOCUMENT_BYTES}-byte limit")
+        if is_html_content(content_type):
+            extracted = cls.extract_article(html)
+            if extracted:
+                return ensure_text_size(extracted)
+
+        semantic = cls.select_semantic_candidate(await cls.semantic_candidates(page))
+        if semantic:
+            return ensure_text_size(semantic)
+
+        return ensure_text_size((await page.locator("body").inner_text()).strip())
 
 
-async def semantic_candidates(page: Any) -> list[dict[str, Any]]:
-    return await page.locator(CONTENT_ROOTS_SELECTOR).evaluate_all(
-        """elements => elements.map(element => {
-            const text = (element.innerText || '').trim();
-            const linkLength = Array.from(element.querySelectorAll('a'))
-                .reduce((length, link) => length + (link.innerText || '').length, 0);
-            return { text, link_length: linkLength };
-        })"""
-    )
+class _BrowserFetcher:
+    def __init__(self, url: str) -> None:
+        self.url = url
+        self.navigation_response: Any = None
+        self.download_event: asyncio.Future[Any] | None = None
+        self.page: Any = None
+
+    def capture_response(self, response: Any) -> None:
+        if (
+            response.request.is_navigation_request()
+            and response.frame == self.page.main_frame
+        ):
+            self.navigation_response = response
+
+    def capture_download(self, download: Any) -> None:
+        if self.download_event is not None and not self.download_event.done():
+            self.download_event.set_result(download)
+
+    async def handle_download(self) -> str:
+        if self.download_event is None:
+            raise ValueError("browser download event was not initialized")
+        try:
+            download = await asyncio.wait_for(
+                asyncio.shield(self.download_event),
+                timeout=NAVIGATION_TIMEOUT_MS / 1000,
+            )
+        except TimeoutError as error:
+            raise ValueError("browser download was not available") from error
+
+        try:
+            path = await download.path()
+            is_pdf = await asyncio.to_thread(_PDFExtractor.is_pdf_file, str(path))
+            if not is_pdf:
+                raise ValueError("unsupported format: downloaded file is not a PDF")
+            return await asyncio.to_thread(_PDFExtractor.extract_file, str(path))
+        finally:
+            try:
+                await download.delete()
+            except PlaywrightError:
+                pass
+
+    async def fetch(self) -> str:
+        async with async_playwright() as playwright:
+            browser = await playwright.webkit.launch(headless=True)
+            context = await browser.new_context(
+                accept_downloads=True,
+                java_script_enabled=True,
+                locale="en-US",
+                timezone_id="UTC",
+                viewport={"width": 1280, "height": 720},
+            )
+            self.page = await context.new_page()
+            self.page.set_default_navigation_timeout(NAVIGATION_TIMEOUT_MS)
+            self.download_event = asyncio.get_running_loop().create_future()
+            self.page.on("response", self.capture_response)
+            self.page.on("download", self.capture_download)
+            try:
+                return await self.fetch_page()
+            finally:
+                await context.close()
+                await browser.close()
+
+    async def fetch_page(self) -> str:
+        try:
+            response = await self.page.goto(
+                self.url,
+                timeout=NAVIGATION_TIMEOUT_MS,
+                wait_until="commit",
+            )
+        except PlaywrightError as error:
+            if "Download is starting" in str(error):
+                return await self.handle_download()
+            response = self.navigation_response
+            if response is not None:
+                validate_url(response.url)
+                ensure_successful_response(response, self.url)
+                if response.status == 204:
+                    return ""
+                if is_pdf_response(response):
+                    return _PDFExtractor.extract_bytes(await response.body())
+            raise
+
+        if response is None:
+            response = self.navigation_response
+        validate_url(self.page.url)
+        if response:
+            ensure_successful_response(response, self.url)
+        if response and response.status == 204:
+            return ""
+
+        content_type = response.headers.get("content-type", "") if response else ""
+        if response and is_pdf_response(response):
+            validate_url(response.url)
+            return _PDFExtractor.extract_bytes(await response.body())
+        if response:
+            ensure_response_size(response, MAX_DOCUMENT_BYTES)
+
+        if (
+            response
+            and is_text_content(content_type)
+            and not is_html_content(content_type)
+        ):
+            ensure_response_size(response, MAX_FETCHED_TEXT_BYTES)
+            return decode_response_body(await response.body(), content_type)
+
+        ensure_supported_content_type(content_type)
+        await self.page.wait_for_load_state(
+            "domcontentloaded", timeout=NAVIGATION_TIMEOUT_MS
+        )
+        validate_url(self.page.url)
+        return await _HTMLExtractor.extract_rendered_page(self.page, content_type)
 
 
 async def fetch_url(url: str) -> str:
     validate_url(url)
-    async with async_playwright() as playwright:
-        browser = await playwright.webkit.launch(headless=True)
-        context = await browser.new_context(
-            java_script_enabled=True,
-            locale="en-US",
-            timezone_id="UTC",
-            viewport={"width": 1280, "height": 720},
-        )
-        page = await context.new_page()
-        page.set_default_navigation_timeout(NAVIGATION_TIMEOUT_MS)
-        navigation_response = None
-
-        def capture_navigation_response(response: Any) -> None:
-            nonlocal navigation_response
-            if (
-                response.request.is_navigation_request()
-                and response.frame == page.main_frame
-            ):
-                navigation_response = response
-
-        page.on("response", capture_navigation_response)
-        try:
-            try:
-                response = await page.goto(
-                    url,
-                    timeout=NAVIGATION_TIMEOUT_MS,
-                    wait_until="commit",
-                )
-            except PlaywrightError:
-                if navigation_response is not None:
-                    validate_url(navigation_response.url)
-                    ensure_successful_response(navigation_response, url)
-                    if navigation_response.status == 204:
-                        return ""
-                    if is_pdf_response(navigation_response):
-                        return await extract_pdf_response(navigation_response)
-                raise
-            if response is None:
-                response = navigation_response
-            validate_url(page.url)
-            if response:
-                ensure_successful_response(response, url)
-            if response and response.status == 204:
-                return ""
-            content_type = response.headers.get("content-type", "") if response else ""
-            if response and is_pdf_response(response):
-                validate_url(response.url)
-                return await extract_pdf_response(response)
-            if response:
-                ensure_response_size(response, MAX_DOCUMENT_BYTES)
-
-            if (
-                response
-                and is_text_content(content_type)
-                and not is_html_content(content_type)
-            ):
-                ensure_response_size(response, MAX_FETCHED_TEXT_BYTES)
-                return decode_response_body(await response.body(), content_type)
-
-            ensure_supported_content_type(content_type)
-            await page.wait_for_load_state(
-                "domcontentloaded", timeout=NAVIGATION_TIMEOUT_MS
-            )
-            await wait_for_content(page)
-            validate_url(page.url)
-            html = await page.content()
-            if (
-                len(html) > MAX_DOCUMENT_BYTES
-                or len(html.encode("utf-8")) > MAX_DOCUMENT_BYTES
-            ):
-                raise ValueError(
-                    f"document exceeds the {MAX_DOCUMENT_BYTES}-byte limit"
-                )
-            if is_html_content(content_type):
-                extracted = extract_html(html)
-                if extracted:
-                    return ensure_text_size(extracted)
-
-            semantic = select_semantic_candidate(await semantic_candidates(page))
-            if semantic:
-                return ensure_text_size(semantic)
-
-            return ensure_text_size((await page.locator("body").inner_text()).strip())
-        finally:
-            await context.close()
-            await browser.close()
+    return await _BrowserFetcher(url).fetch()
 
 
 def error_message(error: PlaywrightError | ValueError) -> str:
     if isinstance(error, PlaywrightError) and "Download is starting" in str(error):
-        return "unsupported format: the URL starts a non-PDF file download"
+        return "unsupported format: the browser download could not be inspected"
     message = str(error).strip()
     return message or type(error).__name__
 
