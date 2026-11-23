@@ -1,5 +1,5 @@
 import type { PiExec } from "../pi-extension-infrastructure/pi-exec.js";
-import { requirePiExecComplete } from "../pi-extension-infrastructure/pi-exec.js";
+import { runPythonTool } from "./python-process.js";
 import { fileURLToPath } from "node:url";
 
 const FETCHER_PATH = fileURLToPath(new URL("./fetch-url.py", import.meta.url));
@@ -7,7 +7,6 @@ const PYTHON_PATH = process.env.PI_WEB_TOOLS_PYTHON ?? "python3";
 const MAX_OUTPUT_CHARS = 8192;
 const MAX_CACHED_TEXT_BYTES = 16 * 1024 * 1024;
 const MAX_CACHED_TEXT_ENTRIES = 256;
-const MAX_STDERR_BYTES = 8192;
 export const FETCHER_MAX_BUFFER = 4 * 1024 * 1024;
 export const MAX_MATCHES = 128;
 export const MAX_FIND_TEXT_LENGTH = 1024;
@@ -50,20 +49,17 @@ async function runFetcher(
   exec: PiExec,
   cwd: string,
 ): Promise<string> {
-  const result = await exec(PYTHON_PATH, [FETCHER_PATH, url], {
+  return runPythonTool(
+    exec,
+    PYTHON_PATH,
+    FETCHER_PATH,
+    [url],
     cwd,
     signal,
-  });
-  if (signal.aborted) throw new Error("URL fetch was cancelled.");
-  requirePiExecComplete("URL fetcher", result);
-  if (result.code !== 0) {
-    const stderr = Buffer.from(result.stderr)
-      .subarray(0, MAX_STDERR_BYTES)
-      .toString("utf8")
-      .trim();
-    throw new Error(stderr || `URL fetch failed with exit code ${result.code}`);
-  }
-  return result.stdout;
+    "URL fetcher",
+    "URL fetch was cancelled.",
+    "URL fetch",
+  );
 }
 
 function getCachedText(url: string): string | undefined {

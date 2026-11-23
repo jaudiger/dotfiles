@@ -7,18 +7,20 @@ from typing import Any
 from urllib.parse import urlsplit
 
 import trafilatura
+from browser_fetch import (
+    MAX_DOCUMENT_BYTES,
+    NAVIGATION_TIMEOUT_MS,
+    BrowserTransport,
+)
 from playwright.async_api import Error as PlaywrightError
 from playwright.async_api import TimeoutError as PlaywrightTimeoutError
-from playwright.async_api import async_playwright
 from pypdf import PdfReader
 from pypdf.errors import PyPdfError
 
-NAVIGATION_TIMEOUT_MS = 30_000
 CONTENT_READY_TIMEOUT_MS = 5_000
 SETTLE_DELAY_MS = 750
 MIN_CANDIDATE_CHARS = 32
 MAX_FETCHED_TEXT_BYTES = 2 * 1024 * 1024
-MAX_DOCUMENT_BYTES = 8 * 1024 * 1024
 HTML_CONTENT_TYPES = {"text/html", "application/xhtml+xml"}
 PDF_CONTENT_TYPES = {"application/pdf"}
 TEXT_CONTENT_TYPES = {
@@ -243,23 +245,22 @@ class _HTMLExtractor:
     @staticmethod
     async def semantic_candidates(page: Any) -> list[dict[str, Any]]:
         return await page.locator(CONTENT_ROOTS_SELECTOR).evaluate_all(
-            """elements => elements.map(element => {
+            """(elements, selectors) => elements.map(element => {
                 const text = (element.innerText || '').trim();
-                const linkLength = Array.from(element.querySelectorAll('a'))
+                const linkLength = Array.from(element.querySelectorAll(selectors.link))
                     .reduce((length, link) => length + (link.innerText || '').length, 0);
                 return { text, link_length: linkLength };
-            })"""
+            })""",
+            {"link": "a"},
         )
 
     @classmethod
-    async def extract_rendered_page(cls, page: Any, content_type: str) -> str:
+    async def extract_rendered_page(
+        cls, transport: BrowserTransport, content_type: str
+    ) -> str:
+        page = transport.page
         await cls.wait_for_content(page)
-        html = await page.content()
-        if (
-            len(html) > MAX_DOCUMENT_BYTES
-            or len(html.encode("utf-8")) > MAX_DOCUMENT_BYTES
-        ):
-            raise ValueError(f"document exceeds the {MAX_DOCUMENT_BYTES}-byte limit")
+        html = await transport.capture_html()
         if is_html_content(content_type):
             extracted = cls.extract_article(html)
             if extracted:
@@ -275,16 +276,7 @@ class _HTMLExtractor:
 class _BrowserFetcher:
     def __init__(self, url: str) -> None:
         self.url = url
-        self.navigation_response: Any = None
         self.download_event: asyncio.Future[Any] | None = None
-        self.page: Any = None
-
-    def capture_response(self, response: Any) -> None:
-        if (
-            response.request.is_navigation_request()
-            and response.frame == self.page.main_frame
-        ):
-            self.navigation_response = response
 
     def capture_download(self, download: Any) -> None:
         if self.download_event is not None and not self.download_event.done():
@@ -314,37 +306,19 @@ class _BrowserFetcher:
                 pass
 
     async def fetch(self) -> str:
-        async with async_playwright() as playwright:
-            browser = await playwright.webkit.launch(headless=True)
-            context = await browser.new_context(
-                accept_downloads=True,
-                java_script_enabled=True,
-                locale="en-US",
-                timezone_id="UTC",
-                viewport={"width": 1280, "height": 720},
-            )
-            self.page = await context.new_page()
-            self.page.set_default_navigation_timeout(NAVIGATION_TIMEOUT_MS)
+        async with BrowserTransport() as transport:
             self.download_event = asyncio.get_running_loop().create_future()
-            self.page.on("response", self.capture_response)
-            self.page.on("download", self.capture_download)
-            try:
-                return await self.fetch_page()
-            finally:
-                await context.close()
-                await browser.close()
+            transport.page.on("download", self.capture_download)
+            return await self.fetch_page(transport)
 
-    async def fetch_page(self) -> str:
+    async def fetch_page(self, transport: BrowserTransport) -> str:
+        page = transport.page
         try:
-            response = await self.page.goto(
-                self.url,
-                timeout=NAVIGATION_TIMEOUT_MS,
-                wait_until="commit",
-            )
+            response = await transport.navigate(self.url)
         except PlaywrightError as error:
             if "Download is starting" in str(error):
                 return await self.handle_download()
-            response = self.navigation_response
+            response = transport.navigation_response
             if response is not None:
                 validate_url(response.url)
                 ensure_successful_response(response, self.url)
@@ -355,8 +329,8 @@ class _BrowserFetcher:
             raise
 
         if response is None:
-            response = self.navigation_response
-        validate_url(self.page.url)
+            response = transport.navigation_response
+        validate_url(page.url)
         if response:
             ensure_successful_response(response, self.url)
         if response and response.status == 204:
@@ -378,11 +352,11 @@ class _BrowserFetcher:
             return decode_response_body(await response.body(), content_type)
 
         ensure_supported_content_type(content_type)
-        await self.page.wait_for_load_state(
+        await page.wait_for_load_state(
             "domcontentloaded", timeout=NAVIGATION_TIMEOUT_MS
         )
-        validate_url(self.page.url)
-        return await _HTMLExtractor.extract_rendered_page(self.page, content_type)
+        validate_url(page.url)
+        return await _HTMLExtractor.extract_rendered_page(transport, content_type)
 
 
 async def fetch_url(url: str) -> str:
@@ -398,10 +372,12 @@ def error_message(error: PlaywrightError | ValueError) -> str:
 
 
 if __name__ == "__main__":
-    if len(sys.argv) != 2:
-        raise SystemExit("expected exactly one URL")
     try:
-        print(asyncio.run(fetch_url(sys.argv[1])), end="")
+        if len(sys.argv) == 2:
+            output = asyncio.run(fetch_url(sys.argv[1]))
+        else:
+            raise SystemExit("expected a URL")
+        print(output, end="")
     except (PlaywrightError, ValueError) as error:
         print(error_message(error), file=sys.stderr)
         raise SystemExit(1) from None

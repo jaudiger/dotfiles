@@ -5,6 +5,11 @@ import { formatUrlLink } from "../pi-extension-infrastructure/links.js";
 import { createPiExec } from "../pi-extension-infrastructure/pi-exec.js";
 import { fetchUrlParameters, fetchUrlRangeSchema } from "./fetch-url-schema.js";
 import { executeFetchUrl, MAX_MATCHES, FETCHER_MAX_BUFFER } from "./fetch-url";
+import { executeWebSearch } from "./web-search.js";
+import {
+  webSearchOutputSchema,
+  webSearchParameters,
+} from "./web-search-schema.js";
 
 const matchSchema = Type.Object(
   {
@@ -29,6 +34,30 @@ const fetchUrlOutputSchema = Type.Object(
 
 export default function registerWebTools(pi: ExtensionAPI): void {
   const exec = createPiExec(pi, FETCHER_MAX_BUFFER);
+  pi.registerTool({
+    name: "web_search",
+    label: "Web Search",
+    description: "Search the web for a query.",
+    promptSnippet: "Search the web.",
+    parameters: webSearchParameters,
+    outputSchema: webSearchOutputSchema,
+    async execute(_toolCallId, params, signal, _onUpdate, ctx) {
+      return executeWebSearch(
+        params.query,
+        signal ?? new AbortController().signal,
+        exec,
+        ctx.cwd,
+      );
+    },
+    renderCall(args, theme) {
+      return new Text(
+        theme.fg("toolTitle", theme.bold("web_search ")) +
+          theme.fg("accent", args.query ?? ""),
+        0,
+        0,
+      );
+    },
+  });
   pi.registerTool({
     name: "fetch_url",
     label: "Fetch URL",
