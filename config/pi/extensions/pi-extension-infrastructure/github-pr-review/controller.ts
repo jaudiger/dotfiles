@@ -1,6 +1,5 @@
 import { rm } from "node:fs/promises";
 import {
-  isToolCallEventType,
   type ExtensionAPI,
   type ExtensionContext,
 } from "@earendil-works/pi-coding-agent";
@@ -134,7 +133,6 @@ export type GithubPrReviewControllerProvider = {
       action: "merge" | "checkout",
       review?: PreparedReview,
     ) => string;
-    blockedCommand: string;
     workflowReady: (
       review: PreparedReview,
       result: ReviewWorkflowCompletion,
@@ -522,30 +520,6 @@ export function registerGithubPrReviewController(
         ctx.ui.setStatus(provider.identity.statusKey, undefined);
       }
     },
-  });
-
-  pi.on("tool_call", (event, ctx) => {
-    if (
-      !active ||
-      active.sessionId !== ctx.sessionManager.getSessionId() ||
-      !isToolCallEventType("bash", event)
-    )
-      return;
-    const command = event.input.command;
-    const bypassesReview =
-      /\bgh\b.*\bpr\s+(?:merge|review|checkout|close|comment|edit|create)\b/.test(
-        command,
-      ) ||
-      /\bgh\b(?:\s+\S+)*\s+api\b/.test(command) ||
-      /\bgit\b(?:\s+\S+)*\s+(?:clone|checkout|switch|reset|merge|rebase|commit|cherry-pick|branch|push|pull|fetch)\b/.test(
-        command,
-      );
-    if (bypassesReview)
-      return {
-        block: true,
-        terminate: true,
-        reason: provider.text.blockedCommand,
-      };
   });
 
   pi.on("agent_settled", async (event, ctx) => {

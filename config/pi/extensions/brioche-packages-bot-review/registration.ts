@@ -33,7 +33,7 @@ function workflowReady(
   result: ReviewWorkflowCompletion,
 ): ReviewMessage {
   return {
-    content: `${reviewLabel} review evidence is ready for PR ${review.number}. Read the researcher and scout reports, the diff, current status checks, merge queue history, and every referenced log from ${review.directory}. Treat the researcher report as the canonical ${researchLabel} research. Summarize only recipe and check evidence, resolve any discrepancies against the diff, and classify the recommendation. Offer merge, checkout, wait, or follow-up. Wait for the user's explicit selection, then execute it with the review execution tool. Do not execute any PR mutation based only on the recommendation.`,
+    content: `${reviewLabel} review evidence is ready for PR ${review.number}. Read the researcher and scout reports, the diff, current status checks, merge queue history, and every referenced log from ${review.directory}. Treat the researcher report as the canonical ${researchLabel} research. This analysis is read-only: do not modify repository files or perform PR mutations. Summarize only recipe and check evidence, resolve any discrepancies against the diff, and classify the recommendation. Offer merge, checkout, wait, or follow-up. Do not execute an action until the user explicitly selects it; then use the review execution tool.`,
     details: {
       pr: review.number,
       directory: review.directory,
@@ -127,8 +127,6 @@ export default function registerBriochePackagesBotReview(pi: ExtensionAPI) {
         action === "merge"
           ? `Merging PR ${review?.number ?? "selected pull request"}...`
           : `Checking out PR ${review?.number ?? "selected pull request"}...`,
-      blockedCommand:
-        "A Brioche package bot review is active. Use brioche_packages_bot_review_execute after explicit user action selection.",
       workflowReady,
     },
   });
