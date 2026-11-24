@@ -158,7 +158,6 @@ export function registerSubmitPackage(pi: ExtensionAPI): void {
       cwd: owner.repository,
       config: researcherAgent,
       task: researcherTask(owner.prepared, owner.repository),
-      includeFetchUrl: true,
       timeoutMs: researcherTimeoutMs,
     },
     evidence: {

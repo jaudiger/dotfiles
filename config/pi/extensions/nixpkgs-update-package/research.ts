@@ -231,7 +231,6 @@ export function registerResearchTool(
           config: researcherAgent,
           cwd: active.context.repository,
           prompt: researcherTask(active),
-          includeFetchUrl: true,
           signal: controller.signal,
           timeoutMs: 30 * 60 * 1000,
           settings: pi.getSettings(),

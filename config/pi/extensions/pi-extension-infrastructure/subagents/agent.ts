@@ -15,12 +15,15 @@ import {
   type FetchUrlParams,
 } from "../../web-tools/fetch-url.js";
 import { fetchUrlParameters } from "../../web-tools/fetch-url-schema.js";
+import { executeWebSearch } from "../../web-tools/web-search.js";
+import { webSearchParameters } from "../../web-tools/web-search-schema.js";
 import type { PiExec } from "../pi-exec.js";
 
 export type PiAgentConfig = {
   model: string;
   thinkingLevel: NonNullable<CreateAgentSessionOptions["thinkingLevel"]>;
   systemPrompt: string;
+  tools: string[];
 };
 
 export type ReadOnlyPiAgentOptions = {
@@ -28,7 +31,6 @@ export type ReadOnlyPiAgentOptions = {
   config: PiAgentConfig;
   cwd: string;
   prompt: string;
-  includeFetchUrl: boolean;
   signal: AbortSignal;
   timeoutMs?: number;
   settings: PiAgentSettings;
@@ -83,6 +85,26 @@ function createFetchUrlTool(
         details: result.details,
         isError: result.isError,
       };
+    },
+  };
+}
+
+function createWebSearchTool(
+  exec: PiExec,
+  cwd: string,
+): ToolDefinition<typeof webSearchParameters> {
+  return {
+    name: "web_search",
+    label: "Web Search",
+    description: "Search the web for a query.",
+    parameters: webSearchParameters,
+    async execute(_id, params, signal) {
+      return executeWebSearch(
+        params.query,
+        signal ?? new AbortController().signal,
+        exec,
+        cwd,
+      );
     },
   };
 }
@@ -154,7 +176,6 @@ export async function runReadOnlyPiAgent({
   config,
   cwd,
   prompt,
-  includeFetchUrl,
   signal,
   timeoutMs,
   settings,
@@ -200,14 +221,15 @@ export async function runReadOnlyPiAgent({
       model,
       thinkingLevel: config.thinkingLevel,
       noTools: "all",
-      tools: [
-        "read",
-        "grep",
-        "find",
-        "ls",
-        ...(includeFetchUrl ? ["fetch_url"] : []),
+      tools: config.tools,
+      customTools: [
+        ...(config.tools.includes("fetch_url")
+          ? [createFetchUrlTool(exec, cwd)]
+          : []),
+        ...(config.tools.includes("web_search")
+          ? [createWebSearchTool(exec, cwd)]
+          : []),
       ],
-      customTools: includeFetchUrl ? [createFetchUrlTool(exec, cwd)] : [],
       resourceLoader: createResourceLoader(config.systemPrompt),
       sessionManager: SessionManager.inMemory(cwd),
       settingsManager: SettingsManager.inMemory({

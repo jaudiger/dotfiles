@@ -33,9 +33,11 @@ function workflowReady(
   result: ReviewWorkflowCompletion,
 ): ReviewMessage {
   return {
-    content: `${reviewLabel} review evidence is ready for PR ${review.number}. Read the researcher and scout reports, the diff, current status checks, merge queue history, and every referenced log from ${review.directory}. Treat the researcher report as the canonical ${researchLabel} research. This analysis is read-only: do not modify repository files or perform PR mutations. Summarize only repository and check evidence, resolve any discrepancies against the diff, and classify the recommendation. Offer merge, checkout, wait, or follow-up. Do not execute an action until the user explicitly selects it; then use the review execution tool.`,
+    content: `${reviewLabel} review evidence is ready for ${review.repository}#${review.number} at ${review.snapshot.headRefOid}. Read the reports, diff, checks, queue history, and referenced logs in ${review.directory}. Treat the researcher report as canonical dependency research. Summarize repository and check evidence, resolve discrepancies against the diff, and classify the recommendation. Offer merge, checkout, or follow-up. For follow-up, ask for the user's goal and use the evidence to generate a concise work prompt for a separate writable session, including only task-relevant context and suitable validation guidance. Return that prompt for the user to use. After the user selects an action, use the review execution tool for merge or checkout.`,
     details: {
       pr: review.number,
+      repository: review.repository,
+      reviewedHead: review.snapshot.headRefOid,
       directory: review.directory,
       researcherReport: result.researcherReport,
       scoutReport: result.scoutReport,
@@ -66,7 +68,7 @@ export default function registerDependabotReview(pi: ExtensionAPI) {
       name: "github_dependabot_review_execute",
       label: "Dependabot Review Execute",
       description:
-        "Execute an explicitly user-selected Dependabot review action: merge, checkout, wait, or follow-up.",
+        "Execute an explicitly user-selected Dependabot review action: merge, checkout, or a prepared follow-up work prompt.",
     },
     // listCandidates delegates filtering to the Dependabot GitHub provider.
     candidateEligibility: () => true,
@@ -123,10 +125,8 @@ export default function registerDependabotReview(pi: ExtensionAPI) {
       preparingSelected: (count, action) =>
         `Preparing ${count} pull request${count === 1 ? "" : "s"} for ${action}...`,
       noActiveReview: "No active Dependabot review.",
-      waiting: "Waiting. No external mutation was performed.",
-      followUp: "Follow-up selected. No external mutation was performed.",
       notReady:
-        "Review evidence is not ready for mutation. Wait until successful researcher and scout reports are available for every selected PR.",
+        "Review evidence is not ready. Wait until successful researcher and scout reports are available for every selected PR.",
       mutationStatus: (action, review) =>
         action === "merge"
           ? `Merging PR ${review?.number ?? "selected pull request"}...`

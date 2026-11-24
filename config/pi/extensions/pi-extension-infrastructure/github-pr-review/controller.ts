@@ -126,8 +126,6 @@ export type GithubPrReviewControllerProvider = {
     preparingRequested: string;
     preparingSelected: (count: number, action: "merge" | "supersede") => string;
     noActiveReview: string;
-    waiting: string;
-    followUp: string;
     notReady: string;
     mutationStatus: (
       action: "merge" | "checkout",
@@ -460,28 +458,31 @@ export function registerGithubPrReviewController(
     label: provider.tool.label,
     description: provider.tool.description,
     defaultActive: false,
-    parameters: Type.Object({
-      action: Type.Union([
-        Type.Literal("merge"),
-        Type.Literal("checkout"),
-        Type.Literal("wait"),
-        Type.Literal("follow-up"),
-      ]),
-    }),
+    parameters: Type.Object(
+      {
+        action: Type.Unsafe<"merge" | "checkout" | "follow-up">({
+          type: "string",
+          enum: ["merge", "checkout", "follow-up"],
+        }),
+        pullRequest: Type.Optional(
+          Type.String({
+            description: "Reviewed target in owner/repository#number format.",
+          }),
+        ),
+        workPrompt: Type.Optional(
+          Type.String({
+            minLength: 1,
+            description:
+              "Concise work prompt for a separate writable session, based on the review evidence and user's requested work.",
+          }),
+        ),
+      },
+      { additionalProperties: false },
+    ),
     async execute(_id, params, _signal, _onUpdate, ctx) {
       if (!active || active.sessionId !== ctx.sessionManager.getSessionId())
         return {
           content: [{ type: "text", text: provider.text.noActiveReview }],
-          details: undefined,
-        };
-      if (params.action === "wait")
-        return {
-          content: [{ type: "text", text: provider.text.waiting }],
-          details: undefined,
-        };
-      if (params.action === "follow-up")
-        return {
-          content: [{ type: "text", text: provider.text.followUp }],
           details: undefined,
         };
       if (active.state !== "ready")
@@ -491,6 +492,52 @@ export function registerGithubPrReviewController(
         };
 
       const session = active;
+      if (params.action === "follow-up") {
+        const pullRequest = params.pullRequest?.trim();
+        const workPromptInput = params.workPrompt?.trim();
+        if (!pullRequest || !workPromptInput)
+          return {
+            content: [
+              {
+                type: "text",
+                text: "Follow-up requires a reviewed PR identity and a work prompt.",
+              },
+            ],
+            details: undefined,
+          };
+        const review = session.reviews.find(
+          (item) => `${item.repository}#${item.number}` === pullRequest,
+        );
+        if (!review)
+          return {
+            content: [
+              {
+                type: "text",
+                text: `No reviewed pull request matches ${pullRequest}. Use owner/repository#number.`,
+              },
+            ],
+            details: undefined,
+          };
+        const workPrompt = [
+          `Repository: ${review.repository}`,
+          `Workspace: ${review.cwd}`,
+          `Pull request: ${review.snapshot.url}`,
+          `PR branch: ${review.snapshot.headRefName}`,
+          `Base branch: ${review.snapshot.baseRefName}`,
+          `Reviewed head: ${review.snapshot.headRefOid}`,
+          "",
+          workPromptInput,
+        ].join("\n");
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Prepared work prompt for ${review.repository}#${review.number}. It has not been executed. Copy it into the writable session:\n\n${workPrompt}`,
+            },
+          ],
+          details: undefined,
+        };
+      }
       const targets = session.reviews.map((review) => ({
         number: review.number,
         repository: review.repository,

@@ -1394,13 +1394,19 @@ export async function mergeReview(
     throw new Error("No pull requests were selected for merging.");
 
   const initialHeads = reviews.map((review) => review.snapshot.headRefOid);
+  const reviewedTargets = reviews
+    .map(
+      (review) =>
+        `${review.repository}#${review.number} at ${review.snapshot.headRefOid}`,
+    )
+    .join("\n");
   if (
     !ctx.hasUI ||
     !(await ctx.ui.confirm(
       reviews.length === 1
         ? `Merge ${provider.labels.subject} pull request?`
         : `Merge ${provider.labels.subjectPlural} pull requests?`,
-      `Approve and squash-merge PRs ${reviews.map((review) => review.number).join(", ")}?`,
+      `Approve and squash-merge:\n${reviewedTargets}\n\nThis assigns the authenticated reviewer, may add an approval comment, requests branch deletion where supported, and may enqueue the merge. Continue?`,
     ))
   )
     return "Merge cancelled. No pull request mutation was performed.";
@@ -1825,7 +1831,7 @@ async function checkoutSingleReview(
     !ctx.hasUI ||
     !(await ctx.ui.confirm(
       provider.messages.checkoutConfirmation,
-      `Checkout PR ${review.number}?`,
+      `Checkout ${review.repository}#${review.number} at ${review.snapshot.headRefOid}?`,
     ))
   )
     return "Checkout cancelled. No repository mutation was performed.";

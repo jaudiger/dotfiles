@@ -27,7 +27,6 @@ export type AgentJob = {
     cwd: string;
     config: PiAgentConfig;
     task: string;
-    includeFetchUrl?: boolean;
     timeoutMs?: number;
   };
   evidence: {
@@ -157,7 +156,6 @@ export function createAgentJobs(
         context: record.context,
         config: record.job.launch.config,
         cwd: record.job.launch.cwd,
-        includeFetchUrl: record.job.launch.includeFetchUrl ?? false,
         prompt: record.job.launch.task,
         signal: record.controller.signal,
         timeoutMs: record.job.launch.timeoutMs,
