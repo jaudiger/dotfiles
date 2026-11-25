@@ -20,6 +20,15 @@ let
   ) ruleFiles;
 
   # Web tools
+  webToolsOcrmypdf = pkgs.ocrmypdf.override {
+    tesseract = pkgs.tesseract.override {
+      enableLanguages = [
+        "eng"
+        "fra"
+        "osd"
+      ];
+    };
+  };
   webToolsPython = pkgs.python3.withPackages (
     pythonPackages: with pythonPackages; [
       playwright
@@ -39,6 +48,7 @@ let
       wrapProgram "$out/bin/pi" \
         --set NODE_PATH "${host.homeDirectory}/.pi/agent/npm/node_modules" \
         --set PI_WEB_TOOLS_PYTHON "${webToolsPython}/bin/python3" \
+        --set PI_WEB_TOOLS_OCRMYPDF "${webToolsOcrmypdf}/bin/ocrmypdf" \
         --set PLAYWRIGHT_BROWSERS_PATH "${webToolsBrowsers}" \
         --set PI_SUBAGENT_AGENT_NAMES "${lib.concatStringsSep "," (builtins.attrNames subagentAgents)}"
     '';

@@ -4,7 +4,7 @@ from typing import Any, Self
 from playwright.async_api import async_playwright
 
 NAVIGATION_TIMEOUT_MS = 30_000
-MAX_DOCUMENT_BYTES = 8 * 1024 * 1024
+MAX_RENDERED_HTML_BYTES = 8 * 1024 * 1024
 
 
 class BrowserTransport:
@@ -69,6 +69,8 @@ class BrowserTransport:
 
     async def capture_html(self) -> str:
         html = await self.page.content()
-        if len(html.encode("utf-8")) > MAX_DOCUMENT_BYTES:
-            raise ValueError(f"document exceeds the {MAX_DOCUMENT_BYTES}-byte limit")
+        if len(html.encode("utf-8")) > MAX_RENDERED_HTML_BYTES:
+            raise ValueError(
+                f"rendered HTML exceeds the {MAX_RENDERED_HTML_BYTES}-byte limit"
+            )
         return html

@@ -1,22 +1,21 @@
 #!/usr/bin/env python3
 import asyncio
+import os
 import re
+import subprocess
 import sys
-from io import BytesIO
+import tempfile
 from typing import Any
 from urllib.parse import urlsplit
 
 import trafilatura
-from browser_fetch import (
-    MAX_DOCUMENT_BYTES,
-    NAVIGATION_TIMEOUT_MS,
-    BrowserTransport,
-)
+from browser_fetch import NAVIGATION_TIMEOUT_MS, BrowserTransport
 from playwright.async_api import Error as PlaywrightError
 from playwright.async_api import TimeoutError as PlaywrightTimeoutError
 from pypdf import PdfReader
 from pypdf.errors import PyPdfError
 
+OCRMY_PDF = os.environ.get("PI_WEB_TOOLS_OCRMYPDF", "ocrmypdf")
 CONTENT_READY_TIMEOUT_MS = 5_000
 SETTLE_DELAY_MS = 750
 MIN_CANDIDATE_CHARS = 32
@@ -143,45 +142,86 @@ class _PDFExtractor:
 
     @classmethod
     def extract_bytes(cls, body: bytes) -> str:
-        return cls.extract_stream(BytesIO(body))
+        if b"%PDF-" not in body[:1024]:
+            raise ValueError("response does not contain a valid PDF document")
+
+        with tempfile.TemporaryDirectory(prefix="pi-fetch-pdf-") as temp_dir:
+            input_path = os.path.join(temp_dir, "input.pdf")
+            with open(input_path, "wb") as pdf_file:
+                pdf_file.write(body)
+            return cls._ocr_and_extract(input_path, temp_dir)
 
     @classmethod
     def extract_file(cls, path: str) -> str:
-        with open(path, "rb") as pdf_file:
-            return cls.extract_stream(pdf_file)
+        with tempfile.TemporaryDirectory(prefix="pi-fetch-pdf-") as temp_dir:
+            return cls._ocr_and_extract(path, temp_dir)
 
-    @staticmethod
-    def extract_stream(stream: Any) -> str:
-        if b"%PDF-" not in stream.read(1024):
-            raise ValueError("response does not contain a valid PDF document")
-        stream.seek(0)
-
+    @classmethod
+    def _ocr_and_extract(cls, input_path: str, temp_dir: str) -> str:
+        output_path = os.path.join(temp_dir, "ocr.pdf")
         try:
-            reader = PdfReader(stream, strict=False)
-            if reader.is_encrypted:
-                raise ValueError("encrypted PDFs are not supported")
-            pages: list[str] = []
-            text_size = 0
-            for page_number, page in enumerate(reader.pages, start=1):
-                page_text = (page.extract_text() or "").strip()
-                if not page_text:
-                    continue
-                section = f"[Page {page_number}]\n{page_text}"
-                section_size = len(section.encode("utf-8"))
-                separator_size = 2 if pages else 0
-                if text_size + separator_size + section_size > MAX_FETCHED_TEXT_BYTES:
-                    raise ValueError(
-                        f"PDF text exceeds the {MAX_FETCHED_TEXT_BYTES}-byte limit"
-                    )
-                pages.append(section)
-                text_size += separator_size + section_size
-        except PyPdfError as error:
-            raise ValueError(f"could not read PDF: {error}") from error
+            result = subprocess.run(
+                [
+                    OCRMY_PDF,
+                    "--mode",
+                    "redo",
+                    "--rotate-pages",
+                    "--language",
+                    "fra+eng",
+                    "--output-type",
+                    "pdf",
+                    "--optimize",
+                    "0",
+                    "--jobs",
+                    "1",
+                    "--quiet",
+                    input_path,
+                    output_path,
+                ],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+        except OSError:
+            result = None
 
-        extracted = "\n\n".join(pages)
+        extracted = cls._extract_text(
+            output_path if result is not None and result.returncode == 0 else input_path
+        )
+        if not extracted and result is not None and result.returncode == 0:
+            extracted = cls._extract_text(input_path)
         if not extracted:
             raise ValueError("PDF contains no extractable text")
         return extracted
+
+    @staticmethod
+    def _extract_text(path: str) -> str:
+        try:
+            with open(path, "rb") as pdf_file:
+                reader = PdfReader(pdf_file, strict=False)
+                if reader.is_encrypted:
+                    raise ValueError("encrypted PDFs are not supported")
+                pages: list[str] = []
+                text_size = 0
+                for page_number, page in enumerate(reader.pages, start=1):
+                    page_text = (page.extract_text() or "").strip()
+                    if not page_text:
+                        continue
+                    section = f"[Page {page_number}]\n{page_text}"
+                    section_size = len(section.encode("utf-8"))
+                    separator_size = 2 if pages else 0
+                    if (
+                        text_size + separator_size + section_size
+                        > MAX_FETCHED_TEXT_BYTES
+                    ):
+                        raise ValueError(
+                            f"PDF text exceeds the {MAX_FETCHED_TEXT_BYTES}-byte limit"
+                        )
+                    pages.append(section)
+                    text_size += separator_size + section_size
+        except PyPdfError as error:
+            raise ValueError(f"could not read PDF: {error}") from error
+        return "\n\n".join(pages)
 
 
 class _HTMLExtractor:
@@ -305,6 +345,24 @@ class _BrowserFetcher:
             except PlaywrightError:
                 pass
 
+    async def extract_pdf_response(
+        self, transport: BrowserTransport, response: Any
+    ) -> str:
+        body = await response.body()
+        if not body:
+            response = await transport.context.request.get(
+                response.url, max_redirects=0
+            )
+            validate_url(response.url)
+            if not 200 <= response.status < 300:
+                raise ValueError(
+                    f"HTTP request failed with status {response.status} for {response.url}"
+                )
+            if not is_pdf_response(response):
+                raise ValueError("response does not contain a valid PDF document")
+            body = await response.body()
+        return await asyncio.to_thread(_PDFExtractor.extract_bytes, body)
+
     async def fetch(self) -> str:
         async with BrowserTransport() as transport:
             self.download_event = asyncio.get_running_loop().create_future()
@@ -325,7 +383,7 @@ class _BrowserFetcher:
                 if response.status == 204:
                     return ""
                 if is_pdf_response(response):
-                    return _PDFExtractor.extract_bytes(await response.body())
+                    return await self.extract_pdf_response(transport, response)
             raise
 
         if response is None:
@@ -339,10 +397,7 @@ class _BrowserFetcher:
         content_type = response.headers.get("content-type", "") if response else ""
         if response and is_pdf_response(response):
             validate_url(response.url)
-            return _PDFExtractor.extract_bytes(await response.body())
-        if response:
-            ensure_response_size(response, MAX_DOCUMENT_BYTES)
-
+            return await self.extract_pdf_response(transport, response)
         if (
             response
             and is_text_content(content_type)
