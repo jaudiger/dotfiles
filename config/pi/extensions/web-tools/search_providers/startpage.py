@@ -14,9 +14,10 @@ class ParseError(ValueError):
 
 
 async def parse(page: Any) -> list[dict[str, str]]:
-    if await page.locator(EMPTY).count():
-        return []
+    empty = await page.locator(EMPTY).count() > 0
     try:
         return await parse_result_cards(page.locator(ROOT), CARD, TITLE, SNIPPET)
     except ValueError as error:
+        if empty:
+            return []
         raise ParseError(str(error)) from error
