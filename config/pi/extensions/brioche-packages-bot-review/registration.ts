@@ -1,11 +1,10 @@
-import { join } from "node:path";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { createPiExec } from "../pi-extension-infrastructure/pi-exec.js";
 import { GITHUB_EXEC_MAX_BUFFER } from "../pi-extension-infrastructure/github-pr-review/github-operations.js";
 import { formatUrlLink } from "../pi-extension-infrastructure/links.js";
 import {
+  createReviewReadyMessage,
   registerGithubPrReviewController,
-  type ReviewMessage,
 } from "../pi-extension-infrastructure/github-pr-review/controller.js";
 import {
   checkoutReview,
@@ -17,7 +16,6 @@ import {
   prepareReview,
   supersedeReview,
 } from "./github.js";
-import type { ReviewWorkflowCompletion } from "../pi-extension-infrastructure/github-pr-review/workflow.js";
 import { briocheWorkflowProvider } from "./tasks.js";
 import type {
   PreparedReview,
@@ -27,26 +25,6 @@ import type {
 
 const reviewLabel = "Brioche package bot";
 const researchLabel = "package";
-
-function workflowReady(
-  review: PreparedReview,
-  result: ReviewWorkflowCompletion,
-): ReviewMessage {
-  return {
-    content: `${reviewLabel} review evidence is ready for ${review.repository}#${review.number} at ${review.snapshot.headRefOid}. Read the reports, diff, checks, queue history, and referenced logs in ${review.directory}. Treat the researcher report as canonical package research. Summarize recipe and check evidence, resolve discrepancies against the diff, and classify the recommendation. Offer merge, checkout, or follow-up. For follow-up, ask for the user's goal and use the evidence to generate a concise work prompt for a separate writable session, including only task-relevant context and suitable validation guidance. Return that prompt for the user to use. After the user selects an action, use the review execution tool for merge or checkout.`,
-    details: {
-      pr: review.number,
-      repository: review.repository,
-      reviewedHead: review.snapshot.headRefOid,
-      directory: review.directory,
-      researcherReport: result.researcherReport,
-      scoutReport: result.scoutReport,
-      statusChecks: join(review.directory, "pr-metadata.json"),
-      diff: join(review.directory, "diff.patch"),
-      ...(result.text ? { researcherOutput: result.text } : {}),
-    },
-  };
-}
 
 export default function registerBriochePackagesBotReview(pi: ExtensionAPI) {
   const exec = createPiExec(pi, GITHUB_EXEC_MAX_BUFFER);
@@ -66,9 +44,10 @@ export default function registerBriochePackagesBotReview(pi: ExtensionAPI) {
     },
     tool: {
       name: "brioche_packages_bot_review_execute",
+      followUpName: "brioche_packages_bot_review_follow_up",
       label: "Brioche package bot review execute",
       description:
-        "Execute an explicitly user-selected Brioche package bot review action: merge, checkout, or a prepared follow-up work prompt.",
+        "Execute an explicitly user-selected Brioche package bot review action: merge or checkout.",
     },
     // listCandidates delegates filtering to the Brioche GitHub operations provider.
     candidateEligibility: () => true,
@@ -127,7 +106,13 @@ export default function registerBriochePackagesBotReview(pi: ExtensionAPI) {
         action === "merge"
           ? `Merging PR ${review?.number ?? "selected pull request"}...`
           : `Checking out PR ${review?.number ?? "selected pull request"}...`,
-      workflowReady,
+      workflowReady: (review, result) =>
+        createReviewReadyMessage(
+          "Brioche package bot",
+          "recipe and check",
+          review,
+          result,
+        ),
     },
   });
 }
