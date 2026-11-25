@@ -1,10 +1,15 @@
 import type { PiExec } from "../pi-extension-infrastructure/pi-exec.js";
 import { runPythonTool } from "./python-process.js";
 import { fileURLToPath } from "node:url";
+import {
+  isWebSearchProvider,
+  isWebSearchResult,
+  type WebSearchProvider,
+  type WebSearchResult,
+} from "./web-search-results.js";
 
 const SEARCH_PATH = fileURLToPath(new URL("./web-search.py", import.meta.url));
 const PYTHON_PATH = process.env.PI_WEB_TOOLS_PYTHON ?? "python3";
-const PROVIDERS = ["DuckDuckGo", "Startpage"] as const;
 
 export async function executeWebSearch(
   query: string,
@@ -32,10 +37,7 @@ export async function executeWebSearch(
   if (
     typeof parsed !== "object" ||
     parsed === null ||
-    typeof (parsed as { provider?: unknown }).provider !== "string" ||
-    !PROVIDERS.includes(
-      (parsed as { provider: string }).provider as (typeof PROVIDERS)[number],
-    ) ||
+    !isWebSearchProvider((parsed as { provider?: unknown }).provider) ||
     !Array.isArray((parsed as { results?: unknown }).results)
   ) {
     throw new Error("Web search returned invalid provider or results data");
@@ -44,28 +46,20 @@ export async function executeWebSearch(
   if (rawResults.length > 10) {
     throw new Error("Web search returned more than 10 results");
   }
-  const results = rawResults.map((item, index) => {
-    if (
-      typeof item !== "object" ||
-      item === null ||
-      typeof (item as { title?: unknown }).title !== "string" ||
-      typeof (item as { url?: unknown }).url !== "string" ||
-      ((item as { snippet?: unknown }).snippet !== undefined &&
-        typeof (item as { snippet?: unknown }).snippet !== "string")
-    ) {
-      throw new Error(
-        `Web search returned an invalid result at index ${index}`,
-      );
-    }
-    const result = item as { title: string; url: string; snippet?: string };
-    return {
-      title: result.title,
-      url: result.url,
-      ...(result.snippet === undefined ? {} : { snippet: result.snippet }),
-    };
-  });
-  const provider = (parsed as { provider: (typeof PROVIDERS)[number] })
-    .provider;
+  const invalidResultIndex = rawResults.findIndex(
+    (item) => !isWebSearchResult(item),
+  );
+  if (invalidResultIndex !== -1) {
+    throw new Error(
+      `Web search returned an invalid result at index ${invalidResultIndex}`,
+    );
+  }
+  const results = (rawResults as WebSearchResult[]).map((result) => ({
+    title: result.title,
+    url: result.url,
+    ...(result.snippet === undefined ? {} : { snippet: result.snippet }),
+  }));
+  const provider = (parsed as { provider: WebSearchProvider }).provider;
   const text = results.length
     ? results
         .map(

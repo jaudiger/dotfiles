@@ -10,6 +10,10 @@ import { fetchUrlParameters, fetchUrlRangeSchema } from "./fetch-url-schema.js";
 import { executeFetchUrl, MAX_MATCHES, FETCHER_MAX_BUFFER } from "./fetch-url";
 import { executeWebSearch } from "./web-search.js";
 import {
+  isWebSearchProvider,
+  isWebSearchResults,
+} from "./web-search-results.js";
+import {
   webSearchOutputSchema,
   webSearchParameters,
 } from "./web-search-schema.js";
@@ -80,18 +84,8 @@ export default function registerWebTools(pi: ExtensionAPI): void {
       };
       const results = details.results;
       if (
-        (details.provider !== "DuckDuckGo" &&
-          details.provider !== "Startpage") ||
-        !Array.isArray(results) ||
-        !results.every(
-          (item) =>
-            typeof item === "object" &&
-            item !== null &&
-            typeof (item as { title?: unknown }).title === "string" &&
-            typeof (item as { url?: unknown }).url === "string" &&
-            ((item as { snippet?: unknown }).snippet === undefined ||
-              typeof (item as { snippet?: unknown }).snippet === "string"),
-        )
+        !isWebSearchProvider(details.provider) ||
+        !isWebSearchResults(results)
       ) {
         return new Text(fallbackText, 0, 0);
       }
@@ -109,9 +103,9 @@ export default function registerWebTools(pi: ExtensionAPI): void {
       const visible = expanded ? results : results.slice(0, 3);
       const list = visible
         .map((item, index) => {
-          const title = clean((item as { title: string }).title);
-          const url = (item as { url: string }).url;
-          const snippet = (item as { snippet?: string }).snippet;
+          const title = clean(item.title);
+          const url = item.url;
+          const snippet = item.snippet;
           const link = formatLabeledUrlLink(url, title, 36);
           const fullSnippet = snippet ? clean(snippet) : "";
           const shortSnippet =

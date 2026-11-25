@@ -10,8 +10,16 @@ from search_providers import duckduckgo, startpage
 
 CONTENT_READY_TIMEOUT_MS = 5_000
 PROVIDERS = [
-    ("DuckDuckGo", "https://html.duckduckgo.com/html/?q=", duckduckgo),
-    ("Startpage", "https://www.startpage.com/sp/search?query=", startpage),
+    {
+        "name": "DuckDuckGo",
+        "endpoint": "https://html.duckduckgo.com/html/?q=",
+        "parser": duckduckgo,
+    },
+    {
+        "name": "Startpage",
+        "endpoint": "https://www.startpage.com/sp/search?query=",
+        "parser": startpage,
+    },
 ]
 
 
@@ -20,9 +28,13 @@ async def search(query: str) -> dict[str, object]:
         raise ValueError("query must not be empty")
     errors: list[str] = []
     async with BrowserTransport() as browser:
-        for name, endpoint, parser in PROVIDERS:
+        for provider in PROVIDERS:
+            name = provider["name"]
+            parser = provider["parser"]
             try:
-                response = await browser.navigate(endpoint + quote_plus(query))
+                response = await browser.navigate(
+                    provider["endpoint"] + quote_plus(query)
+                )
                 if response is not None and response.status >= 400:
                     raise ValueError(
                         f"HTTP request failed with status {response.status}"
